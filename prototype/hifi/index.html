@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>帝国的代价｜高保真 HUD 原型</title>
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+</head>
+<body>
+  <main class="game-shell" id="game">
+    <section class="map-stage" aria-label="欧洲与北非地图">
+      <svg class="map-svg" id="mapSvg" viewBox="0 0 1050 720" preserveAspectRatio="xMidYMid slice" aria-label="真实轮廓六边形地图"></svg>
+      <div class="map-wash"></div>
+    </section>
+
+    <button class="ruler-plaque" id="rulerPlaque" aria-label="查看法兰西王国">
+      <img class="ruler-portrait" src="../../assets/ui/ruler-philip-vi.png" alt="腓力六世">
+      <span class="ruler-level">III</span>
+    </button>
+
+    <header class="top-command-bar">
+      <div class="brand-block">
+        <div class="shield" aria-label="法兰西盾徽"><span>⚜</span><span>⚜</span><span>⚜</span><span>⚜</span></div>
+        <div class="game-title">帝国的代价</div>
+      </div>
+      <div class="chronicle">
+        <div class="date-plaque">
+          <div class="date-main">1337年 · 春</div>
+          <div class="date-era">封建纪元 · 瓦卢瓦王朝</div>
+        </div>
+        <button class="top-pending" id="topPending">待办 3 ›</button>
+      </div>
+      <div class="resource-strip" aria-label="国家资源">
+        <div class="resource-token"><span class="resource-icon">⌂</span><span class="resource-total">120</span><span class="resource-trend">+9/季</span></div>
+        <div class="resource-token"><span class="resource-icon">✦</span><span class="resource-total">4</span><span class="resource-trend">+1/季</span></div>
+        <div class="resource-token"><span class="resource-icon">⚔</span><span class="resource-total">3</span><span class="resource-trend">+1/季</span></div>
+        <div class="resource-token"><span class="resource-icon">♜</span><span class="resource-total">215</span><span class="resource-trend">+18/季</span></div>
+        <div class="resource-token"><span class="resource-icon">●</span><span class="resource-total">812</span><span class="resource-trend">+52/季</span></div>
+        <div class="resource-token"><span class="resource-icon">▣</span><span class="resource-total">240</span><span class="resource-trend">+12/季</span></div>
+        <div class="resource-token"><span class="resource-icon">♛</span><span class="resource-total">78</span><span class="resource-trend">+1/季</span></div>
+      </div>
+    </header>
+
+    <nav class="system-rail" aria-label="主要系统">
+      <button class="system-button" data-system="国家"><span class="system-glyph">♜</span><span class="system-label">国家</span></button>
+      <button class="system-button" data-system="经济"><span class="system-glyph">●</span><span class="system-label">经济</span></button>
+      <button class="system-button" data-system="外交"><span class="system-glyph">◇</span><span class="system-label">外交</span></button>
+      <button class="system-button" data-system="军事"><span class="system-glyph">⚔</span><span class="system-label">军事</span></button>
+      <button class="system-button" data-system="发展"><span class="system-glyph">▥</span><span class="system-label">发展</span></button>
+    </nav>
+
+    <aside class="system-drawer metal-frame rivet" id="systemDrawer" aria-hidden="true">
+      <div class="drawer-title"><span id="drawerTitle">国家</span><button class="drawer-close" id="drawerClose" aria-label="关闭">×</button></div>
+      <div id="drawerBody"></div>
+    </aside>
+
+    <aside class="issue-panel metal-frame" id="issuePanel">
+      <div class="issue-heading">问题与对象</div>
+      <button class="issue" data-issue="王位继承危机" data-focus="巴黎盆地"><span class="issue-symbol">⚖</span><span><strong>财政压力</strong><small>巴黎盆地 · 严重</small></span><span class="issue-arrow">›</span></button>
+      <button class="issue" data-issue="军团待命" data-focus="诺曼底"><span class="issue-symbol">⚔</span><span><strong>军团待命</strong><small>诺曼底 · 提醒</small></span><span class="issue-arrow">›</span></button>
+      <button class="issue" data-issue="新科技可采纳" data-focus="香槟"><span class="issue-symbol">▤</span><span><strong>新科技可采纳</strong><small>香槟 · 机会</small></span><span class="issue-arrow">›</span></button>
+    </aside>
+
+    <aside class="province-panel metal-frame">
+      <div class="province-banner" id="provinceBanner">
+        <div class="province-name" id="provinceName">巴黎</div>
+        <div class="province-region" id="provinceRegion">法兰西王国 · 巴黎盆地</div>
+      </div>
+      <div class="province-data">
+        <div class="data-row"><span>气候</span><b id="provinceClimate">温带</b><i></i></div>
+        <div class="data-row"><span>POP</span><b id="provincePopulation">504K</b><i></i></div>
+        <div class="data-row"><span>产出</span><b id="provinceOutput">谷物</b><i></i></div>
+        <div class="data-row"><span>控制度</span><b id="provinceControl">85%</b><i></i></div>
+        <div class="data-row"><span>发展度</span><b id="provinceDevelopment">64</b><i></i></div>
+        <div class="data-row"><span>文化</span><b id="provinceCulture">法兰西</b><i></i></div>
+        <div class="data-row"><span>宗教</span><b id="provinceReligion">天主教</b><i></i></div>
+      </div>
+      <div class="province-actions">
+        <button class="province-action"><span>⚒</span>建设</button>
+        <button class="province-action"><span>♞</span>征兵</button>
+        <button class="province-action"><span>✜</span>整合</button>
+        <button class="province-action"><span>⚑</span>派驻</button>
+      </div>
+    </aside>
+
+    <div class="command-dock metal-frame" aria-label="高频命令">
+      <button class="command"><span>⚔</span>宣战</button>
+      <button class="command"><span>✦</span>议和</button>
+      <button class="command"><span>⚖</span>贸易</button>
+      <button class="command"><span>◇</span>结盟</button>
+      <button class="command"><span>♛</span>联姻</button>
+      <button class="command"><span>♟</span>间谍</button>
+      <button class="command"><span>▤</span>通行权</button>
+    </div>
+
+    <aside class="map-tools metal-frame">
+      <div class="lens-row">
+        <button class="lens active" data-mode="political"><span>⚜</span>政治</button>
+        <button class="lens" data-mode="terrain"><span>▲</span>地形</button>
+        <button class="lens" data-mode="population"><span>人</span>人口</button>
+        <button class="lens" data-mode="goods"><span>●</span>产出</button>
+      </div>
+      <div class="mini-map"><svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg></div>
+      <div class="map-tool-footer">
+        <button id="legendToggle" title="展开图例">图</button>
+        <button id="zoomReset" title="复位地图">◎</button>
+        <span class="zoom-readout" id="zoomReadout">100%</span>
+        <button id="zoomOut" title="缩小">−</button>
+        <button id="zoomIn" title="放大">+</button>
+      </div>
+      <div class="map-legend" id="mapLegend"></div>
+    </aside>
+
+    <button class="season-control" id="seasonControl">
+      <span class="season-seal"><span>✧</span></span>
+      <span class="season-text" id="seasonText">处理待办 3</span>
+      <span class="season-end">◇</span>
+    </button>
+
+    <div class="toast metal-frame" id="toast" role="status"></div>
+  </main>
+
+  <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与 HUD 以横屏操作为准。</small></div></div>
+
+  <script src="scripts/main.js"></script>
+  <script src="../../assets/ui/prototype-map-data.js"></script>
+  <script src="../../assets/ui/prototype-map.js"></script>
+</body>
+</html>

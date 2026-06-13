@@ -1,0 +1,25 @@
+:root {
+  --iron-0: #07100e;
+  --iron-1: #0d1a17;
+  --iron-2: #172823;
+  --gold-0: #6d4a1e;
+  --gold-1: #ad7b32;
+  --gold-2: #e0bd68;
+  --gold-3: #f2d991;
+  --enamel: #123651;
+  --enamel-bright: #1e5072;
+  --paper: #d9c28a;
+  --cream: #f1e2ba;
+  --muted: #b9ab84;
+  --danger: #7f241f;
+  --danger-hi: #b34736;
+  --success: #315d3c;
+  --top-h: 58px;
+  --rail-w: 108px;
+  --frame: linear-gradient(145deg, #e0bd68 0, #75501f 24%, #c09243 48%, #3d2914 74%, #b98235 100%);
+  --shadow: 0 8px 22px rgba(0, 0, 0, .55);
+  --ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
