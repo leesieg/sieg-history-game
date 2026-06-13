@@ -4,6 +4,7 @@
   function advanceQuarter(world) {
     if (world.gameOver) return world;
     world.turn += 1;
+    if (window.HIFI_WARFARE_ENGINE) window.HIFI_WARFARE_ENGINE.processWarfare(world);
     for (const country of Object.values(world.countries)) {
       const abilities = country.leader.abilities;
       for (const type of ["administrative", "diplomatic", "military"]) {

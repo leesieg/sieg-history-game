@@ -77,6 +77,19 @@
       <div class="drawer-subtitle">科技采纳</div>${technologies}`;
   }
 
+  function renderMilitary(country, world) {
+    const armies = Object.values(world.warfare.armies).filter(army => army.owner === country.name);
+    const wars = world.diplomacy.wars.filter(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
+    return `<div class="drawer-row">军事点<span>${country.actionPoints.military}</span></div>
+      <div class="drawer-row">战争疲惫<span>${country.warfare.warExhaustion}</span></div>
+      <div class="drawer-subtitle">军团</div>
+      ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
+      <div class="drawer-subtitle">战争</div>
+      ${wars.length ? wars.map(war =>
+        actionButton("data-peace-war", war.id, war.name, `分数 ${war.score}`)
+      ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>'}`;
+  }
+
   function renderDiplomacy(country, world) {
     const engine = window.HIFI_DIPLOMACY_ENGINE;
     const targets = Object.keys(world.countries).filter(name => name !== country.name);
@@ -126,6 +139,7 @@
     if (system === "国家") return renderPolitics(country);
     if (system === "经济") return renderEconomy(country, world);
     if (system === "外交") return renderDiplomacy(country, world);
+    if (system === "军事") return renderMilitary(country, world);
     if (system === "发展") return renderDevelopment(country);
     return null;
   }

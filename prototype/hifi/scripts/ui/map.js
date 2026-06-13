@@ -279,6 +279,23 @@
     }
     svg.appendChild(tileLayer);
 
+    if (window.hifiGame?.store?.getState().warfare) {
+      const armyLayer = node("g", { class: "army-layer" });
+      for (const army of Object.values(window.hifiGame.store.getState().warfare.armies)) {
+        const tile = tiles.find(candidate => candidate.id === army.tileId);
+        if (!tile) continue;
+        const marker = node("text", {
+          x: tile.x,
+          y: tile.y + 5,
+          class: "map-army-marker",
+          "data-army-marker": army.id,
+        });
+        marker.textContent = "♞";
+        armyLayer.appendChild(marker);
+      }
+      svg.appendChild(armyLayer);
+    }
+
     const capitals = capitalCities();
     const cityLayer = node("g", { class: "city-layer" });
     data.regionSeeds.forEach((seed, index) => {
@@ -396,6 +413,11 @@
   function bindControls() {
     svg.addEventListener("click", event => {
       if (state.dragged) return;
+      const armyMarker = event.target.closest("[data-army-marker]");
+      if (armyMarker) {
+        window.dispatchEvent(new CustomEvent("hifi:army-selected", { detail: { armyId: armyMarker.dataset.armyMarker } }));
+        return;
+      }
       const polygon = event.target.closest("[data-map-tile]");
       if (!polygon) return;
       selectTile(tiles[Number(polygon.dataset.mapTile)]);
@@ -452,5 +474,5 @@
   bindControls();
   const paris = nearestTileForRegion("巴黎盆地");
   selectTile(paris);
-  window.prototypeMap = { tiles, state, focusTile, setMode, setZoom };
+  window.prototypeMap = { tiles, state, focusTile, renderMainMap, setMode, setZoom };
 })();

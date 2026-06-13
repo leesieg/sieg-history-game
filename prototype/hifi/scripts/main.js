@@ -14,8 +14,10 @@
   window.HIFI_POLITICS_ENGINE.initializePolitics(world);
   window.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
   window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
+  window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
+  window.HIFI_DIALOGS.bindArmyDialog(store);
 
   function showToast(text) {
     clearTimeout(toastTimer);
@@ -146,6 +148,21 @@
         );
       }));
     });
+    drawerBody.querySelectorAll("[data-army-open]").forEach(button => {
+      button.addEventListener("click", () => window.dispatchEvent(new CustomEvent("hifi:army-selected", {
+        detail: { armyId: button.dataset.armyOpen },
+      })));
+    });
+    drawerBody.querySelectorAll("[data-peace-war]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_WARFARE_ENGINE.concludePeace(
+          current,
+          button.dataset.peaceWar,
+          current.playerPolity,
+          [{ type: "target_territory" }]
+        )
+      ));
+    });
   }
 
   function openSystem(button) {
@@ -203,10 +220,19 @@
   window.addEventListener("hifi:tile-selected", event => {
     store.update(current => {
       current.selectedTile = event.detail.tileId;
+      if (current.warfare?.planningArmy) {
+        window.HIFI_WARFARE_ENGINE.planArmyRoute(current, current.warfare.planningArmy, event.detail.tileId);
+        current.warfare.planningArmy = null;
+        showToast("军团路线已规划");
+      }
     });
   });
 
-  store.subscribe(renderHud);
+  store.subscribe(current => {
+    renderHud(current);
+    window.prototypeMap.renderMainMap();
+  });
   renderHud(store.getState());
   window.hifiGame = { store, showToast };
+  window.prototypeMap.renderMainMap();
 })();

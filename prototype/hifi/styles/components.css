@@ -385,6 +385,31 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   text-align: left;
 }
 .drawer-subtitle { padding: 12px 0 5px; color: var(--gold-2); font-size: 11px; }
+.drawer-scroll-list { max-height: 150px; overflow: auto; }
+.army-drawer {
+  position: absolute;
+  z-index: 18;
+  top: 76px;
+  right: 14px;
+  width: 286px;
+  max-height: calc(100vh - 170px);
+  padding: 10px;
+  overflow: auto;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-12px);
+  transition: opacity 160ms ease, transform 180ms var(--ease);
+}
+.army-drawer.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.map-army-marker {
+  fill: #f1d58a;
+  stroke: #2a1b12;
+  stroke-width: 1.5px;
+  paint-order: stroke;
+  font-size: 18px;
+  text-anchor: middle;
+  cursor: pointer;
+}
 
 .issue-panel {
   position: absolute;
