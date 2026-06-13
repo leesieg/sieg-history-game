@@ -1,0 +1,94 @@
+(() => {
+  "use strict";
+
+  const governments = {
+    monarchy: { label: "君主制", powerName: "王权", assemblyType: "等级会议", assemblyUnlocked: false, estates: ["nobles", "merchants", "church", "peasants", "bureaucrats"], title: "国王", succession: "hereditary" },
+    republic: { label: "共和国", powerName: "议会权威", assemblyType: "议会", assemblyUnlocked: true, estates: ["patricians", "citizens", "guilds", "commons", "speaker"], title: "执政官", succession: "elective_term", termYears: 4 },
+    theocracy: { label: "神权国", powerName: "教权", assemblyType: "教义会议", assemblyUnlocked: true, estates: ["clergy", "orders", "nobles", "faithful", "legate"], title: "大祭司", succession: "elective_life" },
+    tribal: { label: "部族联盟", powerName: "盟约权威", assemblyType: "部族大会", assemblyUnlocked: true, estates: ["clans", "warriors", "shamans", "herders", "kin"], title: "大汗", succession: "clan_elective" },
+    merchant_republic: { label: "商业共和国", powerName: "商贸权威", assemblyType: "商人议会", assemblyUnlocked: true, estates: ["companies", "guilds", "port_nobles", "sailors", "oligarchs"], title: "总督", succession: "elective_life" },
+    empire: { label: "帝国制", powerName: "帝国权威", assemblyType: "帝国会议", assemblyUnlocked: true, estates: ["court", "princes", "imperial_church", "cities", "governors"], title: "皇帝", succession: "imperial_elective" },
+  };
+
+  const estates = {
+    nobles: ["贵族", 42, 10, ["地方司法权"]],
+    merchants: ["商人", 31, 0, ["行会特许"]],
+    church: ["教会", 34, 10, ["什一税"]],
+    peasants: ["平民", 28, 0, []],
+    bureaucrats: ["王室官僚", 20, 0, ["王室任命"]],
+    patricians: ["贵族派", 35, 0, ["元老席位"]],
+    citizens: ["市民派", 36, 10, ["市政自治"]],
+    guilds: ["行会", 34, 0, ["行业垄断"]],
+    commons: ["平民", 25, 0, []],
+    speaker: ["议长派系", 18, 0, ["议程主持"]],
+    clergy: ["教士", 42, 10, ["教会法庭"]],
+    orders: ["修会", 32, 0, ["修会地产"]],
+    faithful: ["信众", 25, 0, []],
+    legate: ["圣座使节", 18, 0, ["教令确认"]],
+    clans: ["氏族", 42, 10, ["氏族自治"]],
+    warriors: ["战士", 36, 0, ["战利品权"]],
+    shamans: ["祭司", 26, 0, []],
+    herders: ["牧民", 28, 0, []],
+    kin: ["盟主亲族", 18, 0, ["盟主亲卫"]],
+    companies: ["商社", 43, 10, ["海外特许"]],
+    port_nobles: ["港口贵族", 28, 0, ["港防权"]],
+    sailors: ["水手平民", 26, 0, []],
+    oligarchs: ["寡头家族", 24, 0, ["商会席位"]],
+    court: ["宫廷", 36, 0, ["宫廷官职"]],
+    princes: ["诸侯", 40, 0, ["诸侯自治"]],
+    imperial_church: ["帝国教会", 32, 10, ["帝国教产"]],
+    cities: ["城市", 30, 0, ["城市自由"]],
+    governors: ["边疆总督", 24, 0, ["总督裁量"]],
+  };
+
+  function leader(name, dynasty, title, administrative, diplomatic, military, endYear = 1400) {
+    return { name, dynasty, title, abilities: { administrative, diplomatic, military }, endYear };
+  }
+
+  const leaders = {
+    "法兰西王国": { government: "monarchy", succession: "hereditary", history: [leader("腓力六世", "瓦卢瓦家族", "国王", 4, 4, 4, 1350), leader("让二世", "瓦卢瓦家族", "国王", 3, 3, 4, 1364)] },
+    "英格兰王国": { government: "monarchy", succession: "hereditary", history: [leader("爱德华三世", "金雀花家族", "国王", 4, 3, 6, 1377)] },
+    "苏格兰王国": { government: "monarchy", succession: "hereditary", history: [leader("大卫二世", "布鲁斯家族", "国王", 2, 3, 3, 1371)] },
+    "布列塔尼公国": { government: "monarchy", succession: "hereditary", history: [leader("让三世", "德勒家族", "公爵", 3, 4, 2, 1341)] },
+    "弗兰德斯伯国": { government: "monarchy", succession: "hereditary", history: [leader("路易一世", "当皮埃尔家族", "伯爵", 2, 2, 3, 1346)] },
+    "神圣罗马帝国": { government: "empire", succession: "imperial_elective", history: [leader("路易四世", "维特尔斯巴赫家族", "皇帝", 4, 3, 5, 1347)] },
+    "勃艮第公国": { government: "monarchy", succession: "hereditary", history: [leader("厄德四世", "勃艮第家族", "公爵", 3, 3, 4, 1349)] },
+    "米兰领": { government: "monarchy", succession: "hereditary", history: [leader("阿佐内·维斯孔蒂", "维斯孔蒂家族", "领主", 5, 4, 3, 1339)] },
+    "威尼斯共和国": { government: "merchant_republic", succession: "elective_life", history: [leader("弗朗切斯科·丹多洛", "丹多洛家族", "总督", 5, 5, 3, 1339)] },
+    "教皇国": { government: "theocracy", succession: "elective_life", history: [leader("本笃十二世", "富尼耶家族", "教皇", 5, 4, 2, 1342)] },
+    "那不勒斯王国": { government: "monarchy", succession: "hereditary", history: [leader("罗贝托一世", "安茹家族", "国王", 5, 5, 3, 1343)] },
+    "阿拉贡王国": { government: "monarchy", succession: "hereditary", history: [leader("佩德罗四世", "巴塞罗那家族", "国王", 4, 5, 4, 1387)] },
+    "卡斯蒂利亚王国": { government: "monarchy", succession: "hereditary", history: [leader("阿方索十一世", "卡斯蒂利亚-伊夫雷亚家族", "国王", 4, 3, 6, 1350)] },
+    "葡萄牙王国": { government: "monarchy", succession: "hereditary", history: [leader("阿方索四世", "葡萄牙勃艮第家族", "国王", 4, 4, 4, 1357)] },
+    "格拉纳达酋长国": { government: "monarchy", succession: "hereditary", history: [leader("优素福一世", "纳斯里家族", "埃米尔", 5, 5, 4, 1354)] },
+    "纳瓦拉王国": { government: "monarchy", succession: "hereditary", history: [leader("胡安娜二世", "卡佩-埃夫勒家族", "女王", 4, 4, 2, 1349)] },
+    "丹麦王国": { government: "monarchy", succession: "hereditary", history: [leader("格哈德三世", "绍恩堡家族", "摄政伯爵", 3, 4, 5, 1340)] },
+    "挪威王国": { government: "monarchy", succession: "hereditary", history: [leader("马格努斯七世", "比耶博家族", "国王", 3, 3, 3, 1355)] },
+    "瑞典王国": { government: "monarchy", succession: "hereditary", history: [leader("马格努斯四世", "比耶博家族", "国王", 4, 4, 3, 1364)] },
+    "波兰王国": { government: "monarchy", succession: "hereditary", history: [leader("卡齐米日三世", "皮雅斯特家族", "国王", 6, 5, 4, 1370)] },
+    "立陶宛大公国": { government: "monarchy", succession: "hereditary", history: [leader("格迪米纳斯", "格迪米纳斯家族", "大公", 5, 5, 5, 1341)] },
+    "条顿骑士团": { government: "theocracy", succession: "elective_life", history: [leader("迪特里希·冯·阿尔滕堡", "阿尔滕堡家族", "大团长", 4, 3, 5, 1341)] },
+    "匈牙利王国": { government: "monarchy", succession: "hereditary", history: [leader("卡罗伊一世", "安茹家族", "国王", 6, 5, 5, 1342)] },
+    "塞尔维亚王国": { government: "monarchy", succession: "hereditary", history: [leader("斯特凡·杜尚", "尼曼雅家族", "国王", 5, 4, 6, 1355)] },
+    "拜占庭帝国": { government: "empire", succession: "hereditary", history: [leader("安德洛尼卡三世", "巴列奥略家族", "皇帝", 4, 4, 5, 1341)] },
+    "奥斯曼贝伊国": { government: "monarchy", succession: "hereditary", history: [leader("奥尔汗", "奥斯曼家族", "贝伊", 5, 5, 5, 1362)] },
+    "安纳托利亚诸贝伊国": { government: "monarchy", succession: "hereditary", history: [leader("阿拉丁·哈利勒", "卡拉曼家族", "贝伊", 3, 3, 2, 1340)] },
+    "马林王朝": { government: "monarchy", succession: "hereditary", history: [leader("阿布·哈桑·阿里", "马林家族", "苏丹", 4, 4, 6, 1348)] },
+    "特莱姆森王国": { government: "monarchy", succession: "hereditary", history: [leader("阿布·塔什芬一世", "扎亚尼德家族", "苏丹", 3, 3, 4, 1337)] },
+    "哈夫斯王朝": { government: "monarchy", succession: "hereditary", history: [leader("阿布·叶海亚·阿布·巴克尔二世", "哈夫斯家族", "哈里发", 4, 4, 3, 1346)] },
+    "马穆鲁克苏丹国": { government: "monarchy", succession: "court", history: [leader("纳西尔·穆罕默德", "盖拉温家族", "苏丹", 5, 5, 5, 1341)] },
+    "莫斯科公国": { government: "monarchy", succession: "hereditary", history: [leader("伊凡一世·卡利塔", "留里克家族", "大公", 6, 5, 3, 1340)] },
+    "诺夫哥罗德共和国": { government: "republic", succession: "elective_term", termYears: 4, history: [leader("费奥多尔·丹尼洛维奇", "丹尼洛维奇博雅尔家族", "执政官", 4, 5, 3, 1351)] },
+    "金帐汗国": { government: "tribal", succession: "clan_elective", history: [leader("月即别汗", "孛儿只斤家族", "大汗", 5, 5, 5, 1341)] },
+  };
+
+  const introductions = {
+    "法兰西王国": "瓦卢瓦王朝刚坐稳王位，王国因阿基坦与继承争端同英格兰决裂。富庶而分散的封建力量必须被拧成一股绳。",
+    "英格兰王国": "爱德华三世统治着依靠羊毛贸易获利的王国，对法国王位的主张正把英格兰推入百年战争。",
+    "威尼斯共和国": "威尼斯控制着亚得里亚海贸易节点，力量来自港口、舰队与精密的寡头制度。",
+    "拜占庭帝国": "帝国试图恢复希腊地区的控制，但财政薄弱和安纳托利亚失地持续消耗国力。",
+    "奥斯曼贝伊国": "奥尔汗已夺取布尔萨和尼西亚，边疆战士与新城市资源正把奥斯曼推向海峡。",
+  };
+
+  window.HIFI_COUNTRY_DATA = { governments, estates, introductions, leaders };
+})();

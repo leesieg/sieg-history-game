@@ -122,13 +122,46 @@
     <div class="toast metal-frame" id="toast" role="status"></div>
   </main>
 
+  <div class="modal-layer" id="countryModal" aria-hidden="true">
+    <section class="state-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="countryModalTitle">
+      <button class="dialog-close" data-close-dialog="countryModal" aria-label="关闭">×</button>
+      <header class="state-dialog-head">
+        <div class="dialog-emblem" id="countryModalEmblem">⚜</div>
+        <div><h2 id="countryModalTitle">法兰西王国</h2><p id="countryModalSubtitle"></p></div>
+      </header>
+      <div class="state-dialog-body" id="countryModalBody"></div>
+      <footer class="state-dialog-actions"><button class="dialog-command" id="openCountrySelect">切换国家</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-layer" id="countrySelectModal" aria-hidden="true">
+    <section class="country-select-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="countrySelectTitle">
+      <button class="dialog-close" data-close-dialog="countrySelectModal" aria-label="关闭">×</button>
+      <header><h2 id="countrySelectTitle">选择扮演国家</h2></header>
+      <input class="country-search" id="countrySearch" type="search" placeholder="搜索国家或政体">
+      <div class="country-choice-strip" id="countryChoiceStrip"></div>
+      <div class="country-choice-preview" id="countryChoicePreview"></div>
+      <footer class="state-dialog-actions"><button class="dialog-command primary" id="confirmCountryChoice">确认国家</button></footer>
+    </section>
+  </div>
+
+  <div class="modal-layer" id="leaderElectionModal" aria-hidden="true">
+    <section class="state-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="leaderElectionTitle">
+      <header><h2 id="leaderElectionTitle">选举国家领导人</h2><p id="leaderElectionReason"></p></header>
+      <div class="leader-candidate-list" id="leaderCandidateList"></div>
+    </section>
+  </div>
+
   <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与 HUD 以横屏操作为准。</small></div></div>
 
-  <script src="scripts/data/geography.js"></script>
-  <script src="scripts/engine/world.js"></script>
-  <script src="scripts/engine/turn.js"></script>
-  <script src="scripts/ui/store.js"></script>
-  <script src="scripts/ui/map.js"></script>
-  <script src="scripts/main.js"></script>
+  <script src="scripts/data/geography.js?v=3"></script>
+  <script src="scripts/data/countries.js?v=3"></script>
+  <script src="scripts/engine/world.js?v=3"></script>
+  <script src="scripts/engine/turn.js?v=3"></script>
+  <script src="scripts/engine/politics.js?v=3"></script>
+  <script src="scripts/ui/store.js?v=3"></script>
+  <script src="scripts/ui/map.js?v=3"></script>
+  <script src="scripts/ui/drawers.js?v=3"></script>
+  <script src="scripts/main.js?v=3"></script>
 </body>
 </html>

@@ -11,7 +11,9 @@
   let toastTimer;
 
   const world = window.HIFI_WORLD_ENGINE.createWorld(window.prototypeMap.tiles);
+  window.HIFI_POLITICS_ENGINE.initializePolitics(world);
   const store = window.HIFI_STORE.createStore(world);
+  const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
 
   function showToast(text) {
     clearTimeout(toastTimer);
@@ -40,6 +42,7 @@
     topPending.textContent = count ? `待办 ${count} ›` : "待办已清";
     seasonText.textContent = count ? `处理待办 ${count}` : "结束季度";
     seasonControl.classList.toggle("ready", count === 0);
+    dialogs.renderPendingElection();
   }
 
   function fallbackRows(system, current) {
@@ -54,6 +57,32 @@
     return systems[system];
   }
 
+  function renderSystemBody(system) {
+    const custom = window.HIFI_DRAWERS.renderSystem(system, store.getState());
+    if (!custom) {
+      const rows = fallbackRows(system, store.getState());
+      drawerBody.innerHTML = rows.map(([label, value]) =>
+        `<div class="drawer-row">${label}<span>${value}</span></div>`
+      ).join("");
+      return;
+    }
+    drawerBody.innerHTML = custom;
+    drawerBody.querySelectorAll("[data-reform]").forEach(reformButton => {
+      reformButton.addEventListener("click", () => {
+        try {
+          store.update(current => window.HIFI_POLITICS_ENGINE.advanceReform(
+            current,
+            current.playerPolity,
+            reformButton.dataset.reform
+          ));
+          renderSystemBody(system);
+        } catch (error) {
+          showToast(error.message);
+        }
+      });
+    });
+  }
+
   function openSystem(button) {
     const same = button.classList.contains("active");
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
@@ -64,10 +93,7 @@
     }
     button.classList.add("active");
     drawerTitle.textContent = button.dataset.system;
-    const rows = fallbackRows(button.dataset.system, store.getState());
-    drawerBody.innerHTML = rows.map(([label, value]) =>
-      `<div class="drawer-row">${label}<span>${value}</span></div>`
-    ).join("");
+    renderSystemBody(button.dataset.system);
     drawer.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
   }
@@ -93,10 +119,7 @@
     });
   });
 
-  document.getElementById("rulerPlaque").addEventListener("click", () => {
-    const country = window.HIFI_WORLD_ENGINE.activeCountry(store.getState());
-    showToast(`${country.name} · ${country.leader.title}${country.leader.name} · ${country.leader.dynasty}`);
-  });
+  document.getElementById("rulerPlaque").addEventListener("click", () => dialogs.renderCountryModal());
   topPending.addEventListener("click", () => showToast(`当前有 ${store.getState().pendingIssues.length} 项待办`));
   seasonControl.addEventListener("click", () => {
     const current = store.getState();
