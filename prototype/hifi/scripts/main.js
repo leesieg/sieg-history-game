@@ -12,6 +12,7 @@
 
   const world = window.HIFI_WORLD_ENGINE.createWorld(window.prototypeMap.tiles);
   window.HIFI_POLITICS_ENGINE.initializePolitics(world);
+  window.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
 
@@ -67,19 +68,52 @@
       return;
     }
     drawerBody.innerHTML = custom;
+    function runAction(action) {
+      try {
+        store.update(action);
+        renderSystemBody(system);
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
     drawerBody.querySelectorAll("[data-reform]").forEach(reformButton => {
       reformButton.addEventListener("click", () => {
-        try {
-          store.update(current => window.HIFI_POLITICS_ENGINE.advanceReform(
+        runAction(current => window.HIFI_POLITICS_ENGINE.advanceReform(
             current,
             current.playerPolity,
             reformButton.dataset.reform
-          ));
-          renderSystemBody(system);
-        } catch (error) {
-          showToast(error.message);
-        }
+        ));
       });
+    });
+    drawerBody.querySelectorAll("[data-trade-policy]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.setTradePolicy(current, current.playerPolity, button.dataset.tradePolicy)
+      ));
+    });
+    drawerBody.querySelectorAll("[data-edict]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.enactEdict(current, current.playerPolity, button.dataset.edict)
+      ));
+    });
+    drawerBody.querySelectorAll("[data-agenda]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.setAgenda(current, current.playerPolity, button.dataset.agenda)
+      ));
+    });
+    drawerBody.querySelectorAll("[data-building]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.constructBuilding(
+          current,
+          current.playerPolity,
+          current.selectedTile,
+          button.dataset.building
+        )
+      ));
+    });
+    drawerBody.querySelectorAll("[data-technology]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.adoptTechnology(current, current.playerPolity, button.dataset.technology)
+      ));
     });
   }
 
@@ -133,6 +167,12 @@
 
   document.querySelectorAll(".province-action,.command").forEach(button => {
     button.addEventListener("click", () => showToast(`该命令将在对应系统迁移时启用：${button.textContent.trim()}`));
+  });
+
+  window.addEventListener("hifi:tile-selected", event => {
+    store.update(current => {
+      current.selectedTile = event.detail.tileId;
+    });
   });
 
   store.subscribe(renderHud);

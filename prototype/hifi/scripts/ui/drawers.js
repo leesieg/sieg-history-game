@@ -24,9 +24,64 @@
       <div class="drawer-subtitle">阶层：权力 / 满意</div>${estates}`;
   }
 
+  function actionButton(attribute, key, label, detail, active = false) {
+    return `<button class="drawer-row political-action${active ? " active" : ""}" ${attribute}="${key}">
+      ${label}<span>${detail}</span>
+    </button>`;
+  }
+
+  function renderEconomy(country, world) {
+    const rules = window.HIFI_RULES;
+    const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
+    const policies = [
+      ["closed", "封闭贸易", "稳定"],
+      ["normal", "常规贸易", "均衡"],
+      ["open", "开放贸易", "资本增长"],
+    ].map(([key, label, detail]) =>
+      actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)
+    ).join("");
+    const edicts = Object.entries(rules.edicts).map(([key, edict]) =>
+      actionButton("data-edict", key, edict.label, Object.entries(edict.cost).map(([resource, cost]) => `${resource} ${cost}`).join(" · "))
+    ).join("");
+    const agendas = Object.entries(rules.agendas).map(([key, agenda]) =>
+      actionButton("data-agenda", key, agenda.label, `${agenda.target} ≥ ${agenda.threshold}`, country.agenda === key)
+    ).join("");
+    const buildings = Object.entries(rules.buildings).map(([key, building]) =>
+      actionButton("data-building", key, building.label, `${building.cost} 金钱`)
+    ).join("");
+    const tileLabel = tile && !tile.isSea
+      ? `${tile.city || tile.region} · ${tile.polity === country.name ? "可建设" : "非己方地块"}`
+      : "请选择己方陆地";
+    return `<div class="drawer-row">粮食<span>${Math.round(country.food)}</span></div>
+      <div class="drawer-row">国库<span>${Math.round(country.money)}</span></div>
+      <div class="drawer-row">军需<span>${Math.round(country.military)}</span></div>
+      <div class="drawer-row">资本池<span>${Math.round(country.capital)}</span></div>
+      <div class="drawer-subtitle">贸易政策</div>${policies}
+      <div class="drawer-subtitle">国家敕令</div>${edicts}
+      <div class="drawer-subtitle">国家议程</div>${agendas}
+      <div class="drawer-subtitle">地块建设：${tileLabel}</div>${buildings}`;
+  }
+
+  function renderDevelopment(country) {
+    const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) =>
+      actionButton(
+        "data-technology",
+        key,
+        technology.label,
+        country.technology[key] ? "已采纳" : `${technology.cost} 思想`,
+        country.technology[key]
+      )
+    ).join("");
+    return `<div class="drawer-row">思想点<span>${Math.round(country.ideas)}</span></div>
+      <div class="drawer-row">时代进度<span>${country.ageProgress}%</span></div>
+      <div class="drawer-subtitle">科技采纳</div>${technologies}`;
+  }
+
   function renderSystem(system, world) {
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
     if (system === "国家") return renderPolitics(country);
+    if (system === "经济") return renderEconomy(country, world);
+    if (system === "发展") return renderDevelopment(country);
     return null;
   }
 

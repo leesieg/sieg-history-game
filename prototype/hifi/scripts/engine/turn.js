@@ -13,6 +13,11 @@
       country.log.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：进入新季度。`);
       country.log = country.log.slice(0, 14);
     }
+    if (window.HIFI_ECONOMY_ENGINE) {
+      for (const polity of Object.keys(world.countries)) {
+        window.HIFI_ECONOMY_ENGINE.settleCountry(world, polity);
+      }
+    }
     if (window.HIFI_POLITICS_ENGINE) {
       for (const polity of Object.keys(world.countries)) {
         if (!world.pendingElection) window.HIFI_POLITICS_ENGINE.processLeadership(world, polity);

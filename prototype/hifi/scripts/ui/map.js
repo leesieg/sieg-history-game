@@ -350,6 +350,9 @@
     state.selectedId = tile.id;
     updateProvince(tile);
     renderMainMap();
+    window.dispatchEvent(new CustomEvent("hifi:tile-selected", {
+      detail: { tileId: tile.id },
+    }));
   }
 
   function nearestTileForRegion(region) {
