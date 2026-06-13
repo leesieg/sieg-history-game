@@ -58,9 +58,7 @@
 
     <aside class="issue-panel metal-frame" id="issuePanel">
       <div class="issue-heading">问题与对象</div>
-      <button class="issue" data-issue="财政压力" data-focus="巴黎盆地"><span class="issue-symbol">⚖</span><span><strong>财政压力</strong><small>巴黎盆地 · 严重</small></span><span class="issue-arrow">›</span></button>
-      <button class="issue" data-issue="军团待命" data-focus="诺曼底"><span class="issue-symbol">⚔</span><span><strong>军团待命</strong><small>诺曼底 · 提醒</small></span><span class="issue-arrow">›</span></button>
-      <button class="issue" data-issue="新科技可采纳" data-focus="香槟"><span class="issue-symbol">▤</span><span><strong>新科技可采纳</strong><small>香槟 · 机会</small></span><span class="issue-arrow">›</span></button>
+      <div id="issueList"></div>
     </aside>
     <aside class="army-drawer metal-frame" id="armyDrawer" aria-hidden="true">
       <div class="drawer-title"><span id="armyDrawerTitle">军团</span><button class="drawer-close" id="armyDrawerClose" aria-label="关闭">×</button></div>
@@ -155,6 +153,19 @@
       <div class="leader-candidate-list" id="leaderCandidateList"></div>
     </section>
   </div>
+  <div class="modal-layer" id="councilModal" aria-hidden="true">
+    <section class="state-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="councilTitle">
+      <button class="dialog-close" data-close-dialog="councilModal" aria-label="关闭">×</button>
+      <header><h2 id="councilTitle">御前会议</h2><p id="councilSubtitle"></p></header>
+      <div class="state-dialog-body" id="councilBody"></div>
+    </section>
+  </div>
+  <div class="modal-layer" id="historyEventModal" aria-hidden="true">
+    <section class="state-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="historyEventTitle">
+      <header><h2 id="historyEventTitle"></h2></header>
+      <div class="state-dialog-body" id="historyEventBody"></div>
+    </section>
+  </div>
 
   <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与 HUD 以横屏操作为准。</small></div></div>
 
@@ -167,6 +178,7 @@
   <script src="scripts/engine/economy.js?v=4"></script>
   <script src="scripts/engine/diplomacy.js?v=5"></script>
   <script src="scripts/engine/warfare.js?v=6"></script>
+  <script src="scripts/engine/history.js?v=7"></script>
   <script src="scripts/ui/store.js?v=4"></script>
   <script src="scripts/ui/map.js?v=4"></script>
   <script src="scripts/ui/drawers.js?v=4"></script>

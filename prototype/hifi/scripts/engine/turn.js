@@ -27,6 +27,7 @@
         if (!world.pendingElection) window.HIFI_POLITICS_ENGINE.processLeadership(world, polity);
       }
     }
+    if (window.HIFI_HISTORY_ENGINE) window.HIFI_HISTORY_ENGINE.processHistory(world);
     return world;
   }
 

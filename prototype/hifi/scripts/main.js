@@ -15,9 +15,11 @@
   window.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
   window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
+  window.HIFI_HISTORY_ENGINE.initializeHistory(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
   window.HIFI_DIALOGS.bindArmyDialog(store);
+  const narrativeDialogs = window.HIFI_DIALOGS.bindNarrativeDialogs(store);
 
   function showToast(text) {
     clearTimeout(toastTimer);
@@ -42,10 +44,24 @@
     setResource("money", country.money);
     setResource("military", country.military);
     setResource("legitimacy", country.legitimacy);
-    const count = current.pendingIssues.length;
+    const issues = window.HIFI_HISTORY_ENGINE.issues(current);
+    const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
+    const count = issues.length;
     topPending.textContent = count ? `待办 ${count} ›` : "待办已清";
-    seasonText.textContent = count ? `处理待办 ${count}` : "结束季度";
-    seasonControl.classList.toggle("ready", count === 0);
+    seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : "结束季度";
+    seasonControl.classList.toggle("ready", blocking.length === 0);
+    document.getElementById("issueList").innerHTML = issues.map(issue =>
+      `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}">
+        <span class="issue-symbol">${issue.blocking ? "!" : "◇"}</span>
+        <span><strong>${issue.label}</strong><small>${issue.detail}</small></span><span class="issue-arrow">›</span>
+      </button>`
+    ).join("");
+    document.querySelectorAll("[data-history-issue]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.dataset.kind === "event") narrativeDialogs.renderEvent(button.dataset.historyIssue);
+        else narrativeDialogs.renderCouncil();
+      });
+    });
     dialogs.renderPendingElection();
   }
 
@@ -190,23 +206,13 @@
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
   });
 
-  document.querySelectorAll(".issue").forEach(issue => {
-    issue.addEventListener("click", () => {
-      const issueId = issue.dataset.issue;
-      store.update(current => {
-        current.pendingIssues = current.pendingIssues.filter(item => item.label !== issueId);
-      });
-      issue.remove();
-      showToast(`已处理：${issueId}`);
-    });
-  });
-
   document.getElementById("rulerPlaque").addEventListener("click", () => dialogs.renderCountryModal());
-  topPending.addEventListener("click", () => showToast(`当前有 ${store.getState().pendingIssues.length} 项待办`));
+  topPending.addEventListener("click", narrativeDialogs.renderCouncil);
   seasonControl.addEventListener("click", () => {
     const current = store.getState();
-    if (current.pendingIssues.length) {
-      showToast(`仍有 ${current.pendingIssues.length} 项待办需要处理`);
+    const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
+    if (blocking.length) {
+      showToast(`仍有 ${blocking.length} 项裁断需要处理`);
       return;
     }
     store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
