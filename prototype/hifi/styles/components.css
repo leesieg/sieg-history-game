@@ -36,6 +36,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   filter: brightness(1.16);
 }
 .map-city-dot { fill: #f0d789; stroke: #17201b; stroke-width: 1.2; }
+.map-city-dot, .map-capital-star { pointer-events: none; }
 .map-capital-star {
   fill: #f7dc7f;
   stroke: #1b140a;
@@ -355,13 +356,16 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   top: 126px;
   left: 118px;
   width: 286px;
+  max-height: calc(100vh - 150px);
   padding: 12px;
+  overflow-y: auto;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateX(-24px);
   transition: opacity 160ms ease, transform 220ms var(--ease);
 }
-.system-drawer.open { opacity: 1; pointer-events: auto; transform: translateX(0); }
+.system-drawer.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0); }
 .drawer-title {
   display: flex;
   align-items: center;
@@ -404,13 +408,14 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   padding: 10px;
   overflow: auto;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateY(-12px);
   transition: opacity 160ms ease, transform 180ms var(--ease);
 }
-.army-drawer.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
-.game-shell.army-open .issue-panel { opacity: 0; pointer-events: none; }
-.game-shell.system-open .province-panel { opacity: 0; pointer-events: none; }
+.army-drawer.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
+.game-shell.army-open .issue-panel { opacity: 0; visibility: hidden; pointer-events: none; }
+.game-shell.system-open .province-panel { opacity: 0; visibility: hidden; pointer-events: none; }
 .map-army-marker {
   fill: #f1d58a;
   stroke: #2a1b12;
@@ -430,7 +435,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   padding: 9px;
   max-height: calc(100vh - 160px);
   overflow: auto;
-  transition: opacity 160ms ease;
+  transition: opacity 160ms ease, visibility 160ms ease;
 }
 .issue-heading {
   height: 37px;
@@ -480,7 +485,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   bottom: 8px;
   width: 342px;
   overflow: hidden;
-  transition: opacity 160ms ease;
+  transition: opacity 160ms ease, visibility 160ms ease;
 }
 .province-banner {
   height: 80px;
@@ -847,7 +852,13 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   .command-dock { left: 342px; bottom: 8px; height: 50px; padding: 4px; transform: none; }
   .command { width: 28px; font-size: 0; }
   .command span { font-size: 15px; line-height: 17px; }
-  .map-tools { display: none; }
+  .map-tools { right: 8px; bottom: 64px; width: 190px; padding: 4px; }
+  .lens { height: 34px; font-size: 9px; }
+  .lens span { display: inline; margin-right: 2px; font-size: 13px; }
+  .mini-map { display: none; }
+  .map-tool-footer { margin-top: 3px; }
+  .map-tool-footer button, .zoom-readout { min-height: 26px; }
+  .map-legend { max-height: 82px; overflow: auto; }
   .season-control { right: 8px; bottom: 8px; width: 244px; height: 50px; grid-template-columns: 42px 1fr 30px; }
   .season-seal { width: 31px; height: 31px; font-size: 15px; }
   .season-text { font-size: 17px; }

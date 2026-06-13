@@ -28,7 +28,11 @@ assert.ok(css.includes(".system-drawer.open"));
 assert.ok(css.includes(".army-drawer.open"));
 assert.ok(css.includes(".game-shell.army-open .issue-panel"), "军团窗口打开时必须让出右侧问题区");
 assert.ok(css.includes(".game-shell.system-open .province-panel"), "系统抽屉打开时必须让出左下地区区");
+assert.ok(css.includes("max-height: calc(100vh - 150px)"), "系统抽屉必须限制在视口内");
+assert.ok(css.includes("overflow-y: auto"), "超长系统抽屉必须可滚动");
+assert.ok(css.includes("visibility: hidden"), "互斥面板必须退出可见和命中状态");
 assert.ok(css.includes("@media (max-width: 760px) and (orientation: landscape)"), "窄横屏必须收起底部命令栏");
+assert.ok(!/@media \(max-width: 900px\)[\s\S]*?\.map-tools\s*\{\s*display:\s*none/.test(css), "900 横屏不能移除地图工具");
 assert.ok(html.includes('preserveAspectRatio="xMidYMid slice"'));
 assert.ok(html.includes('aria-hidden="true"'));
 

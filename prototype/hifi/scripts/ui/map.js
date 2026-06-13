@@ -360,7 +360,7 @@
     document.getElementById("provinceDevelopment").textContent = tile.isSea ? "航道" : String(tile.population * 3 + tile.buildings.length * 8);
     document.getElementById("provinceCulture").textContent = tile.culture;
     document.getElementById("provinceReligion").textContent = tile.religion;
-    terrainBanner.style.backgroundImage = `linear-gradient(90deg, rgba(6,14,12,.88), rgba(6,14,12,.1)), url("../../../assets/terrain-banners/${tile.terrain}.png")`;
+    terrainBanner.style.backgroundImage = `linear-gradient(90deg, rgba(6,14,12,.88), rgba(6,14,12,.1)), url("../../assets/terrain-banners/${tile.terrain}.png")`;
   }
 
   function selectTile(tile) {

@@ -18,6 +18,7 @@ assert.deepEqual(
 
 const mapSource = fs.readFileSync(mapPath, "utf8");
 const geographySource = fs.readFileSync(geographyPath, "utf8");
+const componentSource = fs.readFileSync(path.join(root, "styles", "components.css"), "utf8");
 assert.ok(mapSource.includes("const HEX_R = 12.8"), "六边形半径必须与 Demo2 对齐");
 assert.ok(mapSource.includes('mode: "political"'), "默认地图模式必须是政治");
 assert.ok(mapSource.includes("Math.hypot(dx, dy) < 5"), "拖动必须保留点击阈值");
@@ -28,6 +29,9 @@ assert.ok(
   geographySource.includes('"enemy","英格兰王国"'),
   "1337 年加斯科涅地块应归属英格兰王国，而不是虚构独立政权"
 );
+assert.ok(componentSource.includes(".map-city-dot, .map-capital-star"), "城市点和首都星必须共享穿透点击规则");
+assert.ok(componentSource.includes("pointer-events: none"), "地图标注不能阻断地块点击");
+assert.ok(mapSource.includes('../../assets/terrain-banners/${tile.terrain}.png'), "地形横幅必须使用正确资源路径");
 
 const html = fs.readFileSync(htmlPath, "utf8");
 assert.ok(html.includes("scripts/data/geography.js"));
