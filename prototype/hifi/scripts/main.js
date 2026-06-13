@@ -13,6 +13,7 @@
   const world = window.HIFI_WORLD_ENGINE.createWorld(window.prototypeMap.tiles);
   window.HIFI_POLITICS_ENGINE.initializePolitics(world);
   window.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
+  window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
 
@@ -114,6 +115,36 @@
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.adoptTechnology(current, current.playerPolity, button.dataset.technology)
       ));
+    });
+    drawerBody.querySelectorAll("[data-diplomatic-target]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        current.diplomacy.selectedTarget = button.dataset.diplomaticTarget;
+      }));
+    });
+    drawerBody.querySelectorAll("[data-diplomatic-action]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const [group, action] = button.dataset.diplomaticAction.split(":");
+        const target = current.diplomacy.selectedTarget;
+        if (group === "mission") return window.HIFI_DIPLOMACY_ENGINE.startMission(current, current.playerPolity, target, action);
+        if (group === "leader") return window.HIFI_DIPLOMACY_ENGINE.performLeaderAction(current, current.playerPolity, target, action);
+        if (group === "treaty") return window.HIFI_DIPLOMACY_ENGINE.proposeTreaty(current, current.playerPolity, target, action);
+        return window.HIFI_DIPLOMACY_ENGINE.proposeSubject(current, current.playerPolity, target, action);
+      }));
+    });
+    drawerBody.querySelectorAll("[data-subject-control]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const subject = window.HIFI_DIPLOMACY_ENGINE.subjectBetween(
+          current,
+          current.playerPolity,
+          current.diplomacy.selectedTarget
+        );
+        return window.HIFI_DIPLOMACY_ENGINE.adjustSubjectControl(
+          current,
+          current.playerPolity,
+          subject.id,
+          button.dataset.subjectControl
+        );
+      }));
     });
   }
 

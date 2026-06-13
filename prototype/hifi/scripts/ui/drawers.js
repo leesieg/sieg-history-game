@@ -77,10 +77,55 @@
       <div class="drawer-subtitle">科技采纳</div>${technologies}`;
   }
 
+  function renderDiplomacy(country, world) {
+    const engine = window.HIFI_DIPLOMACY_ENGINE;
+    const targets = Object.keys(world.countries).filter(name => name !== country.name);
+    if (!targets.includes(world.diplomacy.selectedTarget)) world.diplomacy.selectedTarget = targets[0];
+    const target = world.diplomacy.selectedTarget;
+    const relation = engine.relationView(world, target, country.name);
+    const targetCountry = world.countries[target];
+    const subject = engine.subjectBetween(world, country.name, target);
+    const targetButtons = targets.map(name =>
+      actionButton("data-diplomatic-target", name, name, engine.diplomaticAttitude(world, country.name, name), name === target)
+    ).join("");
+    const actions = [
+      ["mission:improve", "派遣使节", "改善关系"],
+      ["leader:meeting", "私人会晤", "友谊与尊重"],
+      ["leader:gift", "赠送礼物", "20 金钱"],
+      ["leader:threaten", "公开威慑", "恐惧与宿怨"],
+      ["treaty:trade", "贸易协定", "长期承诺"],
+      ["treaty:access", "军事通行", "开放路线"],
+      ["treaty:alliance", "防御同盟", "共同防御"],
+      ["subject:tributary", "要求朝贡", "高自主"],
+      ["subject:vassal", "要求附庸", "中自主"],
+      ["subject:puppet", "建立傀儡", "低自主"],
+    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
+    const subjectRows = subject
+      ? `<div class="drawer-subtitle">权利结构</div>
+        <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>
+        <div class="drawer-row">自主权<span>${subject.autonomy}</span></div>
+        <div class="drawer-row">忠诚度<span>${subject.loyalty}</span></div>
+        ${subject.overlord === country.name
+          ? `${actionButton("data-subject-control", "tighten", "收紧控制", "自主 -10")}
+             ${actionButton("data-subject-control", "loosen", "放宽自治", "忠诚 +12")}`
+          : ""}`
+      : "";
+    return `<div class="drawer-row">外交点<span>${country.actionPoints.diplomatic}</span></div>
+      <div class="drawer-row">使节<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
+      <div class="drawer-row">外交容量<span>${engine.capacityUsed(world, country.name)} / ${engine.capacity(world, country.name)}</span></div>
+      <div class="drawer-subtitle">外交对象</div><div class="drawer-scroll-list">${targetButtons}</div>
+      <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
+      <div class="drawer-row">信任<span>${relation.trust}</span></div>
+      <div class="drawer-row">威胁<span>${relation.threat}</span></div>
+      <div class="drawer-row">战略利益<span>${relation.strategicInterest}</span></div>
+      <div class="drawer-subtitle">外交行动</div>${actions}${subjectRows}`;
+  }
+
   function renderSystem(system, world) {
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
     if (system === "国家") return renderPolitics(country);
     if (system === "经济") return renderEconomy(country, world);
+    if (system === "外交") return renderDiplomacy(country, world);
     if (system === "发展") return renderDevelopment(country);
     return null;
   }

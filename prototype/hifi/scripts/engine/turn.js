@@ -18,6 +18,9 @@
         window.HIFI_ECONOMY_ENGINE.settleCountry(world, polity);
       }
     }
+    if (window.HIFI_DIPLOMACY_ENGINE) {
+      window.HIFI_DIPLOMACY_ENGINE.processDiplomacy(world);
+    }
     if (window.HIFI_POLITICS_ENGINE) {
       for (const polity of Object.keys(world.countries)) {
         if (!world.pendingElection) window.HIFI_POLITICS_ENGINE.processLeadership(world, polity);
