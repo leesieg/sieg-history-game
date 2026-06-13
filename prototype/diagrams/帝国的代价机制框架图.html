@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>帝国的代价 · 完整机制框架图</title>
+<style>
+  :root {
+    --ink: #1f211b; --paper: #efe3c6; --panel: #fff7e3; --line: #493f2c;
+    --gold: #c99a31; --dark: #243335;
+    --c5: #8e3f37; --c4: #9a6b22; --c3: #2f6f7d; --c2: #4d6f3f; --c1: #5b4a36;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 24px 60px; background: #efe3c6; color: var(--ink);
+    font-family: "Songti SC","STSong","Noto Serif SC",Georgia,serif; }
+  h1 { text-align: center; margin: 0 0 4px; font-size: 26px; }
+  .sub { text-align: center; opacity: .7; margin-bottom: 26px; font-size: 13px; }
+  h2 { font-size: 19px; border-left: 5px solid var(--gold); padding-left: 10px; margin: 40px 0 14px; }
+
+  /* ===== 维度一：机制联动 ===== */
+  .arch { display: grid; grid-template-columns: 1fr 250px; gap: 14px; max-width: 1280px; margin: 0 auto; }
+  .stack { display: flex; flex-direction: column; gap: 0; }
+  .band { border: 2px solid var(--line); border-radius: 12px; background: var(--panel);
+    padding: 10px 14px 12px; box-shadow: 0 4px 14px rgba(31,32,26,.12); }
+  .band h3 { margin: 0 0 8px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .band h3 .tag { font-size: 11px; color: #fff; border-radius: 99px; padding: 2px 10px; font-weight: 400; }
+  .mods { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mod { border: 1.2px solid rgba(73,63,44,.45); border-radius: 9px; background: var(--paper);
+    padding: 6px 10px; font-size: 12.5px; line-height: 1.5; flex: 1 1 150px; min-width: 150px; }
+  .mod b { display: block; font-size: 13px; }
+  .mod small { opacity: .75; }
+  .new { outline: 2px dashed var(--gold); outline-offset: -2px; }
+  .conn { display: flex; justify-content: space-around; padding: 4px 30px; font-size: 12px; color: #5b4a36; }
+  .conn span { background: rgba(255,247,227,.85); border: 1px dashed rgba(73,63,44,.5);
+    border-radius: 99px; padding: 2px 12px; }
+  .up::before { content: "▲ "; color: var(--c5); }
+  .down::before { content: "▼ "; color: var(--c3); }
+  .b5 h3 .tag { background: var(--c5); } .b5 { border-color: var(--c5); }
+  .b4 h3 .tag { background: var(--c4); } .b4 { border-color: var(--c4); }
+  .b3 h3 .tag { background: var(--c3); } .b3 { border-color: var(--c3); }
+  .b1 h3 .tag { background: var(--c1); } .b1 { border-color: var(--c1); }
+  .player { border: 2px solid var(--c2); border-radius: 12px; background: var(--panel);
+    padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 14px; height: fit-content; }
+  .player h3 { margin: 0; font-size: 15px; }
+  .player h3 .tag { background: var(--c2); font-size: 11px; color: #fff; border-radius: 99px; padding: 2px 10px; font-weight: 400; }
+  .pmod { border: 1.2px solid rgba(77,111,63,.5); border-radius: 9px; background: var(--paper); padding: 6px 10px; font-size: 12.5px; }
+  .pmod b { display: block; font-size: 13px; }
+  .io { font-size: 11.5px; color: var(--c2); margin-top: 2px; }
+  .legendbar { max-width: 1280px; margin: 10px auto 0; font-size: 12px; opacity: .8; text-align: center; }
+  .legendbar i { display: inline-block; width: 22px; height: 0; border-top: 2px dashed var(--gold); margin: 0 4px 3px 10px; }
+
+  /* ===== 维度二：时间线 ===== */
+  .loopband { max-width: 1280px; margin: 0 auto 14px; border: 2px solid var(--dark); border-radius: 12px;
+    background: var(--dark); color: #f5edce; padding: 10px 16px; text-align: center; font-size: 14px; }
+  .loopband b { color: var(--gold); }
+  .timeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; max-width: 1280px; margin: 0 auto; }
+  .era { border: 2px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 11px;
+    display: flex; flex-direction: column; gap: 7px; position: relative; }
+  .era::after { content: "»"; position: absolute; right: -13px; top: 46%; font-size: 22px; color: var(--gold); z-index: 2; }
+  .era:last-child::after { content: ""; }
+  .era h4 { margin: 0; font-size: 15px; border-bottom: 2px solid var(--gold); padding-bottom: 5px; }
+  .era h4 small { display: block; font-weight: 400; font-size: 11px; opacity: .7; }
+  .row { font-size: 11.8px; line-height: 1.55; border-left: 3px solid; padding-left: 7px; }
+  .sit { border-color: var(--c5); } .sit::before { content: "情势 · "; color: var(--c5); font-weight: 700; }
+  .unlock { border-color: var(--c3); } .unlock::before { content: "解锁 · "; color: var(--c3); font-weight: 700; }
+  .task { border-color: var(--c2); } .task::before { content: "课题 · "; color: var(--c2); font-weight: 700; }
+  .fork { border-color: var(--c4); } .fork::before { content: "分岔 · "; color: var(--c4); font-weight: 700; }
+  .longband { max-width: 1280px; margin: 14px auto 0; border: 1.5px dashed var(--line); border-radius: 12px;
+    background: rgba(255,247,227,.7); padding: 9px 16px; text-align: center; font-size: 12.5px; }
+  footer { text-align: center; margin-top: 44px; font-size: 11px; opacity: .55; }
+  @media (max-width: 1000px) {
+    .arch { grid-template-columns: 1fr; }
+    .player { position: static; }
+    .timeline { grid-template-columns: repeat(2, 1fr); }
+    .era::after { content: ""; }
+    .conn { flex-direction: column; gap: 4px; align-items: center; padding: 6px 10px; }
+  }
+</style>
+</head>
+<body>
+  <h1>《帝国的代价》完整机制框架图</h1>
+  <div class="sub">历史因果引擎 · 五层架构 ｜ 金色虚线框 = 本轮 Review 新增/激活 ｜ 对应文档：11（设计）/ 12-14（实现）/ 15（Review）</div>
+
+  <h2>维度一 · 机制联动：因果的主干是一个顺时针大环</h2>
+  <div class="arch">
+    <div class="stack">
+      <div class="band b5">
+        <h3><span class="tag">⑤ 转折层</span>历史在这里翻页</h3>
+        <div class="mods">
+          <div class="mod"><b>纪元状态机 ×6</b>封建→发现→信仰→王权→革命→工业<br><small>纪元卷轴：因果链+新规则原文+大分流榜</small></div>
+          <div class="mod"><b>情势引擎</b>黑死病·小冰期·商贸繁荣(→流量池)<br>君堡易主·宗教改革·大和会<small>（预兆→活跃→消退，条件触发非硬日期）</small></div>
+          <div class="mod"><b>定向事件</b>奥斯曼战略驱动·探索里程碑<br>革命爆发与跨国传染<small>（窗口+结构，1453 只是众数）</small></div>
+        </div>
+      </div>
+      <div class="conn"><span class="up">压力越阈值 × 历史窗口</span><span class="down">规则改写：解锁进步/路线/敕令/外交规则（大和会三规）</span></div>
+      <div class="band b4">
+        <h3><span class="tag">④ 压力层</span>六仪表：国家处境一眼读（兼 AI 战略动机 / 未来 LLM 备忘录输入）</h3>
+        <div class="mods">
+          <div class="mod"><b>商路依赖</b><small>收入占比→路线波动放大器</small></div>
+          <div class="mod"><b>军事竞争</b><small>邻国代差→AI 军备竞赛<span style="color:var(--gold)">（本轮接入）</span></small></div>
+          <div class="mod"><b>财政压力</b><small>军饷+贡赋+债息→革命引线</small></div>
+          <div class="mod"><b>新航路冲动</b><small>东方成本×大西洋区位</small></div>
+          <div class="mod"><b>信仰张力</b><small>异端占比×教会权力</small></div>
+          <div class="mod"><b>思想渗透</b><small>启蒙积累→革命配方</small></div>
+        </div>
+      </div>
+      <div class="conn"><span class="up">流量·代差·改宗·渗透逐季积累</span><span class="down">高压解锁议程卡与敕令可用性</span></div>
+      <div class="band b3">
+        <h3><span class="tag">③ 流层</span>在国家之间移动的东西（流的改道=历史的底层逻辑）</h3>
+        <div class="mods">
+          <div class="mod"><b>贸易流</b>10 路线/流量池/关税档位<br><small>→节点收入·商人权力(公式项)·资本池 15%</small></div>
+          <div class="mod new"><b>知识流（科技界面）</b>9 进步四态卡<br><small>采纳=有阶层代价的政治决策；沿战争/商路/邻壤扩散</small></div>
+          <div class="mod"><b>信仰流</b>改宗扩散(印刷×不满×城市×邻块)<br><small>启蒙渗透(印刷×市民)；反制：书报检查/开明改革<span style="color:var(--gold)">（新）</span></small></div>
+          <div class="mod"><b>人口流</b>瘟疫波次·年度增长<br><small>劳力分岔：劳役松动 vs 再版农奴制→写入土地法</small></div>
+        </div>
+        <div class="conn" style="padding:6px 10px 0"><span>贸易→资本池→蒸汽机/铁路</span><span>印刷→改宗与启蒙提速</span><span>瘟疫→劳力分岔→粮道需求</span></div>
+      </div>
+      <div class="conn"><span class="up">底盘供养：城市=节点 · POP=宿主 · 战争=知识接触面</span><span class="down">回写：收入入库 · 产出/攻城加成 · 地块改宗 · 法律变更</span></div>
+      <div class="band b1">
+        <h3><span class="tag">① 模拟底盘</span>世界的物理（原 demo 资产，未推倒）</h3>
+        <div class="mods">
+          <div class="mod"><b>地块 / POP / 产出</b><small>地形·气候·控制力·动乱·残破；地块经济(市场/港口)与商路经济分层并行</small></div>
+          <div class="mod"><b>阶层</b><small>权力=公式重算(含商路项)·满意度；不满阶梯→红色事件→叛军上图</small></div>
+          <div class="mod"><b>政体 / 法律 / 合法性</b><small>法律=结构决策活档案<span style="color:var(--gold)">（本轮激活）</span>；领导人三能力→行动点</small></div>
+          <div class="mod"><b>外交</b><small>六因素关系·条约·附属；大和会后毁约代价×2、容量+1</small></div>
+          <div class="mod"><b>战争</b><small>军团·围攻(炮兵vs棱堡)·占领；战分/意志/疲惫→和约</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="player">
+      <h3><span class="tag">② 游戏层</span>玩家的眼睛与手</h3>
+      <div class="pmod"><b>朝会（读）</b>三级预警·季报因果分解·廷臣进言·决策回响<div class="io">⇐ 读取压力层+底盘全态</div></div>
+      <div class="pmod"><b>动词（写）</b>敕令21 · 决议 · 议程卡 · 科技采纳 · 改革槽 · 议会 · 关税 · 地图建设/军令<div class="io">⇒ 写入底盘与流层</div></div>
+      <div class="pmod"><b>反馈（懂）</b>御览预算预演 · 列国纪闻"为什么?"因果链 · 编年史→国家史诗<div class="io">⇐ 溯源转折层与流层</div></div>
+      <div class="pmod"><b>节奏（省）</b>垂帘听政（中断唤醒）· 总督代理（王权纪元+）<div class="io">⇄ 跨越平静年代</div></div>
+      <div class="pmod" style="border-style:dashed"><b>三回合守则</b>任何决策 ≤1 回合见首层反馈，长链 ≤5 回合见里程碑</div>
+    </div>
+  </div>
+  <div class="legendbar">▲ 自下而上：积累与传导 ｜ ▼ 自上而下：规则与回写 ｜<i></i>金色虚线 = 本轮 Review 新增/激活</div>
+
+  <h2>维度二 · 游玩时间线：内环恒定，外环演替（1337 → 1900）</h2>
+  <div class="loopband">每一季的恒定循环（任何纪元不变）：<b>朝会</b>（预警·季报·回响）→ <b>决策</b>（敕令/科技/关税/军令）→ <b>御览</b>（预算预演）→ <b>结算</b>（全世界同时行动）↻</div>
+  <div class="timeline">
+    <div class="era"><h4>封建纪元<small>1337~ · 治理与生存</small></h4>
+      <div class="row sit">黑死病（预兆→波次北传）·小冰期·百年战争</div>
+      <div class="row unlock">商路收入与关税 · 火药沿战争扩散</div>
+      <div class="row task">读朝会 · 喂饱粮仓 · 安抚阶层阶梯</div>
+      <div class="row fork">劳役松动 vs 再版农奴制（同疫不同命，写入土地法）</div>
+    </div>
+    <div class="era"><h4>发现纪元<small>~1450s · 抢航路或守旧路</small></h4>
+      <div class="row sit">君堡易主（或探索双触发）→黎凡特/黑海成本飙升</div>
+      <div class="row unlock">远洋帆船→里程碑链→好望角/新大陆线 · 印刷/棱堡/复式记账</div>
+      <div class="row task">大西洋国家：资助航海 ｜ 地中海国家：保卫贸易/转型</div>
+      <div class="row fork">白银流入→物价侵蚀（拥金而衰）</div>
+    </div>
+    <div class="era"><h4>信仰纪元<small>~1500s · 改宗的火种</small></h4>
+      <div class="row sit">宗教改革（萨克森火种，改宗地图每局不同）</div>
+      <div class="row unlock">跨信仰战争门槛大降 · 波罗的海粮道开通</div>
+      <div class="row task">重申正信 / 宽容 / 改宗国教（亨利八世选项）</div>
+      <div class="row fork">大和会三规：教随国定·条约神圣·常驻使节</div>
+    </div>
+    <div class="era"><h4>王权纪元<small>~1650s · 国库的竞赛</small></h4>
+      <div class="row sit">军备竞赛（军压驱动列国列装常备军/棱堡）</div>
+      <div class="row unlock">常备军 · 三角贸易 · 总督代理（减负）</div>
+      <div class="row task">财政分岔：绝对主义专卖 vs 议会国债</div>
+      <div class="row fork">启蒙渗透积累——书报检查 vs 开明改革</div>
+    </div>
+    <div class="era"><h4>革命纪元<small>~1780s · 引线烧到了</small></h4>
+      <div class="row sit">财政×思想双红→革命爆发·革命军上图</div>
+      <div class="row unlock">蒸汽机（需资本池 150）</div>
+      <div class="row task">镇压只能延迟 · 改革疏导 · 思想跨国传染</div>
+      <div class="row fork">谁先跨过资本门槛，谁先离开旧曲线</div>
+    </div>
+    <div class="era"><h4>工业纪元<small>~1840s · 终局</small></h4>
+      <div class="row sit">大分流开始：采纳者与旁观者不在同一条曲线</div>
+      <div class="row unlock">铁路（耗资本池 250）·产出+30%</div>
+      <div class="row task">终局冲刺与大分流榜</div>
+      <div class="row fork">编年史册收卷：1337→1900 的国史成书</div>
+    </div>
+  </div>
+  <div class="longband">跨纪元长线：<b>垂帘听政</b>穿越平静年代（红色/情势/战争自动唤醒）｜ <b>决策回响</b>逐季兑现 ｜ <b>编年史</b>持续记录 → <b>国家史诗</b>（四轴评分+死因解剖+下一局钩子）</div>
+
+  <footer>帝国的代价 · demo2 机制框架 ｜ 生成于 15 号全机制 Review ｜ 与《欧陆风云5机制框架图.html》同系列</footer>
+</body>
+</html>

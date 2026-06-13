@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>欧陆风云5机制框架图</title>
+  <style>
+    :root {
+      --paper: #f7f3ea;
+      --ink: #23201a;
+      --muted: #6f6a5f;
+      --line: #5d6b6a;
+      --map: #d8eadf;
+      --pop: #f2dfc7;
+      --econ: #dce8f4;
+      --state: #ece0f0;
+      --war: #f2d5d0;
+      --history: #f4e7a9;
+      --danger: #ead1b8;
+      --card: #fffdfa;
+      --border: #d6cbb7;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1280px, calc(100vw - 32px));
+      margin: 28px auto 42px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 3vw, 42px);
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 680px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .canvas {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: auto;
+      box-shadow: 0 18px 40px rgba(55, 47, 34, 0.08);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 1080px;
+      height: auto;
+    }
+
+    .node rect {
+      stroke: #2d2a24;
+      stroke-width: 1.25;
+      rx: 8;
+      ry: 8;
+    }
+
+    .node .title {
+      font-size: 21px;
+      font-weight: 750;
+      fill: var(--ink);
+    }
+
+    .node .body {
+      font-size: 14px;
+      fill: #3b3832;
+    }
+
+    .section-label {
+      font-size: 16px;
+      font-weight: 750;
+      fill: #514c42;
+    }
+
+    .edge {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 2.2;
+      marker-end: url(#arrow);
+    }
+
+    .edge-soft {
+      fill: none;
+      stroke: #8b8071;
+      stroke-width: 1.8;
+      stroke-dasharray: 7 6;
+      marker-end: url(#arrowSoft);
+    }
+
+    .edge-danger {
+      fill: none;
+      stroke: #9c4f3e;
+      stroke-width: 2.2;
+      marker-end: url(#arrowDanger);
+    }
+
+    .edge-label {
+      font-size: 13px;
+      fill: #5d574e;
+      paint-order: stroke;
+      stroke: #fffdfa;
+      stroke-width: 5;
+      stroke-linejoin: round;
+    }
+
+    .legend,
+    .notes {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .legend {
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+    }
+
+    .legend-item,
+    .note-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 1px solid #5b554b;
+      border-radius: 3px;
+      vertical-align: -2px;
+      margin-right: 7px;
+    }
+
+    .notes {
+      grid-template-columns: 1.2fr 1fr;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    @media (max-width: 860px) {
+      header {
+        display: block;
+      }
+
+      .badge {
+        display: inline-block;
+        margin-top: 12px;
+      }
+
+      .legend,
+      .notes {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>欧陆风云 5 机制框架图</h1>
+        <p class="subtitle">读图顺序：底层资源和人口形成社会经济，社会经济转化为国家能力，国家能力向外扩张，扩张再把治理压力带回国内。</p>
+      </div>
+      <div class="badge">机制总结 · 2026-06-01</div>
+    </header>
+
+    <section class="canvas" aria-label="欧陆风云5机制框架图">
+      <svg viewBox="0 0 1280 860" role="img" aria-labelledby="graphTitle graphDesc">
+        <title id="graphTitle">欧陆风云5机制框架图</title>
+        <desc id="graphDesc">展示地图、人口、经济、阶级、政治、战争外交殖民和历史情势之间的关系。</desc>
+
+        <defs>
+          <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+            <path d="M2,2 L10,6 L2,10 Z" fill="#5d6b6a"></path>
+          </marker>
+          <marker id="arrowSoft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+            <path d="M2,2 L10,6 L2,10 Z" fill="#8b8071"></path>
+          </marker>
+          <marker id="arrowDanger" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+            <path d="M2,2 L10,6 L2,10 Z" fill="#9c4f3e"></path>
+          </marker>
+        </defs>
+
+        <text x="55" y="46" class="section-label">底层条件</text>
+        <text x="360" y="46" class="section-label">社会经济引擎</text>
+        <text x="690" y="46" class="section-label">国家机器</text>
+        <text x="990" y="46" class="section-label">外部行动与反馈</text>
+
+        <g class="node" transform="translate(48 88)">
+          <rect width="220" height="110" fill="var(--map)"></rect>
+          <text x="18" y="32" class="title">地图 / 地点</text>
+          <text x="18" y="61" class="body">地形、气候、河流、海洋</text>
+          <text x="18" y="84" class="body">资源、贸易品、道路距离</text>
+        </g>
+
+        <g class="node" transform="translate(48 250)">
+          <rect width="220" height="130" fill="var(--pop)"></rect>
+          <text x="18" y="32" class="title">POP 人口</text>
+          <text x="18" y="61" class="body">劳动力、兵源、税基</text>
+          <text x="18" y="84" class="body">文化、宗教、阶级身份</text>
+          <text x="18" y="107" class="body">生活水平和不满</text>
+        </g>
+
+        <g class="node" transform="translate(350 72)">
+          <rect width="230" height="116" fill="var(--econ)"></rect>
+          <text x="18" y="33" class="title">生产 / 建筑</text>
+          <text x="18" y="63" class="body">人口投入劳力</text>
+          <text x="18" y="86" class="body">资源转化为商品</text>
+        </g>
+
+        <g class="node" transform="translate(350 238)">
+          <rect width="230" height="132" fill="var(--econ)"></rect>
+          <text x="18" y="33" class="title">市场 / 贸易</text>
+          <text x="18" y="63" class="body">商品短缺、盈余、价格</text>
+          <text x="18" y="86" class="body">食品、原料、军需</text>
+          <text x="18" y="109" class="body">决定财政和民生</text>
+        </g>
+
+        <g class="node" transform="translate(350 430)">
+          <rect width="230" height="124" fill="var(--state)"></rect>
+          <text x="18" y="33" class="title">阶级 / 社会</text>
+          <text x="18" y="63" class="body">贵族、教会、商人、平民</text>
+          <text x="18" y="86" class="body">权力来自人口和财富</text>
+          <text x="18" y="109" class="body">推动或阻碍改革</text>
+        </g>
+
+        <g class="node" transform="translate(675 82)">
+          <rect width="230" height="122" fill="var(--state)"></rect>
+          <text x="18" y="33" class="title">控制力 / 邻近度</text>
+          <text x="18" y="63" class="body">政府能管到哪里</text>
+          <text x="18" y="86" class="body">影响税收、叛乱、市场接入</text>
+        </g>
+
+        <g class="node" transform="translate(675 258)">
+          <rect width="230" height="128" fill="var(--state)"></rect>
+          <text x="18" y="33" class="title">法律 / 改革</text>
+          <text x="18" y="63" class="body">政府形态、社会价值观</text>
+          <text x="18" y="86" class="body">阶级特权、行政效率</text>
+          <text x="18" y="109" class="body">长期改变国家方向</text>
+        </g>
+
+        <g class="node" transform="translate(675 452)">
+          <rect width="230" height="122" fill="var(--state)"></rect>
+          <text x="18" y="33" class="title">国家能力</text>
+          <text x="18" y="63" class="body">财政、合法性、行政</text>
+          <text x="18" y="86" class="body">军队、外交、科技推进</text>
+        </g>
+
+        <g class="node" transform="translate(990 82)">
+          <rect width="230" height="122" fill="var(--war)"></rect>
+          <text x="18" y="33" class="title">战争</text>
+          <text x="18" y="63" class="body">征兵、补给、围城、海军</text>
+          <text x="18" y="86" class="body">把国家能力变成领土收益</text>
+        </g>
+
+        <g class="node" transform="translate(990 258)">
+          <rect width="230" height="122" fill="var(--war)"></rect>
+          <text x="18" y="33" class="title">外交 / 国际组织</text>
+          <text x="18" y="63" class="body">同盟、附庸、联统</text>
+          <text x="18" y="86" class="body">HRE、教会、中华帝国等</text>
+        </g>
+
+        <g class="node" transform="translate(990 434)">
+          <rect width="230" height="122" fill="var(--war)"></rect>
+          <text x="18" y="33" class="title">探索 / 殖民</text>
+          <text x="18" y="63" class="body">新市场、新人口、新疾病</text>
+          <text x="18" y="86" class="body">推动全球贸易重组</text>
+        </g>
+
+        <g class="node" transform="translate(990 640)">
+          <rect width="230" height="132" fill="var(--danger)"></rect>
+          <text x="18" y="33" class="title">扩张后治理压力</text>
+          <text x="18" y="63" class="body">控制力下降、文化宗教冲突</text>
+          <text x="18" y="86" class="body">市场接入成本、叛乱</text>
+          <text x="18" y="109" class="body">灾难和国家崩溃风险</text>
+        </g>
+
+        <g class="node" transform="translate(356 660)">
+          <rect width="548" height="112" fill="var(--history)"></rect>
+          <text x="18" y="33" class="title">历史情势 Situations</text>
+          <text x="18" y="63" class="body">黑死病、百年战争、宗教改革、革命、小冰期、殖民地革命</text>
+          <text x="18" y="86" class="body">不是纯剧情事件，而是给经济、人口、宗教、战争和政治加压力</text>
+        </g>
+
+        <path class="edge" d="M268 140 C300 140, 315 128, 350 128"></path>
+        <text class="edge-label" x="285" y="119">资源输入</text>
+
+        <path class="edge" d="M268 306 C304 306, 316 142, 350 142"></path>
+        <text class="edge-label" x="274" y="236">劳动力</text>
+
+        <path class="edge" d="M580 130 C620 130, 634 142, 675 142"></path>
+        <text class="edge-label" x="605" y="119">基础设施影响治理</text>
+
+        <path class="edge" d="M465 188 L465 238"></path>
+        <text class="edge-label" x="484" y="219">商品进入</text>
+
+        <path class="edge" d="M268 316 C308 316, 314 304, 350 304"></path>
+        <text class="edge-label" x="284" y="333">消费与民生</text>
+
+        <path class="edge" d="M268 342 C304 390, 314 482, 350 492"></path>
+        <text class="edge-label" x="264" y="438">阶级权力</text>
+
+        <path class="edge" d="M580 304 C620 304, 632 318, 675 322"></path>
+        <text class="edge-label" x="598" y="294">财政与短缺</text>
+
+        <path class="edge" d="M580 492 C620 492, 632 336, 675 322"></path>
+        <text class="edge-label" x="600" y="420">政治阻力</text>
+
+        <path class="edge" d="M790 204 L790 258"></path>
+        <text class="edge-label" x="807" y="234">治理边界</text>
+
+        <path class="edge" d="M790 386 L790 452"></path>
+        <text class="edge-label" x="806" y="424">制度产出</text>
+
+        <path class="edge" d="M905 512 C940 512, 953 146, 990 146"></path>
+        <path class="edge" d="M905 512 C944 512, 953 320, 990 320"></path>
+        <path class="edge" d="M905 512 C944 512, 953 496, 990 496"></path>
+        <text class="edge-label" x="923" y="454">向外行动</text>
+
+        <path class="edge-danger" d="M1105 204 C1105 245, 1105 600, 1105 640"></path>
+        <path class="edge-danger" d="M1105 380 C1105 420, 1105 600, 1105 640"></path>
+        <path class="edge-danger" d="M1105 556 C1105 590, 1105 606, 1105 640"></path>
+        <text class="edge-label" x="1124" y="603">收益反带成本</text>
+
+        <path class="edge-danger" d="M990 704 C850 620, 790 620, 790 574"></path>
+        <text class="edge-label" x="811" y="630">反噬国家能力</text>
+
+        <path class="edge-danger" d="M990 690 C730 620, 475 612, 465 554"></path>
+        <text class="edge-label" x="601" y="601">社会冲突</text>
+
+        <path class="edge-soft" d="M630 660 C520 580, 490 430, 465 370"></path>
+        <path class="edge-soft" d="M690 660 C660 548, 642 332, 675 322"></path>
+        <path class="edge-soft" d="M812 660 C920 590, 980 526, 990 496"></path>
+        <path class="edge-soft" d="M835 660 C940 580, 1000 186, 990 146"></path>
+        <text class="edge-label" x="705" y="641">历史压力打断稳定循环</text>
+      </svg>
+    </section>
+
+    <section class="legend" aria-label="图例">
+      <div class="legend-item"><span class="swatch" style="background: var(--map)"></span>地图地理</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--pop)"></span>人口社会</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--econ)"></span>经济市场</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--state)"></span>国家治理</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--war)"></span>外部行动</div>
+      <div class="legend-item"><span class="swatch" style="background: var(--history)"></span>历史情势</div>
+    </section>
+
+    <section class="notes">
+      <article class="note-card">
+        <h2>核心读法</h2>
+        <p>EU5 的关键不是单个系统多复杂，而是这些系统互相咬住：人口给经济和军队供血，经济给国家机器供钱，阶级和法律决定改革阻力，战争和殖民把新压力带回国内。</p>
+      </article>
+      <article class="note-card">
+        <h2>最短机制链</h2>
+        <ol>
+          <li>人口和资源形成生产。</li>
+          <li>生产进入市场，决定财政和民生。</li>
+          <li>财政、控制力、法律变成国家能力。</li>
+          <li>国家能力用于战争、外交、殖民。</li>
+          <li>扩张带来新地区，也带来治理成本。</li>
+        </ol>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
