@@ -1,4 +1,6 @@
 (() => {
+  "use strict";
+
   const drawer = document.getElementById("systemDrawer");
   const drawerTitle = document.getElementById("drawerTitle");
   const drawerBody = document.getElementById("drawerBody");
@@ -8,13 +10,8 @@
   const toast = document.getElementById("toast");
   let toastTimer;
 
-  const systems = {
-    "国家": [["政体", "封建君主制"], ["统治者", "腓力六世"], ["家族", "瓦卢瓦"], ["合法性", "78"]],
-    "经济": [["国库", "812"], ["季度收入", "+52"], ["市场中心", "巴黎"], ["建设队列", "2"]],
-    "外交": [["盟友", "苏格兰"], ["主要对手", "英格兰"], ["关系容量", "4 / 5"], ["可用使节", "1"]],
-    "军事": [["总兵力", "18,400"], ["可用军团", "3"], ["征召上限", "27,000"], ["战争疲惫", "0.8"]],
-    "发展": [["当前研究", "行政文书"], ["研究进度", "64%"], ["改革槽", "2 / 3"], ["时代目标", "巩固王权"]]
-  };
+  const world = window.HIFI_WORLD_ENGINE.createWorld(window.prototypeMap.tiles);
+  const store = window.HIFI_STORE.createStore(world);
 
   function showToast(text) {
     clearTimeout(toastTimer);
@@ -23,30 +20,60 @@
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
   }
 
-  function updatePending() {
-    const count = document.querySelectorAll(".issue").length;
+  function setResource(key, value) {
+    const token = document.querySelector(`[data-resource="${key}"] .resource-total`);
+    if (token) token.textContent = String(Math.round(value));
+  }
+
+  function renderHud(current) {
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(current);
+    document.getElementById("dateMain").textContent = window.HIFI_WORLD_ENGINE.calendarLabel(current.turn);
+    document.getElementById("dateEra").textContent = `封建纪元 · ${country.leader.dynasty}`;
+    setResource("food", country.food);
+    setResource("administrative", country.actionPoints.administrative);
+    setResource("diplomatic", country.actionPoints.diplomatic);
+    setResource("militaryPoint", country.actionPoints.military);
+    setResource("money", country.money);
+    setResource("military", country.military);
+    setResource("legitimacy", country.legitimacy);
+    const count = current.pendingIssues.length;
     topPending.textContent = count ? `待办 ${count} ›` : "待办已清";
     seasonText.textContent = count ? `处理待办 ${count}` : "结束季度";
     seasonControl.classList.toggle("ready", count === 0);
   }
 
+  function fallbackRows(system, current) {
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(current);
+    const systems = {
+      "国家": [["政体", country.government.typeLabel], ["统治者", country.leader.name], ["家族", country.leader.dynasty], ["合法性", country.legitimacy]],
+      "经济": [["粮食", country.food], ["国库", country.money], ["军需", country.military], ["资本池", country.capital]],
+      "外交": [["外交行动点", country.actionPoints.diplomatic], ["可用使节", "2"], ["条约", "待接入"], ["附属关系", "待接入"]],
+      "军事": [["军事行动点", country.actionPoints.military], ["军团", "待接入"], ["战争", "待接入"], ["战争疲惫", "0"]],
+      "发展": [["行政行动点", country.actionPoints.administrative], ["科技", "待接入"], ["改革槽", "待接入"], ["时代目标", "巩固王权"]],
+    };
+    return systems[system];
+  }
+
+  function openSystem(button) {
+    const same = button.classList.contains("active");
+    document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
+    if (same) {
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+      return;
+    }
+    button.classList.add("active");
+    drawerTitle.textContent = button.dataset.system;
+    const rows = fallbackRows(button.dataset.system, store.getState());
+    drawerBody.innerHTML = rows.map(([label, value]) =>
+      `<div class="drawer-row">${label}<span>${value}</span></div>`
+    ).join("");
+    drawer.classList.add("open");
+    drawer.setAttribute("aria-hidden", "false");
+  }
+
   document.querySelectorAll(".system-button").forEach(button => {
-    button.addEventListener("click", () => {
-      const same = button.classList.contains("active");
-      document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
-      if (same) {
-        drawer.classList.remove("open");
-        drawer.setAttribute("aria-hidden", "true");
-        return;
-      }
-      button.classList.add("active");
-      drawerTitle.textContent = button.dataset.system;
-      drawerBody.innerHTML = systems[button.dataset.system].map(([label, value]) =>
-        `<div class="drawer-row">${label}<span>${value}</span></div>`
-      ).join("");
-      drawer.classList.add("open");
-      drawer.setAttribute("aria-hidden", "false");
-    });
+    button.addEventListener("click", () => openSystem(button));
   });
 
   document.getElementById("drawerClose").addEventListener("click", () => {
@@ -57,19 +84,35 @@
 
   document.querySelectorAll(".issue").forEach(issue => {
     issue.addEventListener("click", () => {
-      showToast(`已定位：${issue.dataset.issue}`);
+      const issueId = issue.dataset.issue;
+      store.update(current => {
+        current.pendingIssues = current.pendingIssues.filter(item => item.label !== issueId);
+      });
       issue.remove();
-      updatePending();
+      showToast(`已处理：${issueId}`);
     });
   });
 
-  document.getElementById("rulerPlaque").addEventListener("click", () => showToast("法兰西王国 · 腓力六世 · 瓦卢瓦家族"));
-  topPending.addEventListener("click", () => showToast(`当前有 ${document.querySelectorAll(".issue").length} 项待办`));
+  document.getElementById("rulerPlaque").addEventListener("click", () => {
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(store.getState());
+    showToast(`${country.name} · ${country.leader.title}${country.leader.name} · ${country.leader.dynasty}`);
+  });
+  topPending.addEventListener("click", () => showToast(`当前有 ${store.getState().pendingIssues.length} 项待办`));
   seasonControl.addEventListener("click", () => {
-    const count = document.querySelectorAll(".issue").length;
-    showToast(count ? `仍有 ${count} 项待办需要处理` : "可以进入下一季度");
+    const current = store.getState();
+    if (current.pendingIssues.length) {
+      showToast(`仍有 ${current.pendingIssues.length} 项待办需要处理`);
+      return;
+    }
+    store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
+    showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
   });
+
   document.querySelectorAll(".province-action,.command").forEach(button => {
-    button.addEventListener("click", () => showToast(`已选择：${button.textContent.trim()}`));
+    button.addEventListener("click", () => showToast(`该命令将在对应系统迁移时启用：${button.textContent.trim()}`));
   });
+
+  store.subscribe(renderHud);
+  renderHud(store.getState());
+  window.hifiGame = { store, showToast };
 })();

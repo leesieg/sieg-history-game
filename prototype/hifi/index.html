@@ -27,19 +27,19 @@
       </div>
       <div class="chronicle">
         <div class="date-plaque">
-          <div class="date-main">1337年 · 春</div>
-          <div class="date-era">封建纪元 · 瓦卢瓦王朝</div>
+          <div class="date-main" id="dateMain">1337年 · 春</div>
+          <div class="date-era" id="dateEra">封建纪元 · 瓦卢瓦王朝</div>
         </div>
         <button class="top-pending" id="topPending">待办 3 ›</button>
       </div>
       <div class="resource-strip" aria-label="国家资源">
-        <div class="resource-token"><span class="resource-icon">⌂</span><span class="resource-total">120</span><span class="resource-trend">+9/季</span></div>
-        <div class="resource-token"><span class="resource-icon">✦</span><span class="resource-total">4</span><span class="resource-trend">+1/季</span></div>
-        <div class="resource-token"><span class="resource-icon">⚔</span><span class="resource-total">3</span><span class="resource-trend">+1/季</span></div>
-        <div class="resource-token"><span class="resource-icon">♜</span><span class="resource-total">215</span><span class="resource-trend">+18/季</span></div>
-        <div class="resource-token"><span class="resource-icon">●</span><span class="resource-total">812</span><span class="resource-trend">+52/季</span></div>
-        <div class="resource-token"><span class="resource-icon">▣</span><span class="resource-total">240</span><span class="resource-trend">+12/季</span></div>
-        <div class="resource-token"><span class="resource-icon">♛</span><span class="resource-total">78</span><span class="resource-trend">+1/季</span></div>
+        <div class="resource-token" data-resource="food"><span class="resource-icon">⌂</span><span class="resource-total">120</span><span class="resource-trend">粮食</span></div>
+        <div class="resource-token" data-resource="administrative"><span class="resource-icon">✦</span><span class="resource-total">4</span><span class="resource-trend">行政</span></div>
+        <div class="resource-token" data-resource="diplomatic"><span class="resource-icon">◇</span><span class="resource-total">3</span><span class="resource-trend">外交</span></div>
+        <div class="resource-token" data-resource="militaryPoint"><span class="resource-icon">⚔</span><span class="resource-total">3</span><span class="resource-trend">军事</span></div>
+        <div class="resource-token" data-resource="money"><span class="resource-icon">●</span><span class="resource-total">812</span><span class="resource-trend">金钱</span></div>
+        <div class="resource-token" data-resource="military"><span class="resource-icon">▣</span><span class="resource-total">240</span><span class="resource-trend">军需</span></div>
+        <div class="resource-token" data-resource="legitimacy"><span class="resource-icon">♛</span><span class="resource-total">78</span><span class="resource-trend">合法性</span></div>
       </div>
     </header>
 
@@ -58,7 +58,7 @@
 
     <aside class="issue-panel metal-frame" id="issuePanel">
       <div class="issue-heading">问题与对象</div>
-      <button class="issue" data-issue="王位继承危机" data-focus="巴黎盆地"><span class="issue-symbol">⚖</span><span><strong>财政压力</strong><small>巴黎盆地 · 严重</small></span><span class="issue-arrow">›</span></button>
+      <button class="issue" data-issue="财政压力" data-focus="巴黎盆地"><span class="issue-symbol">⚖</span><span><strong>财政压力</strong><small>巴黎盆地 · 严重</small></span><span class="issue-arrow">›</span></button>
       <button class="issue" data-issue="军团待命" data-focus="诺曼底"><span class="issue-symbol">⚔</span><span><strong>军团待命</strong><small>诺曼底 · 提醒</small></span><span class="issue-arrow">›</span></button>
       <button class="issue" data-issue="新科技可采纳" data-focus="香槟"><span class="issue-symbol">▤</span><span><strong>新科技可采纳</strong><small>香槟 · 机会</small></span><span class="issue-arrow">›</span></button>
     </aside>
@@ -125,7 +125,10 @@
   <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与 HUD 以横屏操作为准。</small></div></div>
 
   <script src="scripts/data/geography.js"></script>
-  <script src="scripts/main.js"></script>
+  <script src="scripts/engine/world.js"></script>
+  <script src="scripts/engine/turn.js"></script>
+  <script src="scripts/ui/store.js"></script>
   <script src="scripts/ui/map.js"></script>
+  <script src="scripts/main.js"></script>
 </body>
 </html>
