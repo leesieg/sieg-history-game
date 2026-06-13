@@ -24,7 +24,7 @@ window.HIFI_GEOGRAPHY = {
       ["图卢兹",1.4,43.7,"plains","mediterranean","river","wine","奥克","天主教",[5,3,1,1],["farm","market"],"player","法兰西王国"],
       ["勃艮第",4.8,47.2,"hills","temperate","river","wine","勃艮第","天主教",[5,3,2,1],["market"],"player","勃艮第公国"],
       ["布列塔尼",-3.2,48.1,"coast","temperate","coast","fish","布列塔尼","天主教",[3,1,1,1],["port"],"neutral","布列塔尼公国"],
-      ["英属加斯科涅",-0.4,44.6,"plains","temperate","river","wine","加斯科涅","天主教",[5,2,1,1],["farm","fort"],"enemy","英属加斯科涅"],
+      ["英属加斯科涅",-0.4,44.6,"plains","temperate","river","wine","加斯科涅","天主教",[5,2,1,1],["farm","fort"],"enemy","英格兰王国"],
       ["英格兰南部",-1.2,51.8,"plains","temperate","coast","wool","英格兰","天主教",[5,3,2,1],["market","port"],"enemy","英格兰王国"],
       ["英格兰北部",-1.8,54.3,"hills","temperate","coast","wool","英格兰","天主教",[3,1,2,1],["fort"],"enemy","英格兰王国"],
       ["威尔士",-3.8,52.3,"hills","temperate","coast","wool","威尔士","天主教",[2,1,1,1],["fort"],"enemy","英格兰王国"],

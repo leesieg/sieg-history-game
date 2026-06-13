@@ -62,6 +62,25 @@ diplomacy.proposeTreaty(world, "法兰西王国", "英格兰王国", "trade");
 assert.ok(diplomacy.treatyBetween(world, "法兰西王国", "英格兰王国", "trade"));
 assert.ok(diplomacy.capacityUsed(world, "法兰西王国") > 0);
 
+const rejectedTargetView = diplomacy.relationView(world, "英格兰王国", "法兰西王国");
+Object.assign(rejectedTargetView, {
+  trust: 0,
+  threat: 100,
+  territorialConflict: 100,
+  institutionalConflict: 100,
+  strategicInterest: 0,
+});
+const pointsBeforeRejectedTreaty = world.countries["法兰西王国"].actionPoints.diplomatic;
+assert.throws(
+  () => diplomacy.proposeTreaty(world, "法兰西王国", "英格兰王国", "alliance"),
+  /拒绝/
+);
+assert.equal(
+  world.countries["法兰西王国"].actionPoints.diplomatic,
+  pointsBeforeRejectedTreaty,
+  "被拒绝的外交提案不能扣除行动点"
+);
+
 const brittanyView = diplomacy.relationView(world, "布列塔尼公国", "法兰西王国");
 Object.assign(brittanyView, {
   trust: 100,

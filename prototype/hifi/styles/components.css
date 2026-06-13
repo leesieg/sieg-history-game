@@ -262,6 +262,14 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   clip-path: inherit;
   background: #0b1714;
 }
+.ruler-plaque.portrait-placeholder::before {
+  content: attr(data-monogram);
+  display: grid;
+  place-items: center;
+  color: var(--gold-bright);
+  font: 700 28px/1 var(--font-display);
+  background: radial-gradient(circle at 50% 35%, #37545a, #172a2d 72%);
+}
 .ruler-portrait {
   position: absolute;
   inset: 7px 7px 10px;
@@ -401,6 +409,8 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   transition: opacity 160ms ease, transform 180ms var(--ease);
 }
 .army-drawer.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.game-shell.army-open .issue-panel { opacity: 0; pointer-events: none; }
+.game-shell.system-open .province-panel { opacity: 0; pointer-events: none; }
 .map-army-marker {
   fill: #f1d58a;
   stroke: #2a1b12;
@@ -418,6 +428,9 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   right: 14px;
   width: 222px;
   padding: 9px;
+  max-height: calc(100vh - 160px);
+  overflow: auto;
+  transition: opacity 160ms ease;
 }
 .issue-heading {
   height: 37px;
@@ -467,6 +480,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   bottom: 8px;
   width: 342px;
   overflow: hidden;
+  transition: opacity 160ms ease;
 }
 .province-banner {
   height: 80px;
@@ -830,14 +844,18 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   .province-actions { padding: 5px; gap: 3px; }
   .province-action { height: 40px; font-size: 9px; }
   .province-action span { font-size: 15px; line-height: 17px; }
-  .command-dock { left: 300px; bottom: 8px; height: 50px; padding: 4px; transform: none; }
-  .command { width: 40px; font-size: 8px; }
+  .command-dock { left: 342px; bottom: 8px; height: 50px; padding: 4px; transform: none; }
+  .command { width: 28px; font-size: 0; }
   .command span { font-size: 15px; line-height: 17px; }
   .map-tools { display: none; }
   .season-control { right: 8px; bottom: 8px; width: 244px; height: 50px; grid-template-columns: 42px 1fr 30px; }
   .season-seal { width: 31px; height: 31px; font-size: 15px; }
   .season-text { font-size: 17px; }
   .season-end { font-size: 15px; }
+}
+
+@media (max-width: 760px) and (orientation: landscape) {
+  .command-dock { display: none; }
 }
 
 @media (orientation: portrait) {

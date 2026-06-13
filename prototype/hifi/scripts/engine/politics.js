@@ -57,6 +57,7 @@
   function advanceReform(world, polity, key) {
     const country = world.countries[polity];
     if (!country.government.reforms.hasOwnProperty(key)) throw new Error(`未知改革槽：${key}`);
+    if (country.government.reforms[key] >= 5) throw new Error("改革已满级");
     const costs = { administrative: ["money", 10], military: ["military", 10], political: ["legitimacy", 4], maritime: ["money", 10] };
     const cost = costs[key];
     if (cost) {
@@ -79,29 +80,55 @@
     return country.government;
   }
 
-  function generatedCandidate(world, polity, index) {
+  function generatedCandidate(world, polity, index, preserveDynasty = false) {
     const country = world.countries[polity];
     const names = ["安德烈亚", "洛伦佐", "弗朗切斯科"];
     const dynasties = ["孔塔里尼家族", "科尔纳罗家族", "莫罗西尼家族"];
     return {
       name: names[index],
-      dynasty: dynasties[index],
+      dynasty: preserveDynasty ? country.leader.dynasty : dynasties[index],
       title: country.leader.title,
       abilities: { administrative: 3 + index, diplomatic: 5 - index, military: 2 + index },
       succession: country.leader.succession,
       termYears: country.leader.termYears,
       termEndsAtTurn: country.leader.termYears ? world.turn + country.leader.termYears * 4 : null,
-      historicalEndAtTurn: null,
+      historicalEndAtTurn: country.leader.termYears ? null : world.turn + 40,
       historyIndex: -1,
     };
   }
 
   function processLeadership(world, polity) {
     const country = world.countries[polity];
-    if (!country?.leader?.termEndsAtTurn || world.turn < country.leader.termEndsAtTurn) return null;
+    if (!country?.leader) return null;
+    const historicalDue = country.leader.historicalEndAtTurn !== null
+      && world.turn >= country.leader.historicalEndAtTurn;
+    const termDue = country.leader.termEndsAtTurn !== null
+      && world.turn >= country.leader.termEndsAtTurn;
+    if (!historicalDue && !termDue) return null;
+
+    const config = data.leaders[polity];
+    const nextHistoryIndex = country.leader.historyIndex + 1;
+    const historicalSuccessor = country.leader.historyIndex >= 0
+      ? config?.history[nextHistoryIndex]
+      : null;
+    if (historicalDue && historicalSuccessor) {
+      country.leader = leaderFromRecord(polity, historicalSuccessor, nextHistoryIndex);
+      return { type: "succession", polity, leader: country.leader };
+    }
+
+    if (country.leader.succession === "hereditary") {
+      country.leader = generatedCandidate(world, polity, 0, true);
+      return { type: "succession", polity, leader: country.leader };
+    }
+
+    if (polity !== world.playerPolity) {
+      country.leader = generatedCandidate(world, polity, 0);
+      return { type: "auto_election", polity, leader: country.leader };
+    }
+
     world.pendingElection = {
       polity,
-      reason: "任期届满选举",
+      reason: historicalDue ? "领导人去世选举" : "任期届满选举",
       candidates: [0, 1, 2].map(index => generatedCandidate(world, polity, index)),
     };
     return world.pendingElection;

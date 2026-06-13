@@ -37,6 +37,14 @@ politics.advanceReform(world, "法兰西王国", "administrative");
 assert.equal(france.government.reforms.administrative, 2);
 assert.equal(france.money, moneyBefore - 10);
 
+france.government.reforms.administrative = 5;
+const moneyBeforeFullReform = france.money;
+assert.throws(
+  () => politics.advanceReform(world, "法兰西王国", "administrative"),
+  /已满级/
+);
+assert.equal(france.money, moneyBeforeFullReform, "满级改革不能继续扣费");
+
 politics.changeGovernment(world, "法兰西王国", "republic");
 assert.equal(france.government.type, "republic");
 assert.equal(france.leader.title, "执政官");
@@ -45,6 +53,7 @@ assert.ok(france.estates.citizens);
 
 const venice = world.countries["威尼斯共和国"];
 assert.equal(venice.government.type, "merchant_republic");
+world.playerPolity = "威尼斯共和国";
 world.turn = 12;
 venice.leader.termEndsAtTurn = 12;
 politics.processLeadership(world, "威尼斯共和国");
@@ -52,6 +61,21 @@ assert.equal(world.pendingElection.polity, "威尼斯共和国");
 const elected = politics.completeElection(world, 0);
 assert.equal(venice.leader.name, elected.name);
 assert.equal(world.pendingElection, null);
+
+politics.changeGovernment(world, "法兰西王国", "monarchy");
+world.playerPolity = "法兰西王国";
+world.turn = france.leader.historicalEndAtTurn;
+const succession = politics.processLeadership(world, "法兰西王国");
+assert.equal(france.leader.name, "让二世", "历史领导人到期后必须进入下一位历史领导人");
+assert.equal(france.leader.dynasty, "瓦卢瓦家族");
+assert.equal(world.pendingElection, null, "世袭换代不能阻塞为玩家选举");
+assert.equal(succession.type, "succession");
+
+world.playerPolity = "法兰西王国";
+world.turn = venice.leader.historicalEndAtTurn;
+const foreignElection = politics.processLeadership(world, "威尼斯共和国");
+assert.equal(world.pendingElection, null, "外国选举必须自动结算，不能阻塞玩家季度");
+assert.equal(foreignElection.type, "auto_election");
 
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert.ok(html.includes('id="countryModal"'));

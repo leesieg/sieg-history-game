@@ -17,7 +17,7 @@
 **Steps:**
 1. 增加 Demo2 SHA-1 冻结测试。
 2. 增加新高保真目录和模块边界测试。
-3. 运行测试，确认结构测试因目录尚不存在而失败。
+3. 运行冻结测试和结构测试。
 4. Commit: `test: freeze demo2 behavior`
 
 ### Task 2: 建立模块化高保真外壳
@@ -75,7 +75,7 @@
 - Test: `tests/hifi-politics.test.cjs`
 
 **Steps:**
-1. 迁移领导人、家族、政体、阶层、议会、改革和决议。
+1. 迁移领导人、家族、政体、阶层、议会和改革。
 2. 接入国家详情与国家选择弹窗。
 3. 接入领导人换代与选举弹窗。
 4. 验证政体变化同步改变权力结构和领导人制度。
@@ -89,7 +89,7 @@
 - Test: `tests/hifi-economy.test.cjs`
 
 **Steps:**
-1. 迁移资源、市场、商路、资本池、建筑和敕令。
+1. 迁移资源、市场、贸易政策、贸易条约、资本池、建筑和敕令。
 2. 迁移科技、时代进步和议程。
 3. 接入经济与发展抽屉。
 4. 验证地块产出、POP 和战争破坏的因果关系。
@@ -141,6 +141,8 @@
 **Files:**
 - Modify: `README.md`
 - Modify: `tests/hifi-structure.test.cjs`
+- Create: `tests/hifi-layout.test.cjs`
+- Create: `tests/hifi-ui-smoke.test.cjs`
 
 **Steps:**
 1. 运行全部旧测试和新测试。

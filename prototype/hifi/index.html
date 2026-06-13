@@ -16,13 +16,13 @@
     </section>
 
     <button class="ruler-plaque" id="rulerPlaque" aria-label="查看法兰西王国">
-      <img class="ruler-portrait" src="../../assets/ui/ruler-philip-vi.png" alt="腓力六世">
+      <img class="ruler-portrait" id="rulerPortrait" src="../../assets/ui/ruler-philip-vi.png" alt="腓力六世">
       <span class="ruler-level">III</span>
     </button>
 
     <header class="top-command-bar">
       <div class="brand-block">
-        <div class="shield" aria-label="法兰西盾徽"><span>⚜</span><span>⚜</span><span>⚜</span><span>⚜</span></div>
+        <div class="shield" id="countryShield" aria-label="法兰西王国盾徽"><span>⚜</span><span>⚜</span><span>⚜</span><span>⚜</span></div>
         <div class="game-title">帝国的代价</div>
       </div>
       <div class="chronicle">
@@ -80,21 +80,21 @@
         <div class="data-row"><span>宗教</span><b id="provinceReligion">天主教</b><i></i></div>
       </div>
       <div class="province-actions">
-        <button class="province-action"><span>⚒</span>建设</button>
-        <button class="province-action"><span>♞</span>征兵</button>
-        <button class="province-action"><span>✜</span>整合</button>
-        <button class="province-action"><span>⚑</span>派驻</button>
+        <button class="province-action" data-open-system="经济"><span>⚒</span>建设</button>
+        <button class="province-action" data-open-system="军事"><span>♞</span>征兵</button>
+        <button class="province-action" data-open-system="国家"><span>✜</span>整合</button>
+        <button class="province-action" data-open-system="军事"><span>⚑</span>派驻</button>
       </div>
     </aside>
 
     <div class="command-dock metal-frame" aria-label="高频命令">
-      <button class="command"><span>⚔</span>宣战</button>
-      <button class="command"><span>✦</span>议和</button>
-      <button class="command"><span>⚖</span>贸易</button>
-      <button class="command"><span>◇</span>结盟</button>
-      <button class="command"><span>♛</span>联姻</button>
-      <button class="command"><span>♟</span>间谍</button>
-      <button class="command"><span>▤</span>通行权</button>
+      <button class="command" data-open-system="外交"><span>⚔</span>宣战</button>
+      <button class="command" data-open-system="军事"><span>✦</span>议和</button>
+      <button class="command" data-open-system="外交"><span>⚖</span>贸易</button>
+      <button class="command" data-open-system="外交"><span>◇</span>结盟</button>
+      <button class="command" data-open-system="外交"><span>♛</span>联姻</button>
+      <button class="command" data-open-system="外交"><span>♟</span>间谍</button>
+      <button class="command" data-open-system="外交"><span>▤</span>通行权</button>
     </div>
 
     <aside class="map-tools metal-frame">

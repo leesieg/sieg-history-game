@@ -61,6 +61,14 @@ assert.equal(frenchArmy.tileId, 1, "军团每季度必须逐格移动");
 warfare.executeMovementPhase(world);
 assert.equal(frenchArmy.tileId, 2);
 
+frenchArmy.tileId = 0;
+frenchArmy.plannedPath = [1];
+frenchArmy.order = "hold";
+warfare.executeMovementPhase(world);
+assert.equal(frenchArmy.tileId, 0, "驻守命令不能执行残留路线");
+frenchArmy.tileId = 2;
+frenchArmy.plannedPath = [];
+
 const populationBefore = tiles[2].population;
 const battle = warfare.resolveBattle(world, 2, [frenchArmy.id], [englishArmy.id]);
 assert.ok(battle.casualties.attackers > 0);
@@ -74,8 +82,50 @@ warfare.advanceOccupation(world, frenchArmy.id);
 assert.equal(tiles[2].occupier, "法兰西王国");
 assert.equal(tiles[2].polity, "英格兰王国", "占领不能直接改变法定归属");
 assert.ok(world.countries["英格兰王国"].warfare.warExhaustion > 0);
+const exhaustionAfterOccupation = world.countries["英格兰王国"].warfare.warExhaustion;
+const scoreAfterOccupation = war.score;
+warfare.advanceOccupation(world, frenchArmy.id);
+assert.equal(world.countries["英格兰王国"].warfare.warExhaustion, exhaustionAfterOccupation);
+assert.equal(war.score, scoreAfterOccupation, "同一地块完成占领后不能重复刷战争分数");
+
+const autoFrench = warfare.createArmy(world, {
+  owner: "法兰西王国",
+  tileId: 1,
+  name: "自动战斗测试军",
+  units: [{ combatType: "infantry", serviceType: "professional", soldiers: 1200 }],
+});
+const autoEnglish = warfare.createArmy(world, {
+  owner: "英格兰王国",
+  tileId: 1,
+  name: "自动迎战测试军",
+  units: [{ combatType: "infantry", serviceType: "professional", soldiers: 1000 }],
+});
+const battleCountBefore = world.warfare.battles.length;
+autoEnglish.supply = 30;
+warfare.processWarfare(world);
+assert.ok(world.warfare.battles.length > battleCountBefore, "敌对军团同格时必须自动结算战斗");
+assert.ok(
+  autoFrench.status === "routed" || autoEnglish.status === "routed",
+  "自动战斗必须产生胜负结果"
+);
+assert.ok(autoEnglish.supply < 30, "敌境中的军团必须消耗补给");
+
+const neutralTile = { id: 4, isSea: false, polity: "布列塔尼公国", population: 4, buildings: [], city: "南特", terrain: "plains", x: 70, y: 10, control: 60, devastation: 0, occupier: null, occupation: 0 };
+world.tiles.push(neutralTile);
+const neutralArmy = warfare.createArmy(world, {
+  owner: "法兰西王国",
+  tileId: 4,
+  name: "中立地块测试军",
+  units: [{ combatType: "infantry", serviceType: "levy", soldiers: 500 }],
+});
+warfare.advanceOccupation(world, neutralArmy.id);
+assert.equal(neutralTile.occupier, null, "未宣战不能占领中立或和平国家地块");
 
 war.score = 100;
+assert.throws(
+  () => warfare.concludePeace(world, war.id, "英格兰王国", [{ type: "target_territory" }]),
+  /战争目标提出方/
+);
 warfare.concludePeace(world, war.id, "法兰西王国", [{ type: "target_territory" }]);
 assert.equal(tiles[2].polity, "法兰西王国");
 assert.equal(tiles[2].occupier, null);
@@ -91,5 +141,6 @@ assert.ok(mapSource.includes("data-army-marker"));
 assert.ok(drawerSource.includes("data-army-open"));
 assert.ok(fs.readFileSync(path.join(root, "ui", "dialogs.js"), "utf8").includes("data-army-plan"));
 assert.ok(drawerSource.includes("data-peace-war"));
+assert.ok(drawerSource.includes("data-peace-term"));
 
 console.log("hifi warfare engine passed");

@@ -35,6 +35,9 @@ const chain = history.applyCausalChain(world, "constantinople_falls");
 assert.equal(chain.length, 7, "历史因果链必须有七跳");
 assert.equal(world.flags.constantinopleFallen, true);
 assert.ok(world.countries["法兰西王国"].pressures.exploration > 0);
+const epic = history.epic(world, "法兰西王国");
+assert.equal(epic.title, "法兰西王国编年史");
+assert.ok(Array.isArray(epic.worldEvents));
 
 world.turn = 465;
 history.processHistory(world);

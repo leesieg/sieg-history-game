@@ -387,6 +387,14 @@
     renderMainMap();
   }
 
+  function syncSelection(tileId) {
+    if (state.selectedId === tileId) return;
+    const tile = tiles.find(candidate => candidate.id === tileId);
+    if (!tile) throw new Error(`地图中不存在地块：${tileId}`);
+    state.selectedId = tile.id;
+    updateProvince(tile);
+  }
+
   function renderLegend() {
     const entries = state.mode === "terrain"
       ? Object.entries(TERRAIN).slice(0, 8).map(([, [label, color]]) => [label, color])
@@ -474,5 +482,5 @@
   bindControls();
   const paris = nearestTileForRegion("巴黎盆地");
   selectTile(paris);
-  window.prototypeMap = { tiles, state, focusTile, renderMainMap, setMode, setZoom };
+  window.prototypeMap = { tiles, state, focusTile, renderMainMap, setMode, setZoom, syncSelection };
 })();

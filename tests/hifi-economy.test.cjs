@@ -32,6 +32,12 @@ const healthy = economy.tileOutput(tiles[0], country);
 const devastated = economy.tileOutput({ ...tiles[0], devastation: 60 }, country);
 assert.ok(healthy.food > devastated.food, "战争破坏必须降低地块产出");
 assert.ok(healthy.money > 0, "市场必须产生金钱");
+const occupied = economy.tileOutput({ ...tiles[0], occupier: "英格兰王国", occupation: 100 }, country);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(occupied)),
+  { food: 0, money: 0, military: 0 },
+  "完全占领的地块不能继续为原政权产出"
+);
 
 const before = { food: country.food, money: country.money, military: country.military };
 const report = economy.settleCountry(world, "法兰西王国");
@@ -52,8 +58,15 @@ assert.equal(country.technology.printing, true);
 assert.ok(country.ideas < 100);
 assert.ok(country.ageProgress > 0, "采纳科技必须推进时代进度");
 
+country.actionPoints.administrative = 3;
+const foodBeforeEdict = country.food;
+economy.enactEdict(world, "法兰西王国", "grainReserve");
+assert.ok(country.food > foodBeforeEdict, "敕令必须产生实际资源效果");
+assert.equal(country.actionPoints.administrative, 2);
+
 economy.setTradePolicy(world, "法兰西王国", "open");
 assert.equal(country.tradePolicy, "open");
+const capitalBeforeTrade = country.capital;
 economy.setAgenda(world, "法兰西王国", "fiscal");
 assert.equal(country.agenda, "fiscal");
 country.money = 120;
@@ -61,6 +74,7 @@ const legitimacyBeforeAgenda = country.legitimacy;
 economy.settleCountry(world, "法兰西王国");
 assert.equal(country.agenda, null, "完成目标后必须结算并清空议程");
 assert.ok(country.legitimacy > legitimacyBeforeAgenda, "完成议程必须获得奖励");
+assert.ok(country.capital > capitalBeforeTrade, "开放贸易必须积累资本");
 
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");

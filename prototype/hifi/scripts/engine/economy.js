@@ -23,10 +23,12 @@
 
   function tileOutput(tile, country) {
     if (tile.isSea) return { food: 0, money: 0, military: 0 };
+    if (tile.occupier && tile.occupation >= 100) return { food: 0, money: 0, military: 0 };
     const population = Math.max(1, tile.population || 1);
     const control = Math.max(.2, (tile.control || 0) / 100);
     const devastation = Math.max(.15, 1 - (tile.devastation || 0) / 100);
-    const base = population * control * devastation;
+    const occupation = Math.max(0, 1 - (tile.occupation || 0) / 100);
+    const base = population * control * devastation * occupation;
     const foodGoods = new Set(["grain", "fish", "dates", "wine"]);
     const militaryGoods = new Set(["iron", "horses", "timber"]);
     let food = foodGoods.has(tile.good) ? base * 1.25 : base * .45;
@@ -61,7 +63,7 @@
     if (country.tradePolicy === "open") {
       const trade = Math.max(2, Math.round(report.money * .12));
       country.money += trade;
-      country.capital += Math.round(trade * .2);
+      country.capital += Math.max(1, Math.round(trade * .2));
       report.trade = trade;
     }
     if (country.technology.printing) country.ideas += 3;

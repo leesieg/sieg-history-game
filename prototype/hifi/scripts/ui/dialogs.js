@@ -7,6 +7,7 @@
     function close() {
       drawer.classList.remove("open");
       drawer.setAttribute("aria-hidden", "true");
+      document.getElementById("game").classList.remove("army-open");
     }
     function render(armyId) {
       const world = store.getState();
@@ -36,8 +37,10 @@
       });
       drawer.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");
+      document.getElementById("game").classList.add("army-open");
     }
     document.getElementById("armyDrawerClose").addEventListener("click", close);
+    window.addEventListener("hifi:army-close", close);
     window.addEventListener("hifi:army-selected", event => render(event.detail.armyId));
     return { close, render };
   }

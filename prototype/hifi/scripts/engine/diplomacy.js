@@ -235,8 +235,8 @@
     const definition = treatyTypes[type];
     const evaluation = evaluateProposal(world, actor, target, type);
     if (!evaluation.available) throw new Error(evaluation.reason);
-    spendDiplomaticPoints(world, actor, definition.actionCost);
     if (!evaluation.accepted) throw new Error(`对方拒绝：${evaluation.score} / ${evaluation.threshold}`);
+    spendDiplomaticPoints(world, actor, definition.actionCost);
     const treaty = {
       id: `treaty-${world.diplomacy.nextId++}`,
       type,
@@ -261,8 +261,8 @@
     const definition = subjectTypes[type];
     const evaluation = evaluateProposal(world, actor, target, type);
     if (!evaluation.available) throw new Error(evaluation.reason);
-    spendDiplomaticPoints(world, actor, definition.actionCost);
     if (!evaluation.accepted) throw new Error(`对方拒绝：${evaluation.score} / ${evaluation.threshold}`);
+    spendDiplomaticPoints(world, actor, definition.actionCost);
     const subject = {
       id: `subject-${world.diplomacy.nextId++}`,
       type,

@@ -35,8 +35,27 @@
 
   function renderHud(current) {
     const country = window.HIFI_WORLD_ENGINE.activeCountry(current);
+    const rulerPlaque = document.getElementById("rulerPlaque");
+    const rulerPortrait = document.getElementById("rulerPortrait");
+    const countryShield = document.getElementById("countryShield");
+    const governmentMarks = {
+      monarchy: "⚜",
+      republic: "◆",
+      merchant_republic: "⚓",
+      empire: "♛",
+      theocracy: "✝",
+      tribal: "◇",
+    };
+    const mark = governmentMarks[country.government.type] || "◆";
+    rulerPlaque.setAttribute("aria-label", `查看${country.name}`);
+    rulerPortrait.setAttribute("alt", country.leader.name);
+    rulerPortrait.hidden = country.leader.name !== "腓力六世";
+    rulerPlaque.classList.toggle("portrait-placeholder", rulerPortrait.hidden);
+    rulerPlaque.dataset.monogram = country.leader.name.slice(0, 1);
+    countryShield.setAttribute("aria-label", `${country.name}盾徽`);
+    countryShield.querySelectorAll("span").forEach(item => { item.textContent = mark; });
     document.getElementById("dateMain").textContent = window.HIFI_WORLD_ENGINE.calendarLabel(current.turn);
-    document.getElementById("dateEra").textContent = `封建纪元 · ${country.leader.dynasty}`;
+    document.getElementById("dateEra").textContent = `${window.HIFI_HISTORY_ENGINE.eras[current.eraIndex].label} · ${country.leader.dynasty}`;
     setResource("food", country.food);
     setResource("administrative", country.actionPoints.administrative);
     setResource("diplomatic", country.actionPoints.diplomatic);
@@ -65,27 +84,9 @@
     dialogs.renderPendingElection();
   }
 
-  function fallbackRows(system, current) {
-    const country = window.HIFI_WORLD_ENGINE.activeCountry(current);
-    const systems = {
-      "国家": [["政体", country.government.typeLabel], ["统治者", country.leader.name], ["家族", country.leader.dynasty], ["合法性", country.legitimacy]],
-      "经济": [["粮食", country.food], ["国库", country.money], ["军需", country.military], ["资本池", country.capital]],
-      "外交": [["外交行动点", country.actionPoints.diplomatic], ["可用使节", "2"], ["条约", "待接入"], ["附属关系", "待接入"]],
-      "军事": [["军事行动点", country.actionPoints.military], ["军团", "待接入"], ["战争", "待接入"], ["战争疲惫", "0"]],
-      "发展": [["行政行动点", country.actionPoints.administrative], ["科技", "待接入"], ["改革槽", "待接入"], ["时代目标", "巩固王权"]],
-    };
-    return systems[system];
-  }
-
   function renderSystemBody(system) {
     const custom = window.HIFI_DRAWERS.renderSystem(system, store.getState());
-    if (!custom) {
-      const rows = fallbackRows(system, store.getState());
-      drawerBody.innerHTML = rows.map(([label, value]) =>
-        `<div class="drawer-row">${label}<span>${value}</span></div>`
-      ).join("");
-      return;
-    }
+    if (!custom) throw new Error(`未知系统界面：${system}`);
     drawerBody.innerHTML = custom;
     function runAction(action) {
       try {
@@ -175,18 +176,20 @@
           current,
           button.dataset.peaceWar,
           current.playerPolity,
-          [{ type: "target_territory" }]
+          [{ type: button.dataset.peaceTerm }]
         )
       ));
     });
   }
 
   function openSystem(button) {
+    window.dispatchEvent(new CustomEvent("hifi:army-close"));
     const same = button.classList.contains("active");
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
     if (same) {
       drawer.classList.remove("open");
       drawer.setAttribute("aria-hidden", "true");
+      document.getElementById("game").classList.remove("system-open");
       return;
     }
     button.classList.add("active");
@@ -194,6 +197,7 @@
     renderSystemBody(button.dataset.system);
     drawer.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
+    document.getElementById("game").classList.add("system-open");
   }
 
   document.querySelectorAll(".system-button").forEach(button => {
@@ -203,6 +207,7 @@
   document.getElementById("drawerClose").addEventListener("click", () => {
     drawer.classList.remove("open");
     drawer.setAttribute("aria-hidden", "true");
+    document.getElementById("game").classList.remove("system-open");
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
   });
 
@@ -219,11 +224,20 @@
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
   });
 
-  document.querySelectorAll(".province-action,.command").forEach(button => {
-    button.addEventListener("click", () => showToast(`该命令将在对应系统迁移时启用：${button.textContent.trim()}`));
+  document.querySelectorAll("[data-open-system]").forEach(button => {
+    button.addEventListener("click", () => {
+      const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
+      if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
+      if (!target.classList.contains("active")) openSystem(target);
+    });
   });
 
   window.addEventListener("hifi:tile-selected", event => {
+    window.dispatchEvent(new CustomEvent("hifi:army-close"));
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+    document.getElementById("game").classList.remove("system-open");
+    document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
     store.update(current => {
       current.selectedTile = event.detail.tileId;
       if (current.warfare?.planningArmy) {
@@ -234,8 +248,16 @@
     });
   });
 
+  window.addEventListener("hifi:army-selected", () => {
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+    document.getElementById("game").classList.remove("system-open");
+    document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
+  });
+
   store.subscribe(current => {
     renderHud(current);
+    window.prototypeMap.syncSelection(current.selectedTile);
     window.prototypeMap.renderMainMap();
   });
   renderHud(store.getState());

@@ -138,7 +138,7 @@
   function executeMovementPhase(world) {
     const moved = [];
     for (const army of Object.values(world.warfare.armies)) {
-      if (army.status !== "ready" || !army.plannedPath.length) continue;
+      if (army.status !== "ready" || army.order !== "march" || !army.plannedPath.length) continue;
       const destination = army.plannedPath.shift();
       army.tileId = destination;
       army.organization = Math.max(20, army.organization - terrainMoveCost(world.tiles.find(tile => tile.id === destination)) * 4);
@@ -205,10 +205,12 @@
     const army = world.warfare.armies[armyId];
     const tile = world.tiles.find(candidate => candidate.id === army.tileId);
     if (tile.polity === army.owner) return tile;
+    if (!world.countries[tile.polity] || !areAtWar(world, army.owner, tile.polity)) return tile;
+    const alreadyComplete = tile.occupier === army.owner && tile.occupation >= 100;
     tile.occupier = army.owner;
     tile.occupation = Math.min(100, tile.occupation + (tile.buildings.includes("fort") ? 50 : 100));
     tile.devastation = Math.min(100, tile.devastation + 3);
-    if (tile.occupation >= 100) {
+    if (!alreadyComplete && tile.occupation >= 100) {
       const defender = world.countries[tile.polity];
       defender.warfare.warExhaustion += Math.max(1, Math.round(tile.population / 4));
       const war = world.diplomacy.wars.find(item => item.primaryGoal.tileId === tile.id);
@@ -220,11 +222,20 @@
   function concludePeace(world, warId, actor, terms) {
     const war = world.diplomacy.wars.find(item => item.id === warId);
     if (!war) throw new Error("战争不存在");
-    if (war.score < 25) throw new Error("战争分数不足");
     for (const term of terms) {
       if (term.type === "target_territory") {
+        if (actor !== war.primaryGoal.claimant) throw new Error("只有战争目标提出方可以索取目标领土");
+        if (war.score < 25) throw new Error("战争分数不足");
         const tile = world.tiles.find(candidate => candidate.id === war.primaryGoal.tileId);
         tile.polity = war.primaryGoal.claimant;
+        if (
+          tile.city === "君士坦丁堡"
+          && war.primaryGoal.claimant === "奥斯曼贝伊国"
+          && window.HIFI_HISTORY_ENGINE
+          && !world.flags?.constantinopleFallen
+        ) {
+          window.HIFI_HISTORY_ENGINE.applyCausalChain(world, "constantinople_falls");
+        }
       }
     }
     for (const tile of world.tiles) {
@@ -237,6 +248,28 @@
 
   function processWarfare(world) {
     executeMovementPhase(world);
+    for (const army of Object.values(world.warfare.armies)) {
+      if (army.status !== "ready") continue;
+      const tile = world.tiles.find(candidate => candidate.id === army.tileId);
+      const supplied = tile.polity === army.owner;
+      army.supply = Math.max(0, Math.min(100, army.supply + (supplied ? 10 : -8)));
+      if (army.supply < 25) army.morale = Math.max(0, army.morale - 8);
+    }
+    const armiesByTile = {};
+    for (const army of Object.values(world.warfare.armies)) {
+      if (army.status !== "ready") continue;
+      (armiesByTile[army.tileId] ||= []).push(army);
+    }
+    for (const [tileId, armies] of Object.entries(armiesByTile)) {
+      const war = world.diplomacy.wars.find(item =>
+        armies.some(army => item.attackers.includes(army.owner))
+        && armies.some(army => item.defenders.includes(army.owner))
+      );
+      if (!war) continue;
+      const attackers = armies.filter(army => war.attackers.includes(army.owner)).map(army => army.id);
+      const defenders = armies.filter(army => war.defenders.includes(army.owner)).map(army => army.id);
+      if (attackers.length && defenders.length) resolveBattle(world, Number(tileId), attackers, defenders);
+    }
     for (const army of Object.values(world.warfare.armies)) {
       if (army.status === "ready") advanceOccupation(world, army.id);
     }

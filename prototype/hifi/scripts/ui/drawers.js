@@ -86,7 +86,11 @@
       ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
       <div class="drawer-subtitle">战争</div>
       ${wars.length ? wars.map(war =>
-        actionButton("data-peace-war", war.id, war.name, `分数 ${war.score}`)
+        `<button class="drawer-row political-action" data-peace-war="${war.id}" data-peace-term="${
+          war.primaryGoal.claimant === country.name ? "target_territory" : "status_quo"
+        }">${war.name}<span>${
+          war.primaryGoal.claimant === country.name ? `索取目标 · ${war.score}` : "提议停战"
+        }</span></button>`
       ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>'}`;
   }
 
