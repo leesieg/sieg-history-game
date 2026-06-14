@@ -10,12 +10,15 @@
   };
 
   const technologies = {
-    accounting: { label: "复式记账", cost: 30, effect: "季度金钱 +10%" },
-    printing: { label: "印刷术", cost: 40, effect: "每季度思想增长，推动宗教与行政传播" },
-    standingArmy: { label: "常备军体系", cost: 45, effect: "军需产出 +20%" },
-    artillery: { label: "火炮铸造", cost: 50, effect: "解锁炮兵" },
-    oceanGoingShips: { label: "远洋帆装", cost: 55, effect: "舰队可进入远洋" },
-    bastions: { label: "棱堡体系", cost: 60, effect: "降低围攻造成的战争破坏" },
+    artillery: { label: "火药与火炮", cost: 50, year: 1370, effect: "解锁炮兵" },
+    oceanGoingShips: { label: "远洋帆装", cost: 55, year: 1420, effect: "舰队可进入远洋" },
+    printing: { label: "印刷术", cost: 40, year: 1450, effect: "推动思想与宗教传播" },
+    bastions: { label: "棱堡体系", cost: 60, year: 1500, effect: "降低围攻破坏" },
+    accounting: { label: "复式记账", cost: 30, year: 1400, effect: "季度金钱 +10%" },
+    standingArmy: { label: "常备军体系", cost: 45, year: 1550, effect: "军需产出 +20%" },
+    triangleTrade: { label: "跨洋贸易体系", cost: 70, year: 1600, effect: "解锁跨洋贸易路线" },
+    steamEngine: { label: "蒸汽动力", cost: 85, year: 1750, effect: "工业产出提升" },
+    railways: { label: "铁路运输", cost: 100, year: 1820, effect: "陆上补给与市场连接提升" },
   };
 
   const edicts = {

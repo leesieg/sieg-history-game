@@ -876,3 +876,15 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+.lens-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.map-trade-route {
+  fill: none;
+  stroke: #f0cf75;
+  stroke-linecap: round;
+  opacity: .85;
+  pointer-events: stroke;
+}

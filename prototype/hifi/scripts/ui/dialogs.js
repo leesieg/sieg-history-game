@@ -16,16 +16,35 @@
       world.warfare.selectedArmy = armyId;
       const tile = world.tiles.find(candidate => candidate.id === army.tileId);
       const composition = army.units.map(unit =>
-        `<div class="drawer-row">${unit.combatType} · ${unit.serviceType}<span>${unit.soldiers}</span></div>`
+        `<div class="drawer-row">${unit.combatType} · ${unit.serviceType}<span>${unit.soldiers} · 经验 ${unit.experience || 0}</span></div>`
       ).join("");
+      const mergeTargets = Object.values(world.warfare.armies).filter(candidate =>
+        candidate.id !== army.id
+        && candidate.owner === army.owner
+        && candidate.tileId === army.tileId
+        && (candidate.mercenaryLoyalty === undefined) === (army.mercenaryLoyalty === undefined)
+      );
+      const general = army.generalId ? world.warfare.generals[army.generalId] : null;
       document.getElementById("armyDrawerTitle").textContent = army.name;
       body.innerHTML = `<div class="drawer-row">所属<span>${army.owner}</span></div>
         <div class="drawer-row">位置<span>${tile.city || tile.region}</span></div>
         <div class="drawer-row">士气 / 组织 / 补给<span>${army.morale} / ${army.organization} / ${army.supply}</span></div>
+        <div class="drawer-row">将领<span>${general?.name || (army.mercenaryLoyalty !== undefined ? "佣兵首领" : "未任命")}</span></div>
+        ${army.mercenaryLoyalty === undefined ? "" : `<div class="drawer-row">契约 / 忠诚<span>${Math.max(0, army.contractEndsTurn - world.turn)} 季 / ${army.mercenaryLoyalty}</span></div>`}
         <div class="drawer-subtitle">编制</div>${composition}
         <button class="dialog-command primary" data-army-plan="${army.id}">规划路线</button>
         <button class="dialog-command" data-army-order="hold">原地防守</button>
-        <button class="dialog-command" data-army-order="march">继续行军</button>`;
+        <button class="dialog-command" data-army-order="march">继续行军</button>
+        <div class="drawer-subtitle">军团管理</div>
+        <button class="dialog-command" data-army-manage="split">拆分军团</button>
+        <button class="dialog-command" data-army-manage="reinforce">补充兵员</button>
+        <button class="dialog-command" data-army-manage="train">训练军团</button>
+        <button class="dialog-command" data-army-manage="demobilize">复员征召兵</button>
+        ${army.mercenaryLoyalty === undefined
+          ? `<button class="dialog-command" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "撤下统治者" : "统治者领军"}</button>`
+          : `<button class="dialog-command" data-army-manage="renew-mercenary">续约两年</button>
+             <button class="dialog-command" data-army-manage="release-mercenary">结束契约</button>`}
+        ${mergeTargets.map(candidate => `<button class="dialog-command" data-army-merge="${candidate.id}">合并 ${candidate.name}</button>`).join("")}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
         store.update(current => { current.warfare.planningArmy = armyId; });
         close();
@@ -34,6 +53,31 @@
         button.addEventListener("click", () => store.update(current => {
           current.warfare.armies[armyId].order = button.dataset.armyOrder;
         }));
+      });
+      body.querySelectorAll("[data-army-manage]").forEach(button => {
+        button.addEventListener("click", () => {
+          let nextArmyId = armyId;
+          store.update(current => {
+            const engine = window.HIFI_WARFARE_ENGINE;
+            const action = button.dataset.armyManage;
+            if (action === "split") nextArmyId = engine.splitArmy(current, armyId).id;
+            if (action === "reinforce") engine.reinforceArmy(current, armyId);
+            if (action === "train") engine.trainArmy(current, armyId);
+            if (action === "demobilize") engine.demobilizeLevies(current, armyId);
+            if (action === "assign-ruler") engine.assignGeneral(current, armyId, engine.rulerGeneral(current, army.owner).id);
+            if (action === "dismiss-general") engine.dismissGeneral(current, armyId);
+            if (action === "renew-mercenary") engine.renewMercenary(current, armyId);
+            if (action === "release-mercenary") engine.releaseMercenary(current, armyId);
+          });
+          if (store.getState().warfare.armies[nextArmyId]) render(nextArmyId);
+          else close();
+        });
+      });
+      body.querySelectorAll("[data-army-merge]").forEach(button => {
+        button.addEventListener("click", () => {
+          store.update(current => window.HIFI_WARFARE_ENGINE.mergeArmies(current, armyId, button.dataset.armyMerge));
+          render(armyId);
+        });
       });
       drawer.classList.add("open");
       drawer.setAttribute("aria-hidden", "false");

@@ -6,6 +6,7 @@
   function initializeEconomy(world) {
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
+      country.technologyAwareness = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, 0]));
       country.ideas = 20;
       country.tradePolicy = "normal";
       country.agenda = null;
@@ -101,6 +102,9 @@
     const technology = rules.technologies[key];
     if (!technology) throw new Error("未知科技");
     if (country.technology[key]) throw new Error("科技已经采纳");
+    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    if (year < technology.year) throw new Error(`${technology.label}尚未进入可用年代`);
+    if ((country.technologyAwareness[key] || 0) < 25) throw new Error(`${technology.label}传播度不足`);
     if (country.ideas < technology.cost) throw new Error("思想点不足");
     country.ideas -= technology.cost;
     country.technology[key] = true;

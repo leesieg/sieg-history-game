@@ -53,6 +53,8 @@ assert.ok(tiles[1].buildings.includes("market"));
 assert.equal(country.actionPoints.administrative, 2);
 
 country.ideas = 100;
+world.turn = (1450 - 1337) * 4 + 1;
+country.technologyAwareness.printing = 100;
 economy.adoptTechnology(world, "法兰西王国", "printing");
 assert.equal(country.technology.printing, true);
 assert.ok(country.ideas < 100);

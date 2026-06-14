@@ -19,6 +19,7 @@
         window.HIFI_ECONOMY_ENGINE.settleCountry(world, polity);
       }
     }
+    if (window.HIFI_TRADE_ENGINE) window.HIFI_TRADE_ENGINE.processTrade(world);
     if (window.HIFI_DIPLOMACY_ENGINE) {
       window.HIFI_DIPLOMACY_ENGINE.processDiplomacy(world);
     }
@@ -28,6 +29,7 @@
       }
     }
     if (window.HIFI_HISTORY_ENGINE) window.HIFI_HISTORY_ENGINE.processHistory(world);
+    if (window.HIFI_STRATEGY_ENGINE) window.HIFI_STRATEGY_ENGINE.processAI(world);
     return world;
   }
 

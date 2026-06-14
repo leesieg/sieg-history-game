@@ -5,7 +5,16 @@
   const serviceTypes = new Set(["guard", "professional", "standing", "levy", "mercenary"]);
 
   function initializeWarfare(world) {
-    world.warfare = { nextArmyId: 1, nextBattleId: 1, armies: {}, battles: [], selectedArmy: null, planningArmy: null };
+    world.warfare = {
+      nextArmyId: 1,
+      nextBattleId: 1,
+      nextGeneralId: 1,
+      armies: {},
+      generals: {},
+      battles: [],
+      selectedArmy: null,
+      planningArmy: null,
+    };
     for (const country of Object.values(world.countries)) {
       country.warfare = { warExhaustion: 0 };
     }
@@ -56,16 +65,205 @@
       owner: config.owner,
       tileId: config.tileId,
       name: config.name,
-      units: config.units.map(unit => ({ experience: 0, ...unit })),
+      units: config.units.map(unit => ({ experience: 0, maxSoldiers: unit.soldiers, sourceTileId: config.tileId, ...unit })),
       morale: 100,
       organization: 100,
       supply: 100,
       status: "ready",
       plannedPath: [],
       order: "hold",
+      generalId: config.generalId || null,
+      mercenaryLoyalty: config.mercenaryLoyalty,
+      mercenaryWage: config.mercenaryWage,
+      contractEndsTurn: config.contractEndsTurn,
     };
     world.warfare.armies[army.id] = army;
     return army;
+  }
+
+  function splitArmy(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    if (!army || army.units.every(unit => unit.soldiers < 2)) throw new Error("军团规模不足，无法拆分");
+    const units = army.units.map(unit => {
+      const soldiers = Math.floor(unit.soldiers / 2);
+      const splitMaximum = Math.floor((unit.maxSoldiers || unit.soldiers) / 2);
+      unit.soldiers -= soldiers;
+      unit.maxSoldiers = Math.max(unit.soldiers, splitMaximum);
+      return { ...unit, soldiers, maxSoldiers: Math.max(soldiers, splitMaximum) };
+    }).filter(unit => unit.soldiers > 0);
+    const split = createArmy(world, {
+      owner: army.owner,
+      tileId: army.tileId,
+      name: `${army.name}分遣队`,
+      units,
+      mercenaryLoyalty: army.mercenaryLoyalty,
+      mercenaryWage: army.mercenaryWage === undefined ? undefined : army.mercenaryWage / 2,
+      contractEndsTurn: army.contractEndsTurn,
+    });
+    if (army.mercenaryWage !== undefined) army.mercenaryWage /= 2;
+    return split;
+  }
+
+  function mergeArmies(world, targetArmyId, sourceArmyId) {
+    const target = world.warfare.armies[targetArmyId];
+    const source = world.warfare.armies[sourceArmyId];
+    if (!target || !source || target.id === source.id) throw new Error("军团不存在");
+    if (target.owner !== source.owner || target.tileId !== source.tileId) throw new Error("只能合并同国同地军团");
+    const targetMercenary = target.mercenaryLoyalty !== undefined;
+    if (targetMercenary !== (source.mercenaryLoyalty !== undefined)) throw new Error("佣兵不能与国家军团合并");
+    if (target.generalId && source.generalId && target.generalId !== source.generalId) throw new Error("两支军团均有将领，需先撤下一人");
+    target.units.push(...source.units);
+    target.generalId ||= source.generalId;
+    if (targetMercenary) {
+      target.mercenaryLoyalty = Math.min(target.mercenaryLoyalty, source.mercenaryLoyalty);
+      target.mercenaryWage += source.mercenaryWage;
+    }
+    delete world.warfare.armies[sourceArmyId];
+    return target;
+  }
+
+  function reinforceArmy(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    if (!army) throw new Error("军团不存在");
+    if (army.mercenaryLoyalty !== undefined) throw new Error("佣兵团不能使用国家补员");
+    const country = world.countries[army.owner];
+    let need = army.units.reduce((sum, unit) => sum + Math.max(0, (unit.maxSoldiers || unit.soldiers) - unit.soldiers), 0);
+    if (!need) return 0;
+    const reinforced = Math.min(need, Math.floor(country.military * 20));
+    if (!reinforced) throw new Error("军需不足");
+    country.military -= Math.ceil(reinforced / 20);
+    let remaining = reinforced;
+    for (const unit of army.units) {
+      const add = Math.min(remaining, (unit.maxSoldiers || unit.soldiers) - unit.soldiers);
+      unit.soldiers += add;
+      remaining -= add;
+    }
+    return reinforced;
+  }
+
+  function trainArmy(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    const country = world.countries[army?.owner];
+    if (!army || !country) throw new Error("军团不存在");
+    if (country.actionPoints.military < 1 || country.military < 10) throw new Error("训练资源不足");
+    country.actionPoints.military -= 1;
+    country.military -= 10;
+    army.units.forEach(unit => { unit.experience = Math.min(5, (unit.experience || 0) + 1); });
+    army.organization = Math.min(100, army.organization + 15);
+    return army;
+  }
+
+  function demobilizeLevies(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    if (!army) throw new Error("军团不存在");
+    let returned = 0;
+    army.units = army.units.filter(unit => {
+      if (unit.serviceType !== "levy") return true;
+      returned += unit.soldiers;
+      const tile = world.tiles.find(item => item.id === unit.sourceTileId);
+      if (tile) tile.population += unit.soldiers / 1000;
+      return false;
+    });
+    if (!army.units.length) delete world.warfare.armies[armyId];
+    return returned;
+  }
+
+  function rulerGeneral(world, polity) {
+    const country = world.countries[polity];
+    const id = `ruler-general:${polity}`;
+    return world.warfare.generals[id] ||= {
+      id,
+      owner: polity,
+      name: country.leader.name,
+      command: country.leader.abilities.military,
+      siege: Math.floor(country.leader.abilities.administrative / 2),
+      ruler: true,
+    };
+  }
+
+  function assignGeneral(world, armyId, generalId) {
+    const army = world.warfare.armies[armyId];
+    const general = world.warfare.generals[generalId];
+    if (!army || !general || general.owner !== army.owner) throw new Error("将领不属于该国");
+    if (army.mercenaryLoyalty !== undefined) throw new Error("佣兵团自带首领");
+    Object.values(world.warfare.armies).forEach(candidate => {
+      if (candidate.generalId === generalId) candidate.generalId = null;
+    });
+    army.generalId = generalId;
+    return general;
+  }
+
+  function dismissGeneral(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    if (!army) throw new Error("军团不存在");
+    army.generalId = null;
+  }
+
+  function mobilizeArmy(world, polity, tileId, combatType = "infantry") {
+    if (!["infantry", "cavalry"].includes(combatType)) throw new Error("只能动员步兵或骑兵");
+    const tile = world.tiles.find(item => item.id === tileId);
+    const country = world.countries[polity];
+    if (!tile || tile.polity !== polity || tile.isSea) throw new Error("只能在己方陆地动员");
+    if (country.actionPoints.military < 1 || tile.population < 2) throw new Error("动员条件不足");
+    const soldiers = combatType === "cavalry" ? 500 : 1200;
+    country.actionPoints.military -= 1;
+    tile.population = Math.max(1, tile.population - soldiers / 1000);
+    return createArmy(world, {
+      owner: polity,
+      tileId,
+      name: `${tile.city || tile.region}征召军`,
+      units: [{ combatType, serviceType: "levy", soldiers, sourceTileId: tileId }],
+    });
+  }
+
+  function hireMercenary(world, polity, tileId) {
+    const country = world.countries[polity];
+    const tile = world.tiles.find(item => item.id === tileId);
+    if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能在己方陆地雇佣兵团");
+    if (country.money < 40) throw new Error("雇佣兵需要 40 金钱");
+    country.money -= 40;
+    return createArmy(world, {
+      owner: polity,
+      tileId,
+      name: "自由佣兵团",
+      mercenaryLoyalty: 70,
+      mercenaryWage: 20,
+      contractEndsTurn: world.turn + 8,
+      units: [
+        { combatType: "infantry", serviceType: "mercenary", soldiers: 1500 },
+        { combatType: "cavalry", serviceType: "mercenary", soldiers: 500 },
+      ],
+    });
+  }
+
+  function renewMercenary(world, armyId) {
+    const army = world.warfare.armies[armyId];
+    const country = world.countries[army?.owner];
+    if (!army || army.mercenaryWage === undefined) throw new Error("该军团不是佣兵团");
+    if (country.money < army.mercenaryWage) throw new Error("续约资金不足");
+    country.money -= army.mercenaryWage;
+    army.contractEndsTurn = world.turn + 8;
+    army.mercenaryLoyalty = Math.min(100, army.mercenaryLoyalty + 5);
+    return army;
+  }
+
+  function releaseMercenary(world, armyId) {
+    if (world.warfare.armies[armyId]?.mercenaryWage === undefined) throw new Error("该军团不是佣兵团");
+    delete world.warfare.armies[armyId];
+  }
+
+  function processMercenaryContracts(world) {
+    for (const army of Object.values(world.warfare.armies)) {
+      if (army.mercenaryWage === undefined) continue;
+      const country = world.countries[army.owner];
+      if (world.turn >= army.contractEndsTurn || army.mercenaryLoyalty <= 0) {
+        delete world.warfare.armies[army.id];
+      } else if (country.money >= army.mercenaryWage) {
+        country.money -= army.mercenaryWage;
+      } else {
+        army.mercenaryLoyalty = Math.max(0, army.mercenaryLoyalty - 15);
+      }
+    }
   }
 
   function canRecruitCombatType(world, polity, type) {
@@ -154,9 +352,11 @@
       const cavalryPenalty = ["forest", "hills", "wetland", "mountains"].includes(tile.terrain) ? .75 : 1.15;
       const composition = army.units.reduce((power, unit) => {
         const type = unit.combatType === "cavalry" ? 1.3 * cavalryPenalty : unit.combatType === "artillery" ? 1.5 : 1;
-        return power + unit.soldiers * type;
+        return power + unit.soldiers * type * (1 + (unit.experience || 0) * .04);
       }, 0);
-      return sum + composition * army.morale / 100 * army.organization / 100 * army.supply / 100;
+      const general = army.generalId ? world.warfare.generals[army.generalId] : null;
+      const command = 1 + (general?.command || 0) * .02;
+      return sum + composition * command * army.morale / 100 * army.organization / 100 * army.supply / 100;
     }, 0);
   }
 
@@ -172,6 +372,9 @@
       }
       army.morale = Math.max(0, army.morale - 20);
       army.organization = Math.max(0, army.organization - 25);
+      if (army.mercenaryLoyalty !== undefined && amount > 0) {
+        army.mercenaryLoyalty = Math.max(0, army.mercenaryLoyalty - Math.ceil(amount / Math.max(1, total) * 20));
+      }
     }
   }
 
@@ -247,6 +450,7 @@
   }
 
   function processWarfare(world) {
+    processMercenaryContracts(world);
     executeMovementPhase(world);
     for (const army of Object.values(world.warfare.armies)) {
       if (army.status !== "ready") continue;
@@ -277,17 +481,29 @@
 
   window.HIFI_WARFARE_ENGINE = {
     advanceOccupation,
+    assignGeneral,
     areAtWar,
     armyTotalSoldiers,
     canRecruitCombatType,
     concludePeace,
     createArmy,
+    demobilizeLevies,
     declareWar,
     executeMovementPhase,
+    dismissGeneral,
+    hireMercenary,
     initializeWarfare,
+    mergeArmies,
+    mobilizeArmy,
     planArmyRoute,
     processWarfare,
+    reinforceArmy,
+    releaseMercenary,
+    renewMercenary,
     resolveBattle,
+    rulerGeneral,
+    splitArmy,
     terrainMoveCost,
+    trainArmy,
   };
 })();

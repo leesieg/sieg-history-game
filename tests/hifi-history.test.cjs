@@ -7,6 +7,7 @@ const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/rules.js",
   "engine/world.js",
   "engine/history.js",
 ]) {

@@ -231,11 +231,37 @@
     return `hsl(42 66% ${light}%)`;
   }
 
+  function keyedColor(value, saturation = 42, lightness = 47) {
+    let hash = 0;
+    for (const char of value || "未知") hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    return `hsl(${hash % 360} ${saturation}% ${lightness}%)`;
+  }
+
   function tileFill(tile) {
     if (tile.isSea) return TERRAIN.sea[1];
+    const world = window.hifiGame?.store?.getState();
+    const country = world?.countries?.[tile.polity];
     if (state.mode === "terrain") return TERRAIN[tile.terrain][1];
     if (state.mode === "population") return populationColor(tile.population);
     if (state.mode === "goods") return GOODS[tile.good]?.[1] || "#8f876d";
+    if (state.mode === "religion") return keyedColor(tile.religion, 48, 49);
+    if (state.mode === "dynasty") return keyedColor(country?.leader?.dynasty, 45, 46);
+    if (state.mode === "government") return keyedColor(country?.government?.typeLabel, 38, 48);
+    if (state.mode === "estates") {
+      const estate = Object.values(country?.estates || {}).sort((a, b) => b.power - a.power)[0];
+      return keyedColor(estate?.label || "无主导阶层", 52, 44);
+    }
+    if (state.mode === "military") {
+      const army = Object.values(world?.warfare?.armies || {}).find(item => item.tileId === tile.id);
+      if (army) return army.owner === world.playerPolity ? "#4f8f65" : "#a5423d";
+      const atWar = world?.diplomacy?.wars?.some(war => war.attackers.includes(tile.polity) || war.defenders.includes(tile.polity));
+      return atWar ? "#78513f" : "#77766d";
+    }
+    if (state.mode === "trade") {
+      const routeValue = Object.values(world?.trade?.routes || {}).reduce((sum, route) =>
+        route.nodes.includes(tile.city) ? sum + route.flow : sum, 0);
+      return routeValue ? `hsl(174 52% ${Math.max(28, 62 - routeValue / 4)}%)` : "#536b68";
+    }
     return polityColor(tile.polity);
   }
 
@@ -278,6 +304,24 @@
       tileLayer.appendChild(polygon);
     }
     svg.appendChild(tileLayer);
+
+    if (state.mode === "trade" && window.hifiGame?.store?.getState().trade) {
+      const routeLayer = node("g", { class: "trade-route-layer" });
+      for (const [key, route] of Object.entries(window.hifiGame.store.getState().trade.routes)) {
+        const points = route.nodes.map(city => {
+          const tile = tiles.find(candidate => candidate.city === city);
+          return tile ? `${tile.x},${tile.y}` : null;
+        }).filter(Boolean);
+        if (points.length < 2 || !route.active) continue;
+        routeLayer.appendChild(node("polyline", {
+          points: points.join(" "),
+          class: "map-trade-route",
+          "data-trade-route": key,
+          "stroke-width": Math.max(1.5, route.flow / 18),
+        }));
+      }
+      svg.appendChild(routeLayer);
+    }
 
     if (window.hifiGame?.store?.getState().warfare) {
       const armyLayer = node("g", { class: "army-layer" });
@@ -396,13 +440,26 @@
   }
 
   function renderLegend() {
+    const world = window.hifiGame?.store?.getState();
     const entries = state.mode === "terrain"
       ? Object.entries(TERRAIN).slice(0, 8).map(([, [label, color]]) => [label, color])
       : state.mode === "population"
         ? [["低人口", "hsl(42 66% 29%)"], ["中人口", "hsl(42 66% 47%)"], ["高人口", "hsl(42 66% 64%)"]]
         : state.mode === "goods"
           ? Object.values(GOODS).slice(0, 8).map(([label, color]) => [label, color])
-          : ["法兰西王国", "英格兰王国", "神圣罗马帝国", "卡斯蒂利亚王国", "拜占庭帝国"].map(name => [name, polityColor(name)]);
+          : state.mode === "religion"
+            ? [...new Set(tiles.filter(tile => !tile.isSea).map(tile => tile.religion))].slice(0, 8).map(name => [name, keyedColor(name, 48, 49)])
+            : state.mode === "dynasty"
+              ? [...new Set(Object.values(world?.countries || {}).map(country => country.leader.dynasty))].slice(0, 8).map(name => [name, keyedColor(name, 45, 46)])
+              : state.mode === "government"
+                ? [...new Set(Object.values(world?.countries || {}).map(country => country.government.typeLabel))].map(name => [name, keyedColor(name, 38, 48)])
+                : state.mode === "estates"
+                  ? [...new Set(Object.values(world?.countries || {}).flatMap(country => Object.values(country.estates).map(estate => estate.label)))].slice(0, 8).map(name => [name, keyedColor(name, 52, 44)])
+                  : state.mode === "military"
+                    ? [["己方军团", "#4f8f65"], ["敌方军团", "#a5423d"], ["交战国", "#78513f"], ["和平地区", "#77766d"]]
+                    : state.mode === "trade"
+                      ? [["高流量节点", "hsl(174 52% 28%)"], ["低流量节点", "hsl(174 52% 55%)"], ["非贸易节点", "#536b68"]]
+                      : ["法兰西王国", "英格兰王国", "神圣罗马帝国", "卡斯蒂利亚王国", "拜占庭帝国"].map(name => [name, polityColor(name)]);
     legend.innerHTML = entries.map(([label, color]) => `<span><i style="background:${color}"></i>${label}</span>`).join("");
   }
 

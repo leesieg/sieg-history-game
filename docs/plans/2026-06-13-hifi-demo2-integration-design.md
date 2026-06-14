@@ -47,7 +47,8 @@ prototype/hifi/
     ├── data/
     │   ├── geography.js
     │   ├── countries.js
-    │   └── rules.js
+    │   ├── rules.js
+    │   └── trade.js
     ├── engine/
     │   ├── world.js
     │   ├── turn.js
@@ -55,7 +56,9 @@ prototype/hifi/
     │   ├── diplomacy.js
     │   ├── warfare.js
     │   ├── economy.js
-    │   └── history.js
+    │   ├── trade.js
+    │   ├── history.js
+    │   └── strategy.js
     └── ui/
         ├── store.js
         ├── hud.js
@@ -93,9 +96,13 @@ prototype/hifi/
 ## 验收标准
 
 - Demo2 SHA-1 始终为 `7a3fc0692ae10cca4dad440e6ffd82d7031ddfed`。
-- 原有 16 个测试全部通过。
+- 全仓测试与高保真工业时代长回合测试全部通过。
 - 新高保真版本覆盖 Demo2 全部可操作机制。
 - 地图拖动、缩放、选格、军团选择互不冲突。
 - 所有按钮接入真实机制，不保留演示 Toast。
 - 桌面与横屏手机无关键组件重叠。
 - 每阶段对应一个独立 Git 提交。
+
+## 完成状态
+
+2026-06-14 已完成 Demo2 全部可操作机制迁移。完整国际组织仍遵循原策划边界，Demo2 本身只展示组织身份，不包含独立组织玩法。

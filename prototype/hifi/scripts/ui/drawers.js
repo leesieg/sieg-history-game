@@ -19,8 +19,22 @@
     const estates = Object.values(country.estates)
       .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
       .join("");
+    const laws = Object.entries(country.government.laws).map(([category, value]) => {
+      const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
+      const next = options[(options.indexOf(value) + 1) % options.length];
+      return actionButton("data-law", `${category}:${next}`, category, value);
+    }).join("");
+    const assembly = country.government.assembly.unlocked
+      ? actionButton("data-assembly", "tax:privilege", `召开${country.government.assembly.type}`, `支持 ${country.government.assembly.support}`)
+      : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
+    const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) =>
+      actionButton("data-decision", key, decision.label, decision.can(country, window.hifiGame?.store?.getState()) ? "可执行" : decision.why)
+    ).join("");
     return `${countryRows(country).map(([label, value]) => `<div class="drawer-row">${label}<span>${value}</span></div>`).join("")}
       <div class="drawer-subtitle">改革槽</div>${reforms}
+      <div class="drawer-subtitle">法律</div>${laws}
+      <div class="drawer-subtitle">议会</div>${assembly}
+      <div class="drawer-subtitle">国家决议</div>${decisions}
       <div class="drawer-subtitle">阶层：权力 / 满意</div>${estates}`;
   }
 
@@ -40,6 +54,15 @@
     ].map(([key, label, detail]) =>
       actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)
     ).join("");
+    const tariffs = [0, 10, 25].map(value =>
+      actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前" : "调整", value === country.tariff)
+    ).join("");
+    const routes = Object.entries(world.trade.routes).map(([key, route]) =>
+      actionButton("data-trade-route", key, route.label, route.active ? `流量 ${route.flow} · 成本 ${route.cost}` : "尚未解锁")
+    ).join("");
+    const pressures = Object.entries(country.pressures).map(([key, value]) =>
+      `<div class="drawer-row">${key}<span>${value}</span></div>`
+    ).join("");
     const edicts = Object.entries(rules.edicts).map(([key, edict]) =>
       actionButton("data-edict", key, edict.label, Object.entries(edict.cost).map(([resource, cost]) => `${resource} ${cost}`).join(" · "))
     ).join("");
@@ -57,31 +80,47 @@
       <div class="drawer-row">军需<span>${Math.round(country.military)}</span></div>
       <div class="drawer-row">资本池<span>${Math.round(country.capital)}</span></div>
       <div class="drawer-subtitle">贸易政策</div>${policies}
+      <div class="drawer-subtitle">关税</div>${tariffs}
+      <div class="drawer-subtitle">结构压力</div>${pressures}
+      <div class="drawer-subtitle">贸易路线</div>${routes}
       <div class="drawer-subtitle">国家敕令</div>${edicts}
       <div class="drawer-subtitle">国家议程</div>${agendas}
       <div class="drawer-subtitle">地块建设：${tileLabel}</div>${buildings}`;
   }
 
-  function renderDevelopment(country) {
+  function renderDevelopment(country, world) {
     const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) =>
       actionButton(
         "data-technology",
         key,
         technology.label,
-        country.technology[key] ? "已采纳" : `${technology.cost} 思想`,
+        country.technology[key] ? "已采纳" : `${technology.cost} 思想 · 传播 ${country.technologyAwareness[key]}%`,
         country.technology[key]
       )
     ).join("");
+    const missions = window.HIFI_HISTORY_ENGINE.missions(world).map(mission =>
+      `<div class="drawer-row">${mission.label}<span>${mission.done ? "完成" : "进行中"}</span></div>`
+    ).join("");
+    const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
     return `<div class="drawer-row">思想点<span>${Math.round(country.ideas)}</span></div>
       <div class="drawer-row">时代进度<span>${country.ageProgress}%</span></div>
+      <div class="drawer-row">探索点<span>${country.exploration.points}</span></div>
+      <div class="drawer-subtitle">时代使命</div>${missions}
+      <div class="drawer-subtitle">导师指引</div><div class="drawer-row">${tutorial?.label || "已完成全部指引"}<span>${world.tutorial.step} / 5</span></div>
       <div class="drawer-subtitle">科技采纳</div>${technologies}`;
   }
 
   function renderMilitary(country, world) {
     const armies = Object.values(world.warfare.armies).filter(army => army.owner === country.name);
     const wars = world.diplomacy.wars.filter(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
+    const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
+    const canRecruit = tile && !tile.isSea && tile.polity === country.name;
     return `<div class="drawer-row">军事点<span>${country.actionPoints.military}</span></div>
       <div class="drawer-row">战争疲惫<span>${country.warfare.warExhaustion}</span></div>
+      <div class="drawer-subtitle">征募：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
+      ${actionButton("data-mobilize", "infantry", "动员步兵", "消耗地块 POP")}
+      ${actionButton("data-mobilize", "cavalry", "动员骑兵", "消耗地块 POP")}
+      ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱")}
       <div class="drawer-subtitle">军团</div>
       ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
       <div class="drawer-subtitle">战争</div>
@@ -144,7 +183,7 @@
     if (system === "经济") return renderEconomy(country, world);
     if (system === "外交") return renderDiplomacy(country, world);
     if (system === "军事") return renderMilitary(country, world);
-    if (system === "发展") return renderDevelopment(country);
+    if (system === "发展") return renderDevelopment(country, world);
     return null;
   }
 
@@ -164,6 +203,9 @@
     const estateHtml = Object.values(country.estates).map(estate =>
       `<div class="estate-line"><span>${estate.label}</span><span>${Math.round(estate.power)}</span><span>${Math.round(estate.satisfaction)}</span></div>`
     ).join("");
+    const decisionHtml = (country.decisionLedger || []).slice(0, 5)
+      .map(entry => `<div class="drawer-row">${entry.label}<span>${window.HIFI_WORLD_ENGINE.calendarLabel(entry.turn)}</span></div>`)
+      .join("");
     return `<div class="state-grid">
       ${[
         ["政体", country.government.typeLabel],
@@ -177,7 +219,8 @@
       ].map(([label, value]) => `<div class="state-stat"><small>${label}</small><strong>${value}</strong></div>`).join("")}
     </div>
     <section class="state-section"><h3>时代处境</h3><p>${country.introduction}</p></section>
-    <section class="state-section"><h3>阶层权力 / 满意度</h3>${estateHtml}</section>`;
+    <section class="state-section"><h3>阶层权力 / 满意度</h3>${estateHtml}</section>
+    <section class="state-section"><h3>决策回响</h3>${decisionHtml || "<p>尚无结构性决策。</p>"}</section>`;
   }
 
   function bindCountryDialogs(store) {

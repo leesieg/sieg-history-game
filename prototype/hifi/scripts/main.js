@@ -16,6 +16,7 @@
   window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   window.HIFI_HISTORY_ENGINE.initializeHistory(world);
+  window.HIFI_TRADE_ENGINE.initializeTrade(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
   window.HIFI_DIALOGS.bindArmyDialog(store);
@@ -31,6 +32,11 @@
   function setResource(key, value) {
     const token = document.querySelector(`[data-resource="${key}"] .resource-total`);
     if (token) token.textContent = String(Math.round(value));
+  }
+
+  function setTrend(key, value, label) {
+    const trend = document.querySelector(`[data-resource="${key}"] .resource-trend`);
+    if (trend) trend.textContent = value === null ? label : `${value >= 0 ? "+" : ""}${Math.round(value)}/季`;
   }
 
   function renderHud(current) {
@@ -63,6 +69,15 @@
     setResource("money", country.money);
     setResource("military", country.military);
     setResource("legitimacy", country.legitimacy);
+    const forecast = window.HIFI_HISTORY_ENGINE.forecast(current);
+    setTrend("food", forecast.food, "粮食");
+    setTrend("money", forecast.money, "金钱");
+    setTrend("military", forecast.military, "军需");
+    setTrend("administrative", null, "行政");
+    setTrend("diplomatic", null, "外交");
+    setTrend("militaryPoint", null, "军事");
+    setTrend("legitimacy", null, "合法性");
+    seasonControl.title = `预计下季：粮 ${forecast.food >= 0 ? "+" : ""}${forecast.food} · 金 ${forecast.money >= 0 ? "+" : ""}${forecast.money} · 军需 ${forecast.military >= 0 ? "+" : ""}${forecast.military}`;
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
     const count = issues.length;
@@ -105,10 +120,40 @@
         ));
       });
     });
+    drawerBody.querySelectorAll("[data-law]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const [category, value] = button.dataset.law.split(":");
+        return window.HIFI_POLITICS_ENGINE.setLaw(current, current.playerPolity, category, value);
+      }));
+    });
+    drawerBody.querySelectorAll("[data-assembly]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const [agenda, concession] = button.dataset.assembly.split(":");
+        return window.HIFI_POLITICS_ENGINE.holdAssembly(current, current.playerPolity, agenda, concession);
+      }));
+    });
+    drawerBody.querySelectorAll("[data-decision]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_POLITICS_ENGINE.enactDecision(current, current.playerPolity, button.dataset.decision)
+      ));
+    });
     drawerBody.querySelectorAll("[data-trade-policy]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
-        window.HIFI_ECONOMY_ENGINE.setTradePolicy(current, current.playerPolity, button.dataset.tradePolicy)
+        (window.HIFI_ECONOMY_ENGINE.setTradePolicy(current, current.playerPolity, button.dataset.tradePolicy),
+        window.HIFI_HISTORY_ENGINE.completeTutorial(current, "set_trade"))
       ));
+    });
+    drawerBody.querySelectorAll("[data-tariff]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        (window.HIFI_TRADE_ENGINE.setTariff(current, current.playerPolity, Number(button.dataset.tariff)),
+        window.HIFI_HISTORY_ENGINE.completeTutorial(current, "set_trade"))
+      ));
+    });
+    drawerBody.querySelectorAll("[data-trade-route]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        current.trade.selectedRoute = button.dataset.tradeRoute;
+        window.prototypeMap.setMode("trade");
+      }));
     });
     drawerBody.querySelectorAll("[data-edict]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
@@ -170,6 +215,21 @@
         detail: { armyId: button.dataset.armyOpen },
       })));
     });
+    drawerBody.querySelectorAll("[data-mobilize]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_WARFARE_ENGINE.mobilizeArmy(
+          current,
+          current.playerPolity,
+          current.selectedTile,
+          button.dataset.mobilize
+        )
+      ));
+    });
+    drawerBody.querySelectorAll("[data-hire-mercenary]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_WARFARE_ENGINE.hireMercenary(current, current.playerPolity, current.selectedTile)
+      ));
+    });
     drawerBody.querySelectorAll("[data-peace-war]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_WARFARE_ENGINE.concludePeace(
@@ -211,7 +271,10 @@
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
   });
 
-  document.getElementById("rulerPlaque").addEventListener("click", () => dialogs.renderCountryModal());
+  document.getElementById("rulerPlaque").addEventListener("click", () => {
+    store.update(current => window.HIFI_HISTORY_ENGINE.completeTutorial(current, "open_country"));
+    dialogs.renderCountryModal();
+  });
   topPending.addEventListener("click", narrativeDialogs.renderCouncil);
   seasonControl.addEventListener("click", () => {
     const current = store.getState();
@@ -221,6 +284,7 @@
       return;
     }
     store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
+    window.HIFI_HISTORY_ENGINE.completeTutorial(current, "advance_turn");
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
   });
 
@@ -240,6 +304,7 @@
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
     store.update(current => {
       current.selectedTile = event.detail.tileId;
+      window.HIFI_HISTORY_ENGINE.completeTutorial(current, "select_tile");
       if (current.warfare?.planningArmy) {
         window.HIFI_WARFARE_ENGINE.planArmyRoute(current, current.warfare.planningArmy, event.detail.tileId);
         current.warfare.planningArmy = null;
@@ -253,6 +318,7 @@
     drawer.setAttribute("aria-hidden", "true");
     document.getElementById("game").classList.remove("system-open");
     document.querySelectorAll(".system-button").forEach(item => item.classList.remove("active"));
+    store.update(current => window.HIFI_HISTORY_ENGINE.completeTutorial(current, "manage_army"));
   });
 
   store.subscribe(current => {

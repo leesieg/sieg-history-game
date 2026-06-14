@@ -4,14 +4,29 @@
   const eras = [
     { key: "feudal", label: "封建纪元", year: 1337 },
     { key: "discovery", label: "发现纪元", year: 1453 },
-    { key: "confessional", label: "信仰分裂", year: 1517 },
+    { key: "faith", label: "信仰分裂", year: 1517 },
     { key: "absolutism", label: "绝对主义", year: 1648 },
     { key: "revolution", label: "革命纪元", year: 1789 },
+    { key: "industrial", label: "工业纪元", year: 1815 },
+  ];
+
+  const missionDefinitions = [
+    { key: "secure_capital", label: "稳固首都", check: (world, country) => window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).some(tile => tile.city && tile.control >= 80), reward: { legitimacy: 3 } },
+    { key: "open_market", label: "接入洲际市场", check: (world, country) => (world.trade?.lastIncome?.[country.name] || 0) >= 10, reward: { money: 20 } },
+    { key: "modern_army", label: "建立近代军队", check: (world, country) => country.technology.standingArmy && Object.values(world.warfare.armies).some(army => army.owner === country.name), reward: { military: 25 } },
+    { key: "industrial_takeoff", label: "工业起飞", check: (world, country) => country.technology.steamEngine && country.technology.railways, reward: { money: 60 } },
+  ];
+  const tutorialTasks = [
+    { key: "select_tile", label: "选择一个地块", pane: "map" },
+    { key: "open_country", label: "查看国家状态", pane: "国家" },
+    { key: "set_trade", label: "调整贸易与关税", pane: "经济" },
+    { key: "manage_army", label: "查看并整编军团", pane: "军事" },
+    { key: "advance_turn", label: "结束一个季度", pane: "turn" },
   ];
 
   function initializeHistory(world) {
     world.eraIndex = 0;
-    world.flags = { constantinopleFallen: false, discoveryImpulse: false };
+    world.flags = { constantinopleFallen: false, discoveryImpulse: false, reformation: false, industrialization: false };
     world.situations = [];
     world.playerEvents = [];
     world.pendingCouncil = null;
@@ -23,8 +38,86 @@
       country.report = null;
       country.pressures = { trade: 0, military: 0, fiscal: 0, exploration: 0 };
       country.priceIndex = 1;
+      country.technologyAwareness = Object.fromEntries(Object.keys(window.HIFI_RULES.technologies).map(key => [key, 0]));
+      country.exploration = { points: 0, milestones: [] };
+      country.missionsDone = [];
     }
+    world.tutorial = { step: 0, flags: {} };
     return world;
+  }
+
+  function spreadTechnology(world) {
+    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    for (const country of Object.values(world.countries)) {
+      country.ideas += 1 + (country.technology.printing ? 1 : 0);
+      for (const [key, technology] of Object.entries(window.HIFI_RULES.technologies)) {
+        if (year < technology.year) continue;
+        const neighborsKnown = Object.values(world.countries).filter(other => other.technology?.[key]).length;
+        const printing = country.technology.printing ? 2 : 0;
+        country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + printing);
+      }
+      if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += 1;
+      if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {
+        country.exploration.milestones.push("atlantic");
+      }
+    }
+  }
+
+  function processMilestones(world) {
+    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    if (year >= 1517 && !world.flags.reformation) {
+      world.flags.reformation = true;
+      pushWorldEvent(world, "宗教改革开始撼动西欧信仰秩序", "religion");
+    }
+    if (year >= 1750 && Object.values(world.countries).some(country => country.technology.steamEngine)) {
+      world.flags.industrialization = true;
+    }
+  }
+
+  function applyMissions(world) {
+    for (const country of Object.values(world.countries)) {
+      for (const mission of missionDefinitions) {
+        if (country.missionsDone.includes(mission.key) || !mission.check(world, country)) continue;
+        country.missionsDone.push(mission.key);
+        Object.entries(mission.reward).forEach(([resource, amount]) => { country[resource] += amount; });
+        pushChronicle(world, country.name, "mission", `达成时代使命「${mission.label}」`);
+      }
+    }
+  }
+
+  function missions(world, polity = world.playerPolity) {
+    const country = world.countries[polity];
+    return missionDefinitions.map(mission => ({
+      key: mission.key,
+      label: mission.label,
+      done: country.missionsDone.includes(mission.key),
+    }));
+  }
+
+  function tutorialTask(world) {
+    return tutorialTasks[world.tutorial?.step || 0] || null;
+  }
+
+  function completeTutorial(world, key) {
+    const task = tutorialTask(world);
+    if (task?.key !== key) return false;
+    world.tutorial.flags[key] = true;
+    world.tutorial.step += 1;
+    return true;
+  }
+
+  function forecast(world, polity = world.playerPolity) {
+    const country = world.countries[polity];
+    const report = country.lastReport || {};
+    const trade = world.trade?.lastIncome?.[polity] || 0;
+    return {
+      food: report.food || 0,
+      money: (report.money || 0) + trade,
+      military: report.military || 0,
+      trade,
+      risks: councilSummary(world, polity).warnings,
+      echoes: (country.decisionLedger || []).slice(0, 3),
+    };
   }
 
   function pushWorldEvent(world, text, kind = "event", chain = null) {
@@ -193,6 +286,9 @@
 
   function processHistory(world) {
     processSituations(world);
+    spreadTechnology(world);
+    processMilestones(world);
+    applyMissions(world);
     checkEra(world);
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
     country.report = {
@@ -228,7 +324,12 @@
     pushWorldEvent,
     resolvePlayerEvent,
     runRegency,
+    completeTutorial,
+    forecast,
+    missions,
+    spreadTechnology,
     shouldInterruptRegency,
     startRegency,
+    tutorialTask,
   };
 })();
