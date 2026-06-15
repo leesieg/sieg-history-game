@@ -211,6 +211,7 @@
   const miniSvg = document.getElementById("miniMapSvg");
   const legend = document.getElementById("mapLegend");
   const terrainBanner = document.getElementById("provinceBanner");
+  const provincePanel = document.getElementById("provincePanel");
 
   function node(name, attrs = {}) {
     const element = document.createElementNS("http://www.w3.org/2000/svg", name);
@@ -389,7 +390,8 @@
 
   function formatPopulation(tile) {
     if (tile.isSea) return "无常住人口";
-    return `${Math.round(tile.population * 31.5)}K`;
+    const tenThousands = tile.population * 3.15;
+    return `${Number.isInteger(tenThousands) ? tenThousands : tenThousands.toFixed(1)}万`;
   }
 
   function updateProvince(tile) {
@@ -411,6 +413,8 @@
 
   function selectTile(tile) {
     state.selectedId = tile.id;
+    provincePanel.classList.remove("closed");
+    provincePanel.setAttribute("aria-hidden", "false");
     updateProvince(tile);
     renderMainMap();
     window.dispatchEvent(new CustomEvent("hifi:tile-selected", {
@@ -483,6 +487,10 @@
   }
 
   function bindControls() {
+    document.getElementById("provinceClose").addEventListener("click", () => {
+      provincePanel.classList.add("closed");
+      provincePanel.setAttribute("aria-hidden", "true");
+    });
     svg.addEventListener("click", event => {
       if (state.dragged) return;
       const armyMarker = event.target.closest("[data-army-marker]");

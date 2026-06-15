@@ -19,6 +19,8 @@ for (const id of [
   "councilModal",
   "historyEventModal",
   "seasonControl",
+  "provincePanel",
+  "provinceClose",
 ]) {
   assert.match(html, new RegExp(`id="${id}"`), `缺少界面容器 ${id}`);
 }
@@ -37,6 +39,11 @@ assert.match(drawers, /openCountrySelect/, "国家详情必须接通国家选择
 assert.match(drawers, /data-diplomatic-action/, "外交抽屉必须提供真实外交行动");
 assert.match(dialogs, /data-army-plan/, "军团抽屉必须提供路线规划");
 assert.match(dialogs, /hifi:army-close/, "军团界面必须响应统一关闭事件");
+assert.match(map, /provincePanel\.classList\.add\("closed"\)/, "地块详情关闭按钮必须隐藏面板");
+assert.match(map, /provincePanel\.classList\.remove\("closed"\)/, "重新选择地块必须打开详情面板");
+assert.doesNotMatch(html, />POP</, "地块人口字段必须使用中文");
+assert.doesNotMatch(drawers, />\$\{key\}</, "改革和压力不能直接显示内部英文键");
+assert.match(dialogs, /combatTypeLabels\[unit\.combatType\]/, "军团兵种必须显示中文");
 assert.doesNotMatch(main, /待接入|将在对应系统迁移时启用/);
 
 console.log("hifi UI smoke contracts passed");

@@ -1,6 +1,19 @@
 (() => {
   "use strict";
 
+  const combatTypeLabels = {
+    infantry: "步兵",
+    cavalry: "骑兵",
+    artillery: "炮兵",
+  };
+  const serviceTypeLabels = {
+    guard: "核心卫队",
+    professional: "职业军团",
+    standing: "常备军",
+    levy: "征召兵",
+    mercenary: "雇佣兵",
+  };
+
   function bindArmyDialog(store) {
     const drawer = document.getElementById("armyDrawer");
     const body = document.getElementById("armyDrawerBody");
@@ -16,7 +29,7 @@
       world.warfare.selectedArmy = armyId;
       const tile = world.tiles.find(candidate => candidate.id === army.tileId);
       const composition = army.units.map(unit =>
-        `<div class="drawer-row">${unit.combatType} · ${unit.serviceType}<span>${unit.soldiers} · 经验 ${unit.experience || 0}</span></div>`
+        `<div class="drawer-row">${combatTypeLabels[unit.combatType]} · ${serviceTypeLabels[unit.serviceType]}<span>${unit.soldiers} · 经验 ${unit.experience || 0}</span></div>`
       ).join("");
       const mergeTargets = Object.values(world.warfare.armies).filter(candidate =>
         candidate.id !== army.id

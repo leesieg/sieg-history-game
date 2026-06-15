@@ -1,6 +1,61 @@
 (() => {
   "use strict";
 
+  const reformLabels = {
+    administrative: "行政改革",
+    fiscal: "财政改革",
+    military: "军事改革",
+    religious: "宗教改革",
+    political: "政治改革",
+    maritime: "海事改革",
+  };
+  const lawCategoryLabels = {
+    taxation: "税收制度",
+    mobilization: "动员制度",
+    religion: "宗教政策",
+    authority: "权力结构",
+  };
+  const lawValueLabels = {
+    customary: "传统税制",
+    estate_exemptions: "阶层免税",
+    uniform: "统一税制",
+    limited: "有限动员",
+    levy: "征召兵役",
+    standing: "常备军制",
+    toleration: "宗教宽容",
+    orthodoxy: "正统信仰",
+    reformed: "改革宗",
+    dynastic: "王朝统治",
+    civic: "公民政治",
+    constitutional: "宪政体制",
+    absolute: "绝对权力",
+  };
+  const pressureLabels = {
+    trade: "贸易依赖",
+    military: "军事竞争",
+    fiscal: "财政压力",
+    exploration: "探索冲动",
+    faith: "信仰张力",
+    ideas: "思想传播",
+  };
+  const resourceLabels = {
+    administrative: "行政点",
+    diplomatic: "外交点",
+    military: "军事点",
+    money: "金钱",
+    food: "粮食",
+    legitimacy: "合法性",
+    ideas: "思想点",
+  };
+  const attitudeLabels = {
+    close: "亲密",
+    cooperative: "合作",
+    neutral: "中立",
+    wary: "戒备",
+    rival: "敌对竞争",
+    hostile: "强烈敌视",
+  };
+
   function countryRows(country) {
     return [
       ["政体", country.government.typeLabel],
@@ -18,7 +73,7 @@
       ? actionButton("data-integrate", String(tile.id), `整合 ${tile.city || tile.region}`, `控制度 ${Math.round(tile.control ?? 0)} · 20 金钱`)
       : '<div class="drawer-row">整合：请选择己方地块<span>—</span></div>';
     const reforms = Object.entries(country.government.reforms)
-      .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${key}<span>${value} / 5</span></button>`)
+      .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${value} / 5</span></button>`)
       .join("");
     const estates = Object.values(country.estates)
       .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
@@ -26,7 +81,12 @@
     const laws = Object.entries(country.government.laws).map(([category, value]) => {
       const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
       const next = options[(options.indexOf(value) + 1) % options.length];
-      return actionButton("data-law", `${category}:${next}`, category, value);
+      return actionButton(
+        "data-law",
+        `${category}:${next}`,
+        lawCategoryLabels[category],
+        `${lawValueLabels[value]} → ${lawValueLabels[next]}`
+      );
     }).join("");
     const assembly = country.government.assembly.unlocked
       ? actionButton("data-assembly", "tax:privilege", `召开${country.government.assembly.type}`, `支持 ${country.government.assembly.support}`)
@@ -66,13 +126,13 @@
       actionButton("data-trade-route", key, route.label, route.active ? `流量 ${route.flow} · 成本 ${route.cost}` : "尚未解锁")
     ).join("");
     const pressures = Object.entries(country.pressures).map(([key, value]) =>
-      `<div class="drawer-row">${key}<span>${value}</span></div>`
+      `<div class="drawer-row">${pressureLabels[key]}<span>${value}</span></div>`
     ).join("");
     const edicts = Object.entries(rules.edicts).map(([key, edict]) =>
-      actionButton("data-edict", key, edict.label, Object.entries(edict.cost).map(([resource, cost]) => `${resource} ${cost}`).join(" · "))
+      actionButton("data-edict", key, edict.label, Object.entries(edict.cost).map(([resource, cost]) => `${resourceLabels[resource]} ${cost}`).join(" · "))
     ).join("");
     const agendas = Object.entries(rules.agendas).map(([key, agenda]) =>
-      actionButton("data-agenda", key, agenda.label, `${agenda.target} ≥ ${agenda.threshold}`, country.agenda === key)
+      actionButton("data-agenda", key, agenda.label, `${resourceLabels[agenda.target]} ≥ ${agenda.threshold}`, country.agenda === key)
     ).join("");
     const buildings = Object.entries(rules.buildings).map(([key, building]) =>
       actionButton("data-building", key, building.label, `${building.cost} 金钱`)
@@ -149,7 +209,13 @@
     const subject = engine.subjectBetween(world, country.name, target);
     const atWar = window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, target);
     const targetButtons = targets.map(name =>
-      actionButton("data-diplomatic-target", name, name, engine.diplomaticAttitude(world, country.name, name), name === target)
+      actionButton(
+        "data-diplomatic-target",
+        name,
+        name,
+        attitudeLabels[engine.diplomaticAttitude(world, country.name, name)],
+        name === target
+      )
     ).join("");
     const actions = [
       ["mission:improve", "派遣使节", "改善关系"],

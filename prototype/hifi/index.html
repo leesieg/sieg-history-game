@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>帝国的代价｜高保真 HUD 原型</title>
+  <title>帝国的代价｜高保真界面原型</title>
   <link rel="stylesheet" href="styles/tokens.css">
   <link rel="stylesheet" href="styles/layout.css">
   <link rel="stylesheet" href="styles/components.css">
@@ -17,7 +17,7 @@
 
     <button class="ruler-plaque" id="rulerPlaque" aria-label="查看法兰西王国">
       <img class="ruler-portrait" id="rulerPortrait" src="../../assets/ui/ruler-philip-vi.png" alt="腓力六世">
-      <span class="ruler-level">III</span>
+      <span class="ruler-level">三</span>
     </button>
 
     <header class="top-command-bar">
@@ -65,14 +65,15 @@
       <div id="armyDrawerBody"></div>
     </aside>
 
-    <aside class="province-panel metal-frame">
+    <aside class="province-panel metal-frame" id="provincePanel" aria-hidden="false">
       <div class="province-banner" id="provinceBanner">
+        <button class="province-close" id="provinceClose" type="button" aria-label="关闭地块详情" title="关闭地块详情">×</button>
         <div class="province-name" id="provinceName">巴黎</div>
         <div class="province-region" id="provinceRegion">法兰西王国 · 巴黎盆地</div>
       </div>
       <div class="province-data">
         <div class="data-row"><span>气候</span><b id="provinceClimate">温带</b><i></i></div>
-        <div class="data-row"><span>POP</span><b id="provincePopulation">504K</b><i></i></div>
+        <div class="data-row"><span>人口</span><b id="provincePopulation">50.4万</b><i></i></div>
         <div class="data-row"><span>产出</span><b id="provinceOutput">谷物</b><i></i></div>
         <div class="data-row"><span>控制度</span><b id="provinceControl">85%</b><i></i></div>
         <div class="data-row"><span>发展度</span><b id="provinceDevelopment">64</b><i></i></div>
@@ -172,7 +173,7 @@
     </section>
   </div>
 
-  <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与 HUD 以横屏操作为准。</small></div></div>
+  <div class="orientation"><div><strong>请横屏体验</strong><br><small>地图与界面以横屏操作为准。</small></div></div>
 
   <script src="scripts/data/geography.js?v=4"></script>
   <script src="scripts/data/countries.js?v=4"></script>
@@ -188,9 +189,9 @@
   <script src="scripts/engine/history.js?v=7"></script>
   <script src="scripts/engine/strategy.js?v=1"></script>
   <script src="scripts/ui/store.js?v=4"></script>
-  <script src="scripts/ui/map.js?v=5"></script>
-  <script src="scripts/ui/drawers.js?v=5"></script>
-  <script src="scripts/ui/dialogs.js?v=7"></script>
+  <script src="scripts/ui/map.js?v=6"></script>
+  <script src="scripts/ui/drawers.js?v=6"></script>
+  <script src="scripts/ui/dialogs.js?v=8"></script>
   <script src="scripts/main.js?v=5"></script>
 </body>
 </html>
