@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hifi 主线 · 机制现状与问题框架图（修复后）</title>
+<style>
+  :root {
+    --ink: #1f211b; --paper: #efe3c6; --panel: #fff7e3; --line: #493f2c;
+    --gold: #c99a31; --dark: #243335;
+    --c5: #8e3f37; --c4: #9a6b22; --c3: #2f6f7d; --c2: #4d6f3f; --c1: #5b4a36;
+    --bad: #8e3f37; --warn: #b6862a; --note: #4d6f3f; --done: #2f7d4f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 24px 60px; background: var(--paper); color: var(--ink);
+    font-family: "Songti SC","STSong","Noto Serif SC",Georgia,serif; }
+  h1 { text-align: center; margin: 0 0 4px; font-size: 26px; }
+  .sub { text-align: center; opacity: .72; margin-bottom: 8px; font-size: 13px; }
+  h2 { font-size: 19px; border-left: 5px solid var(--gold); padding-left: 10px; margin: 38px 0 14px; max-width: 1280px; margin-left: auto; margin-right: auto; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  code { background: rgba(73,63,44,.1); border-radius: 4px; padding: 0 4px; }
+
+  .fixbanner { max-width: 1280px; margin: 0 auto 10px; border: 2px solid var(--done); border-radius: 12px;
+    background: rgba(47,125,79,.1); padding: 9px 16px; text-align: center; font-size: 13px; }
+  .fixbanner b { color: var(--done); }
+
+  .legend { max-width: 1280px; margin: 0 auto 4px; display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+  .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); } .dot.note { background: var(--note); } .dot.done { background: var(--done); }
+
+  .flag { display: inline-block; font-size: 11px; border-radius: 7px; padding: 2px 7px; margin: 3px 4px 0 0; color: #fff; line-height: 1.4; }
+  .flag.bad { background: var(--bad); } .flag.warn { background: var(--warn); } .flag.note { background: #6f6147; } .flag.done { background: var(--done); }
+  .flag b { font-weight: 700; }
+
+  .loopband { border: 2px solid var(--dark); border-radius: 12px; background: var(--dark); color: #f5edce;
+    padding: 10px 16px; text-align: center; font-size: 13.5px; margin-bottom: 14px; }
+  .loopband b { color: var(--gold); }
+  .loop { display: grid; grid-template-columns: repeat(8, 1fr); gap: 9px; }
+  .step { border: 2px solid var(--line); border-radius: 11px; background: var(--panel); padding: 8px 9px;
+    position: relative; font-size: 11.6px; line-height: 1.5; }
+  .step::after { content: "»"; position: absolute; right: -11px; top: 38%; font-size: 19px; color: var(--gold); z-index: 2; }
+  .step:last-child::after { content: ""; }
+  .step h4 { margin: 0 0 5px; font-size: 12.5px; border-bottom: 1.5px solid var(--gold); padding-bottom: 4px; }
+  .step h4 i { font-style: normal; color: var(--c3); font-size: 11px; }
+
+  .arch { display: flex; flex-direction: column; gap: 10px; }
+  .band { border: 2px solid var(--line); border-radius: 12px; background: var(--panel); padding: 9px 13px 11px;
+    box-shadow: 0 4px 14px rgba(31,32,26,.1); }
+  .band > h3 { margin: 0 0 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .band > h3 .tag { font-size: 11px; color: #fff; border-radius: 99px; padding: 2px 10px; font-weight: 400; background: var(--c1); }
+  .mods { display: flex; flex-wrap: wrap; gap: 8px; }
+  .mod { border: 1.2px solid rgba(73,63,44,.4); border-radius: 9px; background: var(--paper); padding: 6px 10px;
+    font-size: 12px; line-height: 1.5; flex: 1 1 150px; min-width: 150px; }
+  .mod b { display: block; font-size: 12.5px; }
+  .mod small { opacity: .75; display: block; }
+  .band.data > h3 .tag { background: var(--c4); } .band.data { border-color: var(--c4); }
+  .band.engine > h3 .tag { background: var(--c3); } .band.engine { border-color: var(--c3); }
+  .band.ui > h3 .tag { background: var(--c2); } .band.ui { border-color: var(--c2); }
+  .band.wire > h3 .tag { background: var(--dark); } .band.wire { border-color: var(--dark); }
+  .flowdown { text-align: center; color: var(--c1); font-size: 12px; }
+
+  .systems { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .sys { border: 2px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 12px; }
+  .sys h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: baseline; gap: 8px; }
+  .sys h3 small { font-weight: 400; opacity: .7; font-size: 11.5px; }
+  .ok { font-size: 12px; line-height: 1.6; margin: 4px 0 6px; }
+  .ok li { margin-left: -8px; }
+  .probs { border-top: 1.5px dashed rgba(73,63,44,.45); padding-top: 6px; margin-top: 4px; }
+
+  .routes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .routebox { border: 2px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 12px; }
+  .routebox h3 { margin: 0 0 8px; font-size: 14px; }
+  .rt { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; border-bottom: 1px dotted rgba(73,63,44,.3); }
+  .rt:last-child { border-bottom: 0; }
+  .rt .btn { background: var(--dark); color: #f5edce; border-radius: 7px; padding: 2px 9px; min-width: 56px; text-align: center; font-size: 12px; }
+  .rt .arrow { color: var(--gold); }
+  .rt .dest { opacity: .85; }
+  .rt .verdict { margin-left: auto; font-size: 12px; font-weight: 700; }
+  .rt.dead .verdict { color: var(--bad); } .rt.live .verdict { color: var(--done); } .rt.warn .verdict { color: var(--warn); }
+
+  .prio { display: flex; flex-direction: column; gap: 6px; }
+  .prio .item { border: 1.5px solid var(--line); border-radius: 10px; background: var(--panel); padding: 8px 12px 8px 44px;
+    position: relative; font-size: 13px; }
+  .prio .item .mark { position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 22px; border-radius: 7px; text-align: center; line-height: 22px; font-weight: 700; font-size: 12px; color: #fff; }
+  .prio .item.done { border-color: var(--done); } .prio .item.done .mark { background: var(--done); }
+  .prio .item.todo { border-style: dashed; } .prio .item.todo .mark { background: var(--warn); }
+  .prio .item.done b { color: var(--done); }
+
+  footer { text-align: center; margin-top: 44px; font-size: 11px; opacity: .55; }
+  @media (max-width: 1000px) {
+    .loop { grid-template-columns: repeat(2, 1fr); } .step::after { content: ""; }
+    .systems { grid-template-columns: 1fr; } .routes { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <h1>hifi 主线 · 机制现状与问题框架图</h1>
+  <div class="sub">对象：<code>prototype/hifi/</code>（模块化原生 JS 主线）　｜　配套文档：17 号《hifi 主线机制现状说明与待修问题》</div>
+  <div class="fixbanner">本图已更新为<b>修复后状态</b>：第十二节问题清单中的 🔴/🟡/🟢 多数已处理（绿色 ✅），仅余<b>待设计确认</b>项（黄色）。</div>
+  <div class="legend">
+    <span><i class="dot done"></i>✅ 已修复</span>
+    <span><i class="dot warn"></i>🟡 待设计确认（保留）</span>
+    <span><i class="dot note"></i>绿 = 一直可用</span>
+    <span><i class="dot bad"></i>🔴 已不存在（仅作对照）</span>
+  </div>
+
+  <!-- ===================== 维度一：回合主循环 ===================== -->
+  <h2>维度一 · 季度回合主循环（<code>advanceQuarter</code> 的固定执行顺序）</h2>
+  <div class="wrap">
+    <div class="loopband">点「结束季度」→ <b>turn += 1</b> → 以下 8 个引擎依次跑一遍 → store 通知 UI 重渲染。<b>顺序即耦合</b>：战争先结算，最后才是 AI。</div>
+    <div class="loop">
+      <div class="step"><h4>① 战争 <i>warfare</i></h4>佣兵契约→移动→补给士气→<b>同格自动开战</b>→占领推进</div>
+      <div class="step"><h4>② 行动点</h4>按领导人能力回行政/外交/军事点（上限 10）</div>
+      <div class="step"><h4>③ 经济 <i>economy</i></h4>地块产出结算·开放贸易收益·议程达成</div>
+      <div class="step"><h4>④ 贸易 <i>trade</i></h4>路线流量·关税分配收入·刷新六维压力</div>
+      <div class="step"><h4>⑤ 外交 <i>diplomacy</i></h4>使节推进·条约到期·附属贡赋·容量惩罚</div>
+      <div class="step"><h4>⑥ 政治 <i>politics</i></h4>领导人到期→继承 / 选举</div>
+      <div class="step"><h4>⑦ 历史 <i>history</i></h4>局势·技术传播·纪元·使命</div>
+      <div class="step"><h4>⑧ AI <i>strategy</i></h4>非玩家国极简决策</div>
+    </div>
+  </div>
+
+  <!-- ===================== 维度二：分层架构 ===================== -->
+  <h2>维度二 · 模块分层（IIFE 挂全局 <code>window.HIFI_*</code>，按依赖顺序加载）</h2>
+  <div class="wrap arch">
+    <div class="band data">
+      <h3><span class="tag">数据层 data/</span>纯数据，无逻辑</h3>
+      <div class="mods">
+        <div class="mod"><b>geography</b><small>真实海陆轮廓 / 区域种子 / 城市坐标</small></div>
+        <div class="mod"><b>countries</b><small>6 政体 · 阶层 · 30+ 史实领导人</small></div>
+        <div class="mod"><b>rules</b><small>建筑 / 科技 / 敕令 / 议程</small></div>
+        <div class="mod"><b>trade</b><small>10 条历史商路 · 贸易池</small></div>
+      </div>
+    </div>
+    <div class="flowdown">▼ 引擎读数据、改 <code>world</code></div>
+    <div class="band engine">
+      <h3><span class="tag">引擎层 engine/</span>纯逻辑，操作唯一状态 world</h3>
+      <div class="mods">
+        <div class="mod"><b>world</b><small>建世界 / 国家状态 / 切换扮演国</small></div>
+        <div class="mod"><b>turn</b><small>季度推进总调度（见维度一）</small></div>
+        <div class="mod"><b>politics</b><small>政体 / 改革 / 议会 / 继承选举</small></div>
+        <div class="mod"><b>economy</b><small>产出 / 建筑 / 科技 / 整合
+          <span class="flag done"><b>✅ 新增 integrateTile</b></span></small></div>
+        <div class="mod"><b>diplomacy</b><small>双边关系 / 条约 / 附属
+          <span class="flag done"><b>✅ 宣战已接通 declareWarOn</b></span></small></div>
+        <div class="mod"><b>warfare</b><small>军团 / 移动 / 战斗 / 占领议和
+          <span class="flag done"><b>✅ 炮兵动员 · 尊重停战</b></span></small></div>
+        <div class="mod"><b>trade</b><small>路线流量 / 关税 / 六维压力</small></div>
+        <div class="mod"><b>history</b><small>纪元 / 局势 / 事件 / 因果链</small></div>
+        <div class="mod"><b>strategy</b><small>AI
+          <span class="flag warn"><b>🟡 不外交·不开战（待设计）</b></span></small></div>
+      </div>
+    </div>
+    <div class="flowdown">▼ UI 渲染 world、把 <code>data-*</code> 按钮接回引擎</div>
+    <div class="band ui">
+      <h3><span class="tag">界面层 ui/</span>渲染 + 交互</h3>
+      <div class="mods">
+        <div class="mod"><b>store</b><small>订阅式状态容器（原地改 world）</small></div>
+        <div class="mod"><b>map</b><small>六边形地图 / 10 透镜 / 缩放
+          <span class="flag done"><b>✅ 控制度反映占领 + 每季实时刷新</b></span>
+          <span class="flag done"><b>✅ 失效 data-focus 已清理</b></span>
+          <span class="flag warn"><b>🟡 发展度/POP 缩放仍为展示代理</b></span></small></div>
+        <div class="mod"><b>drawers</b><small>5 大系统抽屉 + 国家/选国弹窗
+          <span class="flag done"><b>✅ 宣战/联姻/互不侵犯/整合/炮兵入口</b></span></small></div>
+        <div class="mod"><b>dialogs</b><small>军团抽屉 / 御前会议 / 事件
+          <span class="flag done"><b>✅ 无路线行军给提示</b></span></small></div>
+      </div>
+    </div>
+    <div class="flowdown">▼ 接线</div>
+    <div class="band wire">
+      <h3><span class="tag">main.js</span>建 world → init 各引擎 → 绑事件 → 主渲染循环</h3>
+      <div class="mods">
+        <div class="mod"><b>状态清理</b><small>原 world.<b>pendingIssues</b> / <b>selectedUnit</b> 死数据
+          <span class="flag done"><b>✅ 已删除</b></span></small></div>
+        <div class="mod"><b>新接线</b><small>war:declare / data-integrate / 炮兵 data-mobilize
+          <span class="flag done"><b>✅ 已接通</b></span></small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 维度三：五大系统现状 + 问题 ===================== -->
+  <h2>维度三 · 五大系统现状（绿=可用 / ✅=本次修复 / 🟡=待设计）</h2>
+  <div class="wrap systems">
+    <div class="sys">
+      <h3>♜ 国家 <small>politics</small></h3>
+      <ul class="ok">
+        <li>6 政体 · 改革槽 ×6（0–5 级）</li>
+        <li>4 类法律切换 · 议会表决</li>
+        <li>6 项国家决议（立宪/绝对主义…）</li>
+        <li>史实领导人继承 / 选举弹窗</li>
+      </ul>
+      <div class="probs">
+        <span class="flag done"><b>✅</b> 新增「领土整合」按钮（控制度 +20）</span>
+        <span class="flag done"><b>✅</b> 删除 government.legitimacy 死字段</span>
+      </div>
+    </div>
+    <div class="sys">
+      <h3>● 经济 <small>economy + trade</small></h3>
+      <ul class="ok">
+        <li>地块产出（人口×控制×破坏×占领）</li>
+        <li>5 建筑 · 3 敕令 · 3 议程</li>
+        <li>9 科技（年代+传播+思想三门槛）</li>
+        <li>贸易政策 · 关税 0/10/25% · 10 商路</li>
+      </ul>
+      <div class="probs">
+        <span class="flag note"><b>🟢</b> 本系统接线完整</span>
+      </div>
+    </div>
+    <div class="sys">
+      <h3>◇ 外交 <small>diplomacy</small></h3>
+      <ul class="ok">
+        <li>有方向双边关系 · 6 级态度</li>
+        <li>使节任务 · 外交容量</li>
+        <li>条约：贸易/通行/联姻/互不侵犯/同盟</li>
+        <li>附属：朝贡/附庸/傀儡 · 领导人外交</li>
+      </ul>
+      <div class="probs">
+        <span class="flag done"><b>✅</b> 宣战入口已接通（declareWarOn）</span>
+        <span class="flag done"><b>✅</b> 联姻 / 互不侵犯条约已暴露</span>
+      </div>
+    </div>
+    <div class="sys">
+      <h3>⚔ 军事 <small>warfare</small></h3>
+      <ul class="ok">
+        <li>军团编制 · 动员步/骑 · 雇佣兵</li>
+        <li>拆分/合并/补员/训练/复员</li>
+        <li>BFS 逐格行军 · 自动战斗 · 占领议和</li>
+        <li>预置百年战争 / 尼科米底亚围城</li>
+      </ul>
+      <div class="probs">
+        <span class="flag done"><b>✅</b> 掌握火炮科技后可铸造炮队</span>
+        <span class="flag warn"><b>🟡</b> 将领仍仅「统治者领军」（待设计）</span>
+      </div>
+    </div>
+    <div class="sys">
+      <h3>▥ 发展 + 纪闻 <small>history</small></h3>
+      <ul class="ok">
+        <li>六纪元状态机 · 时代使命 · 5 步教程</li>
+        <li>局势：黑死病 / 小冰期（三相）</li>
+        <li>玩家事件裁断 · 御前会议 · 垂帘 4 季</li>
+        <li>因果链：君士坦丁堡陷落</li>
+      </ul>
+      <div class="probs">
+        <span class="flag warn"><b>🟡</b> 因果链仅 1 条，其余纪元转折只有文案（待设计）</span>
+      </div>
+    </div>
+    <div class="sys">
+      <h3>🧭 全局体验</h3>
+      <ul class="ok">
+        <li>30+ 政权可切换扮演</li>
+        <li>问题列表驱动「结束季度 / 处理裁断」</li>
+      </ul>
+      <div class="probs">
+        <span class="flag done"><b>✅</b> HUD 改标「行政点/外交点/军事点」区别「军需」</span>
+        <span class="flag warn"><b>🟡</b> 世界除初始两战外仍偏静（待 AI 主动性）</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 维度四：高频入口路由真伪 ===================== -->
+  <h2>维度四 · 高频入口路由真伪（修复后：红色死路已清除）</h2>
+  <div class="wrap routes">
+    <div class="routebox">
+      <h3>底部命令坞（去伪存真后 6 键，均可达真实动作）</h3>
+      <div class="rt live"><span class="btn">宣战</span><span class="arrow">→</span><span class="dest">外交抽屉</span><span class="verdict">✅ 宣战动作已补</span></div>
+      <div class="rt live"><span class="btn">议和</span><span class="arrow">→</span><span class="dest">军事抽屉</span><span class="verdict">✅ 按战争议和</span></div>
+      <div class="rt live"><span class="btn">贸易</span><span class="arrow">→</span><span class="dest">外交抽屉</span><span class="verdict">✅ 贸易协定</span></div>
+      <div class="rt live"><span class="btn">结盟</span><span class="arrow">→</span><span class="dest">外交抽屉</span><span class="verdict">✅ 防御同盟</span></div>
+      <div class="rt live"><span class="btn">联姻</span><span class="arrow">→</span><span class="dest">外交抽屉</span><span class="verdict">✅ 联姻动作已补</span></div>
+      <div class="rt live"><span class="btn">通行权</span><span class="arrow">→</span><span class="dest">外交抽屉</span><span class="verdict">✅ 军事通行</span></div>
+      <div class="rt"><span class="dest" style="opacity:.6">原「间谍」按钮：无谍报系统，已移除（去伪存真）。</span></div>
+    </div>
+    <div class="routebox">
+      <h3>省份面板快捷动作（4 键）</h3>
+      <div class="rt live"><span class="btn">建设</span><span class="arrow">→</span><span class="dest">经济抽屉</span><span class="verdict">✅ 建筑可建</span></div>
+      <div class="rt live"><span class="btn">征兵</span><span class="arrow">→</span><span class="dest">军事抽屉</span><span class="verdict">✅ 动员</span></div>
+      <div class="rt live"><span class="btn">整合</span><span class="arrow">→</span><span class="dest">国家抽屉</span><span class="verdict">✅ 整合机制已落地</span></div>
+      <div class="rt live"><span class="btn">派驻</span><span class="arrow">→</span><span class="dest">军事抽屉</span><span class="verdict">✅ 军团</span></div>
+      <h3 style="margin-top:12px">备注</h3>
+      <div class="rt"><span class="dest">命令坞按钮仍是「打开某抽屉」式跳转，但每个抽屉内现已存在对应真实动作，不再有空点击死路。</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== 维度五：修复进展 ===================== -->
+  <h2>维度五 · 修复进展</h2>
+  <div class="wrap prio">
+    <div class="item done"><span class="mark">✓</span><b>接通「宣战」入口</b> —— declareWarOn 自动以目标国首都为战争目标，外交抽屉与命令坞均可达。</div>
+    <div class="item done"><span class="mark">✓</span>命令坞去伪存真 —— 补齐宣战/联姻动作，移除无系统支撑的「间谍」按钮。</div>
+    <div class="item done"><span class="mark">✓</span>「整合」机制落地 —— integrateTile（20 金钱 + 1 行政点 → 控制度 +20）。</div>
+    <div class="item done"><span class="mark">✓</span>清理死数据与失效逻辑 —— pendingIssues / selectedUnit / data-focus / government.legitimacy。</div>
+    <div class="item done"><span class="mark">✓</span>数值口径 —— 控制度反映占领并实时刷新；HUD 区分「军事点 / 军需」。</div>
+    <div class="item todo"><span class="mark">…</span>给 AI 主动性（宣战/议和）、附属提案平衡、因果链扩展、发展度/POP 口径 —— <b>保留待设计确认</b>。</div>
+  </div>
+
+  <footer>《帝国的代价》hifi 主线 · 机制现状与问题框架图（修复后）　｜　详见 docs/design/17 顶部「本次修复记录」</footer>
+</body>
+</html>

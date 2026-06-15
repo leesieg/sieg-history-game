@@ -100,12 +100,6 @@
       countries,
       playerPolity,
       selectedTile: null,
-      selectedUnit: null,
-      pendingIssues: [
-        { id: "fiscal", label: "财政压力", detail: "巴黎盆地 · 严重", focus: "巴黎盆地" },
-        { id: "army", label: "军团待命", detail: "诺曼底 · 提醒", focus: "诺曼底" },
-        { id: "technology", label: "新科技可采纳", detail: "香槟 · 机会", focus: "香槟" },
-      ],
       worldEvents: [],
       gameOver: false,
     };

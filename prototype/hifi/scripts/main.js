@@ -73,9 +73,9 @@
     setTrend("food", forecast.food, "粮食");
     setTrend("money", forecast.money, "金钱");
     setTrend("military", forecast.military, "军需");
-    setTrend("administrative", null, "行政");
-    setTrend("diplomatic", null, "外交");
-    setTrend("militaryPoint", null, "军事");
+    setTrend("administrative", null, "行政点");
+    setTrend("diplomatic", null, "外交点");
+    setTrend("militaryPoint", null, "军事点");
     setTrend("legitimacy", null, "合法性");
     seasonControl.title = `预计下季：粮 ${forecast.food >= 0 ? "+" : ""}${forecast.food} · 金 ${forecast.money >= 0 ? "+" : ""}${forecast.money} · 军需 ${forecast.military >= 0 ? "+" : ""}${forecast.military}`;
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
@@ -192,8 +192,14 @@
         if (group === "mission") return window.HIFI_DIPLOMACY_ENGINE.startMission(current, current.playerPolity, target, action);
         if (group === "leader") return window.HIFI_DIPLOMACY_ENGINE.performLeaderAction(current, current.playerPolity, target, action);
         if (group === "treaty") return window.HIFI_DIPLOMACY_ENGINE.proposeTreaty(current, current.playerPolity, target, action);
+        if (group === "war") return window.HIFI_WARFARE_ENGINE.declareWarOn(current, current.playerPolity, target);
         return window.HIFI_DIPLOMACY_ENGINE.proposeSubject(current, current.playerPolity, target, action);
       }));
+    });
+    drawerBody.querySelectorAll("[data-integrate]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.integrateTile(current, current.playerPolity, Number(button.dataset.integrate))
+      ));
     });
     drawerBody.querySelectorAll("[data-subject-control]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
@@ -324,6 +330,7 @@
   store.subscribe(current => {
     renderHud(current);
     window.prototypeMap.syncSelection(current.selectedTile);
+    window.prototypeMap.refreshSelected();
     window.prototypeMap.renderMainMap();
   });
   renderHud(store.getState());

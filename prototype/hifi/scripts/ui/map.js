@@ -400,7 +400,9 @@
     document.getElementById("provinceClimate").textContent = CLIMATE[tile.climate];
     document.getElementById("provincePopulation").textContent = formatPopulation(tile);
     document.getElementById("provinceOutput").textContent = good[0];
-    document.getElementById("provinceControl").textContent = tile.isSea ? "—" : `${tile.control}%`;
+    const occupied = !tile.isSea && tile.occupier && (tile.occupation || 0) > 0;
+    document.getElementById("provinceControl").textContent = tile.isSea ? "—"
+      : occupied ? `被占领 ${tile.occupation}%` : `${tile.control}%`;
     document.getElementById("provinceDevelopment").textContent = tile.isSea ? "航道" : String(tile.population * 3 + tile.buildings.length * 8);
     document.getElementById("provinceCulture").textContent = tile.culture;
     document.getElementById("provinceReligion").textContent = tile.religion;
@@ -437,6 +439,11 @@
     if (!tile) throw new Error(`地图中不存在地块：${tileId}`);
     state.selectedId = tile.id;
     updateProvince(tile);
+  }
+
+  function refreshSelected() {
+    const tile = tiles.find(candidate => candidate.id === state.selectedId);
+    if (tile) updateProvince(tile);
   }
 
   function renderLegend() {
@@ -506,8 +513,6 @@
       state.centerY = (event.clientY - rect.top) / rect.height * VIEW.h;
       setZoom(Math.max(1.5, state.zoom));
     });
-    document.querySelectorAll(".issue[data-focus]").forEach(issue => issue.addEventListener("click", () => focusTile(nearestTileForRegion(issue.dataset.focus))));
-
     svg.addEventListener("wheel", event => {
       event.preventDefault();
       setZoom(state.zoom + (event.deltaY < 0 ? 0.2 : -0.2));
@@ -539,5 +544,5 @@
   bindControls();
   const paris = nearestTileForRegion("巴黎盆地");
   selectTile(paris);
-  window.prototypeMap = { tiles, state, focusTile, renderMainMap, setMode, setZoom, syncSelection };
+  window.prototypeMap = { tiles, state, focusTile, renderMainMap, refreshSelected, setMode, setZoom, syncSelection };
 })();

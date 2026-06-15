@@ -15,7 +15,6 @@
       typeLabel: config.label,
       powerName: config.powerName,
       centralPower: type === "monarchy" ? 62 : 55,
-      legitimacy: 70,
       reforms: { administrative: 1, fiscal: 1, military: 1, religious: 1, political: 1, maritime: 0 },
       assembly: { unlocked: config.assemblyUnlocked, type: config.assemblyType, support: config.assemblyUnlocked ? 46 : 0, agenda: "tax" },
       laws: {

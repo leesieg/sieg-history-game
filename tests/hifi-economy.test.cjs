@@ -52,6 +52,15 @@ economy.constructBuilding(world, "法兰西王国", 2, "market");
 assert.ok(tiles[1].buildings.includes("market"));
 assert.equal(country.actionPoints.administrative, 2);
 
+country.actionPoints.administrative = 3;
+country.money = 100;
+const controlBeforeIntegrate = tiles[1].control;
+economy.integrateTile(world, "法兰西王国", 2);
+assert.equal(tiles[1].control, controlBeforeIntegrate + 20, "整合必须提升地块控制度");
+assert.equal(country.actionPoints.administrative, 2, "整合必须消耗行政点");
+tiles[1].control = 100;
+assert.throws(() => economy.integrateTile(world, "法兰西王国", 2), /已完全整合/);
+
 country.ideas = 100;
 world.turn = (1450 - 1337) * 4 + 1;
 country.technologyAwareness.printing = 100;
@@ -90,5 +99,7 @@ assert.ok(drawerSource.includes("data-agenda"), "经济抽屉必须提供国家�
 assert.ok(drawerSource.includes("data-technology"), "发展抽屉必须提供科技采纳");
 assert.ok(mainSource.includes("initializeEconomy"), "入口必须初始化经济状态");
 assert.ok(mainSource.includes("constructBuilding"), "入口必须接通建筑操作");
+assert.ok(drawerSource.includes("data-integrate"), "国家抽屉必须提供领土整合入口");
+assert.ok(mainSource.includes("integrateTile"), "入口必须接通整合操作");
 
 console.log("hifi economy engine passed");

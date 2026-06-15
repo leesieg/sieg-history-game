@@ -12,7 +12,11 @@
     ];
   }
 
-  function renderPolitics(country) {
+  function renderPolitics(country, world) {
+    const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
+    const integrate = tile && !tile.isSea && tile.polity === country.name
+      ? actionButton("data-integrate", String(tile.id), `整合 ${tile.city || tile.region}`, `控制度 ${Math.round(tile.control ?? 0)} · 20 金钱`)
+      : '<div class="drawer-row">整合：请选择己方地块<span>—</span></div>';
     const reforms = Object.entries(country.government.reforms)
       .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${key}<span>${value} / 5</span></button>`)
       .join("");
@@ -35,6 +39,7 @@
       <div class="drawer-subtitle">法律</div>${laws}
       <div class="drawer-subtitle">议会</div>${assembly}
       <div class="drawer-subtitle">国家决议</div>${decisions}
+      <div class="drawer-subtitle">领土整合</div>${integrate}
       <div class="drawer-subtitle">阶层：权力 / 满意</div>${estates}`;
   }
 
@@ -120,6 +125,7 @@
       <div class="drawer-subtitle">征募：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
       ${actionButton("data-mobilize", "infantry", "动员步兵", "消耗地块 POP")}
       ${actionButton("data-mobilize", "cavalry", "动员骑兵", "消耗地块 POP")}
+      ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "军需 30") : ""}
       ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱")}
       <div class="drawer-subtitle">军团</div>
       ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
@@ -141,6 +147,7 @@
     const relation = engine.relationView(world, target, country.name);
     const targetCountry = world.countries[target];
     const subject = engine.subjectBetween(world, country.name, target);
+    const atWar = window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, target);
     const targetButtons = targets.map(name =>
       actionButton("data-diplomatic-target", name, name, engine.diplomaticAttitude(world, country.name, name), name === target)
     ).join("");
@@ -151,11 +158,14 @@
       ["leader:threaten", "公开威慑", "恐惧与宿怨"],
       ["treaty:trade", "贸易协定", "长期承诺"],
       ["treaty:access", "军事通行", "开放路线"],
+      ["treaty:marriage", "王室联姻", "长期联结"],
+      ["treaty:nonaggression", "互不侵犯", "短期止戈"],
       ["treaty:alliance", "防御同盟", "共同防御"],
       ["subject:tributary", "要求朝贡", "高自主"],
       ["subject:vassal", "要求附庸", "中自主"],
       ["subject:puppet", "建立傀儡", "低自主"],
-    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
+      ["war:declare", "宣战", atWar ? "已处于战争" : "开启战争"],
+    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail, key === "war:declare" && atWar)).join("");
     const subjectRows = subject
       ? `<div class="drawer-subtitle">权利结构</div>
         <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>
@@ -179,7 +189,7 @@
 
   function renderSystem(system, world) {
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
-    if (system === "国家") return renderPolitics(country);
+    if (system === "国家") return renderPolitics(country, world);
     if (system === "经济") return renderEconomy(country, world);
     if (system === "外交") return renderDiplomacy(country, world);
     if (system === "军事") return renderMilitary(country, world);
@@ -304,7 +314,7 @@
       closeLayer("countrySelectModal");
     });
 
-    return { renderCountryModal, renderPendingElection, renderSystem };
+    return { renderCountryModal, renderPendingElection };
   }
 
   window.HIFI_DRAWERS = { bindCountryDialogs, renderSystem };

@@ -51,7 +51,11 @@
       });
       body.querySelectorAll("[data-army-order]").forEach(button => {
         button.addEventListener("click", () => store.update(current => {
-          current.warfare.armies[armyId].order = button.dataset.armyOrder;
+          const ordered = current.warfare.armies[armyId];
+          ordered.order = button.dataset.armyOrder;
+          if (button.dataset.armyOrder === "march" && !ordered.plannedPath.length) {
+            window.hifiGame?.showToast?.("尚未规划路线，先点「规划路线」选择目标");
+          }
         }));
       });
       body.querySelectorAll("[data-army-manage]").forEach(button => {

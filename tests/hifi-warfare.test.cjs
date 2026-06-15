@@ -131,6 +131,36 @@ assert.equal(tiles[2].polity, "法兰西王国");
 assert.equal(tiles[2].occupier, null);
 assert.equal(warfare.areAtWar(world, "法兰西王国", "英格兰王国"), false);
 
+// declareWarOn / 停战 / 炮兵：独立小世界，避免历史战争与失地国家干扰
+const freshTiles = [
+  { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0, occupier: null, occupation: 0 },
+  { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", x: 50, y: 10, control: 70, devastation: 0, occupier: null, occupation: 0 },
+];
+const freshWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(freshWorld);
+warfare.initializeWarfare(freshWorld);
+freshWorld.diplomacy.wars = [];
+freshWorld.diplomacy.truces = [];
+
+const onWar = warfare.declareWarOn(freshWorld, "法兰西王国", "英格兰王国");
+assert.equal(onWar.primaryGoal.tileId, 1, "declareWarOn 必须以目标国首都为战争目标");
+assert.equal(warfare.areAtWar(freshWorld, "法兰西王国", "英格兰王国"), true);
+assert.throws(() => warfare.declareWarOn(freshWorld, "法兰西王国", "法兰西王国"), /本国/);
+
+freshWorld.diplomacy.wars = [];
+freshWorld.diplomacy.truces.push({ parties: ["法兰西王国", "英格兰王国"], endsTurn: freshWorld.turn + 5 });
+assert.equal(warfare.underTruce(freshWorld, "法兰西王国", "英格兰王国"), true);
+assert.throws(() => warfare.declareWarOn(freshWorld, "法兰西王国", "英格兰王国"), /停战/);
+
+const fr = freshWorld.countries["法兰西王国"];
+fr.actionPoints.military = 2;
+fr.military = 100;
+assert.throws(() => warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "artillery"), /火炮/);
+fr.technology.artillery = true;
+const artilleryArmy = warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "artillery");
+assert.equal(artilleryArmy.units[0].combatType, "artillery");
+assert.equal(fr.military, 70, "铸炮必须消耗军需 30");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const mapSource = fs.readFileSync(path.join(root, "ui", "map.js"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
@@ -142,5 +172,8 @@ assert.ok(drawerSource.includes("data-army-open"));
 assert.ok(fs.readFileSync(path.join(root, "ui", "dialogs.js"), "utf8").includes("data-army-plan"));
 assert.ok(drawerSource.includes("data-peace-war"));
 assert.ok(drawerSource.includes("data-peace-term"));
+assert.ok(drawerSource.includes("war:declare"), "外交抽屉必须提供宣战入口");
+const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");
+assert.ok(mainSource.includes("declareWarOn"), "入口必须接通宣战操作");
 
 console.log("hifi warfare engine passed");

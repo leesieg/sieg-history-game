@@ -97,6 +97,18 @@
     return tile;
   }
 
+  function integrateTile(world, polity, tileId) {
+    const country = world.countries[polity];
+    const tile = world.tiles.find(candidate => candidate.id === tileId);
+    if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能整合己方陆地");
+    if ((tile.control ?? 0) >= 100) throw new Error("该地块已完全整合");
+    if (country.money < 20 || country.actionPoints.administrative < 1) throw new Error("整合资源不足");
+    country.money -= 20;
+    country.actionPoints.administrative -= 1;
+    tile.control = Math.min(100, (tile.control ?? 0) + 20);
+    return tile;
+  }
+
   function adoptTechnology(world, polity, key) {
     const country = world.countries[polity];
     const technology = rules.technologies[key];
@@ -151,6 +163,7 @@
     constructBuilding,
     enactEdict,
     initializeEconomy,
+    integrateTile,
     setAgenda,
     setTradePolicy,
     settleCountry,

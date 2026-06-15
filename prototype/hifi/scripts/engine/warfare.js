@@ -200,11 +200,24 @@
   }
 
   function mobilizeArmy(world, polity, tileId, combatType = "infantry") {
-    if (!["infantry", "cavalry"].includes(combatType)) throw new Error("只能动员步兵或骑兵");
+    if (!["infantry", "cavalry", "artillery"].includes(combatType)) throw new Error("只能动员步兵、骑兵或炮兵");
     const tile = world.tiles.find(item => item.id === tileId);
     const country = world.countries[polity];
     if (!tile || tile.polity !== polity || tile.isSea) throw new Error("只能在己方陆地动员");
-    if (country.actionPoints.military < 1 || tile.population < 2) throw new Error("动员条件不足");
+    if (country.actionPoints.military < 1) throw new Error("军事点不足");
+    if (combatType === "artillery") {
+      if (!canRecruitCombatType(world, polity, "artillery")) throw new Error("尚未掌握火炮技术");
+      if (country.military < 30) throw new Error("铸炮需要军需 30");
+      country.actionPoints.military -= 1;
+      country.military -= 30;
+      return createArmy(world, {
+        owner: polity,
+        tileId,
+        name: `${tile.city || tile.region}炮队`,
+        units: [{ combatType: "artillery", serviceType: "professional", soldiers: 300, sourceTileId: tileId }],
+      });
+    }
+    if (tile.population < 2) throw new Error("地块人口不足以征召");
     const soldiers = combatType === "cavalry" ? 500 : 1200;
     country.actionPoints.military -= 1;
     tile.population = Math.max(1, tile.population - soldiers / 1000);
@@ -307,8 +320,26 @@
     throw new Error("目标不可达");
   }
 
+  function underTruce(world, a, b) {
+    return world.diplomacy.truces.some(truce =>
+      world.turn < truce.endsTurn
+      && truce.parties.includes(a)
+      && truce.parties.includes(b)
+    );
+  }
+
+  function declareWarOn(world, attacker, defender, name) {
+    if (!world.countries[defender]) throw new Error("目标国家不存在");
+    if (attacker === defender) throw new Error("不能对本国宣战");
+    const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, defender).find(tile => tile.city)
+      || window.HIFI_WORLD_ENGINE.controlledTiles(world, defender)[0];
+    if (!target) throw new Error("目标国家没有可争夺的领土");
+    return declareWar(world, attacker, defender, target.id, name || `${attacker}对${defender}的战争`);
+  }
+
   function declareWar(world, attacker, defender, targetTileId, name = "边境战争") {
     if (areAtWar(world, attacker, defender)) throw new Error("双方已经交战");
+    if (underTruce(world, attacker, defender)) throw new Error("停战协定期内不能宣战");
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
       name,
@@ -489,6 +520,8 @@
     createArmy,
     demobilizeLevies,
     declareWar,
+    declareWarOn,
+    underTruce,
     executeMovementPhase,
     dismissGeneral,
     hireMercenary,
