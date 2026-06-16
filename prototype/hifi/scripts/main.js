@@ -208,6 +208,11 @@
         window.HIFI_ECONOMY_ENGINE.integrateTile(current, current.playerPolity, Number(button.dataset.integrate))
       ));
     });
+    drawerBody.querySelectorAll("[data-develop]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_ECONOMY_ENGINE.developTile(current, current.playerPolity, Number(button.dataset.develop))
+      ));
+    });
     drawerBody.querySelectorAll("[data-subject-control]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         const subject = window.HIFI_DIPLOMACY_ENGINE.subjectBetween(

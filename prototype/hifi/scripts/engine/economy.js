@@ -71,7 +71,9 @@
     // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     country.food += report.food;
-    country.money += Math.round(report.money * central);
+    // 封闭贸易牺牲对外商路、换取本土产出流加成（与下方 open 的对外收益互为取舍）
+    const domesticMoney = country.tradePolicy === "closed" ? report.money * 1.05 : report.money;
+    country.money += Math.round(domesticMoney * central);
     country.military += Math.round(report.military * central);
     if (country.tradePolicy === "open") {
       const trade = Math.max(2, Math.round(report.money * .12));
@@ -120,6 +122,19 @@
     // 行政改革提升整合效率（核心循环：改革→控制度，回头放大产出流）
     const integrateGain = 20 + (country.government?.reforms?.administrative || 0) * 2;
     tile.control = Math.min(100, (tile.control ?? 0) + integrateGain);
+    return tile;
+  }
+
+  // 资本池消费出口：把贸易流的蓄水池投入基底改造（核心循环：贸易流→资本→基底→更大产出流）
+  function developTile(world, polity, tileId) {
+    const country = world.countries[polity];
+    const tile = world.tiles.find(candidate => candidate.id === tileId);
+    if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能开发己方陆地");
+    if ((country.capital || 0) < 30) throw new Error("资本池不足（需 30）");
+    if (country.actionPoints.administrative < 1) throw new Error("行政点不足");
+    country.capital -= 30;
+    country.actionPoints.administrative -= 1;
+    tile.population = Math.round((tile.population + 1) * 10) / 10;
     return tile;
   }
 
@@ -175,6 +190,7 @@
   window.HIFI_ECONOMY_ENGINE = {
     adoptTechnology,
     constructBuilding,
+    developTile,
     enactEdict,
     initializeEconomy,
     integrateTile,

@@ -166,9 +166,9 @@
     const rules = window.HIFI_RULES;
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const policies = [
-      ["closed", "封闭贸易", "稳定"],
+      ["closed", "封闭贸易", "本土产出 +5% · 商路分成减半"],
       ["normal", "常规贸易", "均衡"],
-      ["open", "开放贸易", "资本增长"],
+      ["open", "开放贸易", "商路分成 +30% · 积累资本"],
     ].map(([key, label, detail]) =>
       actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)
     ).join("");
@@ -195,10 +195,14 @@
     const tileLabel = tile && !tile.isSea
       ? `${tile.city || tile.region} · ${tile.polity === country.name ? "可建设" : "非己方地块"}`
       : "请选择己方陆地";
+    const develop = tile && !tile.isSea && tile.polity === country.name
+      ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 · 人口 +1")
+      : '<div class="drawer-row">资本开发：请选择己方地块<span>—</span></div>';
     return `<div class="drawer-row">粮食<span>${Math.round(country.food)}</span></div>
       <div class="drawer-row">国库<span>${Math.round(country.money)}</span></div>
       <div class="drawer-row">军需<span>${Math.round(country.military)}</span></div>
-      <div class="drawer-row">资本池<span>${Math.round(country.capital)}</span></div>
+      <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
+      ${develop}
       <div class="drawer-subtitle">贸易政策</div>${policies}
       <div class="drawer-subtitle">关税</div>${tariffs}
       <div class="drawer-subtitle">结构压力</div>${pressures}

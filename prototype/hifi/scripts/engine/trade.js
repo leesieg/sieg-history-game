@@ -75,7 +75,10 @@
         const polity = nodeTile(world, city)?.polity;
         if (!world.countries[polity]) continue;
         const tariff = 1 + world.countries[polity].tariff / 100;
-        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff;
+        // 贸易政策调节对外商路分成（封闭 ×0.5 / 常规 ×1 / 开放 ×1.3，与本土产出互为取舍）
+        const policy = world.countries[polity].tradePolicy;
+        const policyFactor = policy === "closed" ? .5 : policy === "open" ? 1.3 : 1;
+        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff * policyFactor;
       }
     }
     for (const [polity, country] of Object.entries(world.countries)) {
