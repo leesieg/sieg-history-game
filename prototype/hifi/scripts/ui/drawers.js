@@ -202,6 +202,7 @@
       <div class="drawer-row">国库<span>${Math.round(country.money)}</span></div>
       <div class="drawer-row">军需<span>${Math.round(country.military)}</span></div>
       <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
+      <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
       ${develop}
       <div class="drawer-subtitle">贸易政策</div>${policies}
       <div class="drawer-subtitle">关税</div>${tariffs}
@@ -228,7 +229,7 @@
     const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
     return `<div class="drawer-row">思想点<span>${Math.round(country.ideas)}</span></div>
       <div class="drawer-row">时代进度<span>${country.ageProgress}%</span></div>
-      <div class="drawer-row">探索点<span>${country.exploration.points}</span></div>
+      <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
       <div class="drawer-subtitle">时代使命</div>${missions}
       <div class="drawer-subtitle">导师指引</div><div class="drawer-row">${tutorial?.label || "已完成全部指引"}<span>${world.tutorial.step} / 5</span></div>
       <div class="drawer-subtitle">科技采纳</div>${technologies}`;

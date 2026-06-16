@@ -59,6 +59,10 @@
       if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += 1;
       if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {
         country.exploration.milestones.push("atlantic");
+        country.exploration.colonial = true;   // 解锁殖民收入流（economy.settleCountry 每季注入）
+        country.ideas += 10;
+        country.money += 20;
+        pushChronicle(world, country.name, "milestone", "开辟大西洋航路，殖民收入开始流入");
       }
     }
   }

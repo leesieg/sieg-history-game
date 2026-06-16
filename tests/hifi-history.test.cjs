@@ -68,6 +68,17 @@ assert.equal(advanced, 2);
 world.playerEvents.push({ id: "event-2", title: "危机", choices: [] });
 assert.equal(history.shouldInterruptRegency(world), true);
 
+// 探索里程碑回报：累积 20 探索点开辟大西洋航路，解锁殖民收入流
+const explorer = world.countries["法兰西王国"];
+explorer.exploration.points = 20;
+explorer.exploration.milestones = [];
+explorer.ideas = 0; // 本测试未加载经济引擎，手动初始化思想点
+const ideasBeforeMilestone = explorer.ideas;
+history.spreadTechnology(world);
+assert.ok(explorer.exploration.milestones.includes("atlantic"), "累积探索点必须开辟大西洋航路");
+assert.equal(explorer.exploration.colonial, true, "里程碑必须解锁殖民收入流");
+assert.ok(explorer.ideas > ideasBeforeMilestone, "里程碑必须给一次性思想奖励");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");
 const dialogSource = fs.readFileSync(path.join(root, "ui", "dialogs.js"), "utf8");

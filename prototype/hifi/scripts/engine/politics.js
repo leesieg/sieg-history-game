@@ -336,6 +336,7 @@
     const power = country.government?.centralPower ?? 60;
     const powerDrift = power >= 60 ? -.5 : power <= 30 ? .5 : 0;
     const crownCost = power > 70;                       // 集权代价：高王权每季压低满意
+    const inflationPain = (country.priceIndex || 1) > 1.2; // 通胀代价：高物价压低平民满意
     let unrest = 0;
     for (const [key, estate] of Object.entries(country.estates)) {
       const satisfaction = estate.satisfaction;
@@ -351,6 +352,7 @@
       if (satisfaction > 0) estate.satisfaction = Math.max(0, satisfaction - 1);
       else if (satisfaction < 0) estate.satisfaction = Math.min(0, satisfaction + 1);
       if (crownCost) estate.satisfaction = Math.max(-100, estate.satisfaction - 1);
+      if (inflationPain && estateResource[key] === "food") estate.satisfaction = Math.max(-100, estate.satisfaction - 1);
       if (powerDrift) estate.power = Math.max(0, Math.min(100, (estate.power || 0) + powerDrift));
     }
     country.unrest = Math.max(0, Math.round((country.unrest || 0) * .85 + unrest));

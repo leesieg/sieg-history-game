@@ -55,6 +55,8 @@
       money *= 1 + (reforms.fiscal || 0) * .03;
       military *= 1 + (reforms.military || 0) * .03;
     }
+    // 物价指数推升名义金钱产出流（价格革命：白银流入→物价上行）
+    if (country.priceIndex) money *= country.priceIndex;
     return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
   }
 
@@ -80,6 +82,12 @@
       country.money += trade;
       country.capital += Math.max(1, Math.round(trade * .2));
       report.trade = trade;
+    }
+    // 探索里程碑解锁的殖民收入流（核心循环：探索流→收入流）
+    if (country.exploration?.colonial) {
+      country.money += 6;
+      country.capital += 2;
+      report.colonial = 6;
     }
     if (country.technology.printing) country.ideas += 3;
     if (country.agenda) {

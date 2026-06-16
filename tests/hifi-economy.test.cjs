@@ -134,6 +134,21 @@ assert.ok(devTile.population > popBeforeDevelop, "资本开发必须提升地块
 assert.equal(crown.capital, 70, "资本开发必须消耗 30 资本");
 assert.throws(() => { crown.capital = 5; economy.developTile(crownWorld, "法兰西王国", devTile.id); }, /资本池不足/);
 
+// 物价指数推升名义金钱产出流
+crown.priceIndex = 1;
+const moneyParPrice = economy.tileOutput(devTile, crown).money;
+crown.priceIndex = 1.5;
+assert.ok(economy.tileOutput(devTile, crown).money > moneyParPrice, "物价指数必须推升名义金钱产出流");
+// 殖民收入流（探索里程碑）
+crown.exploration = { colonial: true };
+crown.money = 0;
+economy.settleCountry(crownWorld, "法兰西王国");
+const withColonial = crown.money;
+crown.exploration.colonial = false;
+crown.money = 0;
+economy.settleCountry(crownWorld, "法兰西王国");
+assert.ok(withColonial > crown.money, "殖民收入流必须增加每季结算收入");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");

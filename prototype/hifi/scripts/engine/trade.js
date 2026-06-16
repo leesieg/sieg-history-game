@@ -81,11 +81,14 @@
         world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff * policyFactor;
       }
     }
+    // 白银累积推升物价（价格革命：白银流→物价指数）
+    const inflation = Math.min(2, 1 + (world.trade.pools.silver || 0) / 4000);
     for (const [polity, country] of Object.entries(world.countries)) {
       const income = Math.round(world.trade.lastIncome[polity] || 0);
       country.money += income;
       country.capital += Math.round(income * .15);
       if (country.lastReport) country.lastReport.trade = income;
+      if (inflation > 1) country.priceIndex = Math.max(country.priceIndex || 1, inflation);
       computePressures(world, polity);
     }
     return world.trade.lastIncome;
