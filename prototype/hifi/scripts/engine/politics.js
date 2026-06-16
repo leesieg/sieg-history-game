@@ -106,13 +106,21 @@
       civic: { estate: { merchants: 8, citizens: 8, companies: 6, guilds: 4 }, powerCap: 70 },
       constitutional: { estate: {}, legitimacy: 4, powerCap: 60 },
       absolute: {
-        requires: country => (country.government.reforms.fiscal || 0) >= 3,
-        why: "需要财政改革 ≥ 3 才能集中绝对权力",
+        requires: (country, world) => (country.government.reforms.fiscal || 0) >= 3 && eraReached(world, "absolutism"),
+        why: "需要绝对主义纪元与财政改革 ≥ 3 才能集中绝对权力",
         estate: { nobles: -8, patricians: -8 },
         power: 8,
       },
     },
   };
+
+  // 纪元改规则：部分决议/法律只在对应纪元开放（核心循环：转折层→可用机制）
+  function eraReached(world, key) {
+    const eras = window.HIFI_HISTORY_ENGINE?.eras;
+    if (!eras) return true; // 历史引擎未加载时不施加纪元限制
+    const index = eras.findIndex(era => era.key === key);
+    return index < 0 || (world.eraIndex || 0) >= index;
+  }
 
   const decisions = {
     estates_general: {
@@ -137,8 +145,8 @@
     },
     fiscal_absolutism: {
       label: "绝对主义财政路线",
-      can: country => country.government.reforms.fiscal >= 3 && country.government.centralPower >= 60,
-      why: "需要财政改革 3 与权力 60",
+      can: (country, world) => country.government.reforms.fiscal >= 3 && country.government.centralPower >= 60 && eraReached(world, "absolutism"),
+      why: "需要绝对主义纪元、财政改革 3 与权力 60",
       apply: country => {
         country.government.laws.taxation = "uniform";
         country.government.laws.authority = "absolute";
@@ -167,10 +175,11 @@
     },
     civic_republic: {
       label: "建立公民共和国",
-      can: country => ["monarchy", "merchant_republic"].includes(country.government.type)
+      can: (country, world) => ["monarchy", "merchant_republic"].includes(country.government.type)
         && country.government.assembly.unlocked
-        && country.government.reforms.political >= 5,
-      why: "需要议会与政治改革 5",
+        && country.government.reforms.political >= 5
+        && eraReached(world, "revolution"),
+      why: "需要革命纪元、议会与政治改革 5",
       government: "republic",
     },
   };

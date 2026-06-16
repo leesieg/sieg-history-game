@@ -136,6 +136,15 @@ france.estates.nobles.power = 50;
 politics.processEstates(world, "法兰西王国");
 assert.ok(france.estates.nobles.power < 50, "高王权必须压低阶层权力");
 
+// 纪元改规则：绝对主义财政路线只在绝对主义纪元后开放
+vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/history.js"), "utf8"), context);
+france.government.reforms.fiscal = 3;
+france.government.centralPower = 60;
+world.eraIndex = 0;
+assert.equal(politics.decisions.fiscal_absolutism.can(france, world), false, "未到绝对主义纪元不能行绝对主义财政");
+world.eraIndex = 3;
+assert.equal(politics.decisions.fiscal_absolutism.can(france, world), true, "绝对主义纪元后可行绝对主义财政");
+
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert.ok(html.includes('id="countryModal"'));
 assert.ok(html.includes('id="countrySelectModal"'));
