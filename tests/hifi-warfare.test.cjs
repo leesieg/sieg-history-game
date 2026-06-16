@@ -179,6 +179,20 @@ recoverTile.population = recoverTile.basePopulation - 2;
 warfare.processWarfare(freshWorld);
 assert.ok(recoverTile.population > recoverTile.basePopulation - 2, "和平地块人口必须自然恢复");
 
+// 防御同盟自动参战
+const allyWorld = worldEngine.createWorld([
+  { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
+  { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", x: 50, y: 10, control: 70, devastation: 0 },
+  { id: 2, isSea: false, polity: "卡斯蒂利亚王国", population: 9, buildings: [], city: "布尔戈斯", terrain: "plains", x: 30, y: 40, control: 70, devastation: 0 },
+]);
+diplomacy.initializeDiplomacy(allyWorld);
+warfare.initializeWarfare(allyWorld);
+allyWorld.diplomacy.wars = [];
+allyWorld.diplomacy.truces = [];
+allyWorld.diplomacy.treaties.push({ id: "treaty-x", type: "alliance", parties: ["英格兰王国", "卡斯蒂利亚王国"], startedTurn: 1, minimumUntilTurn: 5, endsTurn: 99 });
+const allyWar = warfare.declareWarOn(allyWorld, "法兰西王国", "英格兰王国");
+assert.ok(allyWar.defenders.includes("卡斯蒂利亚王国"), "防御同盟必须让盟友自动参战");
+
 // 动员法律调节征召的人口流成本（需 politics 的 lawEffects）
 vm.runInNewContext(fs.readFileSync(path.join(root, "engine", "politics.js"), "utf8"), context);
 const levyWorld = worldEngine.createWorld([

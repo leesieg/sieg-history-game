@@ -324,6 +324,19 @@
       subjectCountry.money -= paid;
       overlord.money += paid;
     }
+    // 关系随战争演化：交战双方逐季累积领土矛盾与威胁（核心循环：军事→外交关系）
+    for (const war of world.diplomacy.wars || []) {
+      for (const attacker of war.attackers) {
+        for (const defender of war.defenders) {
+          if (!world.countries[attacker] || !world.countries[defender]) continue;
+          for (const [viewer, other] of [[attacker, defender], [defender, attacker]]) {
+            const side = relationView(world, viewer, other);
+            side.territorialConflict = clamp(side.territorialConflict + 1);
+            side.threat = clamp(side.threat + 1);
+          }
+        }
+      }
+    }
     for (const polity of Object.keys(world.countries)) {
       if (capacityUsed(world, polity) <= capacity(world, polity)) continue;
       world.countries[polity].actionPoints.diplomatic = Math.max(0, world.countries[polity].actionPoints.diplomatic - 1);

@@ -286,7 +286,7 @@
       ["treaty:access", "军事通行", "开放路线"],
       ["treaty:marriage", "王室联姻", "长期联结"],
       ["treaty:nonaggression", "互不侵犯", "短期止戈"],
-      ["treaty:alliance", "防御同盟", "共同防御"],
+      ["treaty:alliance", "防御同盟", "盟友被攻击自动参战"],
       ["subject:tributary", "要求朝贡", "高自主"],
       ["subject:vassal", "要求附庸", "中自主"],
       ["subject:puppet", "建立傀儡", "低自主"],
@@ -313,7 +313,7 @@
       <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
       <div class="drawer-row">信任<span>${relation.trust}</span></div>
       <div class="drawer-row">威胁<span>${relation.threat}</span></div>
-      <div class="drawer-row">战略利益<span>${relation.strategicInterest}</span></div>
+      <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${relation.strategicInterest}</span></div>
       <div class="drawer-subtitle">外交行动</div>${actions}${warAction}${subjectRows}`;
   }
 

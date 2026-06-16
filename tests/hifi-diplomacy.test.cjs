@@ -98,6 +98,16 @@ diplomacy.adjustSubjectControl(world, "法兰西王国", subject.id, "tighten");
 assert.ok(subject.autonomy < autonomyBefore);
 assert.ok(subject.loyalty < loyaltyBefore);
 
+// 关系随战争演化：交战逐季累积领土矛盾
+diplomacy.relationView(world, "法兰西王国", "英格兰王国").territorialConflict = 0;
+diplomacy.relationView(world, "英格兰王国", "法兰西王国").territorialConflict = 0;
+world.diplomacy.wars.push({
+  id: "war-evolve", attackers: ["法兰西王国"], defenders: ["英格兰王国"],
+  primaryGoal: { tileId: 2, claimant: "法兰西王国" }, score: 0, startedTurn: world.turn, participants: {},
+});
+diplomacy.processDiplomacy(world);
+assert.ok(diplomacy.relationView(world, "法兰西王国", "英格兰王国").territorialConflict > 0, "交战必须抬升领土矛盾");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");

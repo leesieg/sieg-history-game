@@ -358,6 +358,15 @@
         [defender]: { side: "defender", warWill: 85, contribution: 0 },
       },
     };
+    // 防御同盟自动参战（条约的结构性后果：盟友被攻击则共同防御）
+    for (const treaty of world.diplomacy.treaties || []) {
+      if (treaty.type !== "alliance" || !treaty.parties.includes(defender)) continue;
+      const ally = treaty.parties.find(party => party !== defender);
+      if (!ally || ally === attacker || war.defenders.includes(ally) || !world.countries[ally]) continue;
+      if (underTruce(world, ally, attacker)) continue;
+      war.defenders.push(ally);
+      war.participants[ally] = { side: "defender", warWill: 70, contribution: 0 };
+    }
     world.diplomacy.wars.push(war);
     return war;
   }
