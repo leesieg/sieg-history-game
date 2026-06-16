@@ -321,6 +321,36 @@
     return world.pendingElection;
   }
 
+  // 阶层关联的资源流：不满阶层每季惩罚对应流（核心循环：满意度→流）
+  const estateResource = {
+    nobles: "military", patricians: "military", port_nobles: "military", princes: "military", court: "military", warriors: "military", orders: "military",
+    merchants: "money", companies: "money", citizens: "money", guilds: "money", oligarchs: "money", cities: "money", governors: "money", bureaucrats: "money",
+    church: "legitimacy", clergy: "legitimacy", imperial_church: "legitimacy", shamans: "legitimacy", legate: "legitimacy", kin: "legitimacy", speaker: "legitimacy",
+    peasants: "food", commons: "food", faithful: "food", sailors: "food", herders: "food", clans: "food",
+  };
+
+  function processEstates(world, polity) {
+    const country = world.countries[polity];
+    if (!country.estates) return 0;
+    let unrest = 0;
+    for (const [key, estate] of Object.entries(country.estates)) {
+      const satisfaction = estate.satisfaction;
+      if (satisfaction < -40) {
+        const resource = estateResource[key] || "money";
+        const deficit = -40 - satisfaction;             // 0..60，越不满惩罚越重
+        const weight = 1 + (estate.power || 0) / 100;    // 越有权力的阶层闹得越凶
+        const penalty = Math.round(deficit / 20 * weight);
+        country[resource] = Math.max(0, (country[resource] || 0) - penalty);
+        unrest += penalty;
+      }
+      // 满意度向 0 缓慢回归：一次性政策冲击会淡化，长期制度成本（流乘数）才持久
+      if (satisfaction > 0) estate.satisfaction = Math.max(0, satisfaction - 1);
+      else if (satisfaction < 0) estate.satisfaction = Math.min(0, satisfaction + 1);
+    }
+    country.unrest = Math.max(0, Math.round((country.unrest || 0) * .85 + unrest));
+    return country.unrest;
+  }
+
   function completeElection(world, index) {
     if (!world.pendingElection) throw new Error("当前没有待处理选举");
     const candidate = world.pendingElection.candidates[index];
@@ -337,6 +367,7 @@
     createEstates,
     createGovernment,
     initializePolitics,
+    processEstates,
     processLeadership,
     decisions,
     enactDecision,

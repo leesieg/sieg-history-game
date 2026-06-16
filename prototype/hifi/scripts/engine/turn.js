@@ -25,6 +25,7 @@
     }
     if (window.HIFI_POLITICS_ENGINE) {
       for (const polity of Object.keys(world.countries)) {
+        window.HIFI_POLITICS_ENGINE.processEstates(world, polity);
         if (!world.pendingElection) window.HIFI_POLITICS_ENGINE.processLeadership(world, polity);
       }
     }

@@ -131,8 +131,11 @@
       const estates = Object.values(country.estates)
         .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
         .join("");
+      const unrestRow = country.unrest
+        ? `<div class="drawer-row">${codexTerm("阶层", "国内不满")}<span>${Math.round(country.unrest)}</span></div>`
+        : "";
       return `${tabBar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
-        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estates}`;
+        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estates}${unrestRow}`;
     }
 
     // 决议

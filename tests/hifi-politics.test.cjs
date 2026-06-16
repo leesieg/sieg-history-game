@@ -120,6 +120,16 @@ france.government.reforms.administrative = 3;
 economy.integrateTile(world, "法兰西王国", 93);
 assert.ok(world.tiles.find(t => t.id === 93).control > 60, "行政改革必须提高整合效率");
 
+// 阶层满意度接入流：不满阶层每季惩罚关联资源流 + 累积不满 + 满意度向 0 回归
+france.estates.nobles.satisfaction = -60;
+france.estates.nobles.power = 42;
+france.military = 100;
+france.unrest = 0;
+politics.processEstates(world, "法兰西王国");
+assert.ok(france.military < 100, "不满的贵族必须惩罚军需流");
+assert.ok(france.unrest >= 1, "不满必须累积国内不满");
+assert.equal(france.estates.nobles.satisfaction, -59, "满意度必须向 0 缓慢回归");
+
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert.ok(html.includes('id="countryModal"'));
 assert.ok(html.includes('id="countrySelectModal"'));
