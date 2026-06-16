@@ -161,6 +161,24 @@ const artilleryArmy = warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "ar
 assert.equal(artilleryArmy.units[0].combatType, "artillery");
 assert.equal(fr.military, 70, "铸炮必须消耗军需 30");
 
+// 战争疲惫硬惩罚 + 和平消退
+freshWorld.diplomacy.wars = [];
+fr.warfare.warExhaustion = 30;
+fr.legitimacy = 80;
+warfare.processWarfare(freshWorld);
+assert.ok(fr.legitimacy < 80, "战争疲惫必须拖累合法性");
+assert.equal(fr.warfare.warExhaustion, 28, "和平时战争疲惫必须逐季消退");
+// 疲惫过高封锁征召
+fr.warfare.warExhaustion = 45;
+fr.actionPoints.military = 2;
+assert.throws(() => warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "infantry"), /战争疲惫/);
+// 人口自然恢复流
+fr.warfare.warExhaustion = 0;
+const recoverTile = freshWorld.tiles[0];
+recoverTile.population = recoverTile.basePopulation - 2;
+warfare.processWarfare(freshWorld);
+assert.ok(recoverTile.population > recoverTile.basePopulation - 2, "和平地块人口必须自然恢复");
+
 // 动员法律调节征召的人口流成本（需 politics 的 lawEffects）
 vm.runInNewContext(fs.readFileSync(path.join(root, "engine", "politics.js"), "utf8"), context);
 const levyWorld = worldEngine.createWorld([

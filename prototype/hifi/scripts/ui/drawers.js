@@ -240,7 +240,7 @@
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const canRecruit = tile && !tile.isSea && tile.polity === country.name;
     return `<div class="drawer-row">军事点<span>${country.actionPoints.military}</span></div>
-      <div class="drawer-row">战争疲惫<span>${country.warfare.warExhaustion}</span></div>
+      <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${Math.round(country.warfare.warExhaustion)}</span></div>
       <div class="drawer-subtitle">征募：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
       ${actionButton("data-mobilize", "infantry", "动员步兵", "消耗地块 POP")}
       ${actionButton("data-mobilize", "cavalry", "动员骑兵", "消耗地块 POP")}

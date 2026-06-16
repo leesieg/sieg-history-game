@@ -135,6 +135,7 @@
     country.capital -= 30;
     country.actionPoints.administrative -= 1;
     tile.population = Math.round((tile.population + 1) * 10) / 10;
+    tile.basePopulation = Math.max(tile.basePopulation || 0, tile.population); // 抬高人口恢复上限
     return tile;
   }
 

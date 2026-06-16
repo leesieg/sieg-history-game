@@ -22,6 +22,7 @@
       tile.occupier = null;
       tile.occupation = 0;
       tile.devastation ||= 0;
+      if (!tile.isSea) tile.basePopulation = tile.population; // 人口恢复的承载上限
     }
     for (const polity of ["法兰西王国", "英格兰王国", "奥斯曼贝伊国", "拜占庭帝国"]) {
       if (!world.countries[polity]) continue;
@@ -205,6 +206,7 @@
     const country = world.countries[polity];
     if (!tile || tile.polity !== polity || tile.isSea) throw new Error("只能在己方陆地动员");
     if (country.actionPoints.military < 1) throw new Error("军事点不足");
+    if ((country.warfare?.warExhaustion || 0) >= 40) throw new Error("战争疲惫过高，难以继续征召");
     if (combatType === "artillery") {
       if (!canRecruitCombatType(world, polity, "artillery")) throw new Error("尚未掌握火炮技术");
       if (country.military < 30) throw new Error("铸炮需要军需 30");
@@ -510,6 +512,33 @@
     }
     for (const army of Object.values(world.warfare.armies)) {
       if (army.status === "ready") advanceOccupation(world, army.id);
+    }
+    recoverLand(world);
+    processWarExhaustion(world);
+  }
+
+  // 人口自然恢复流 + 战争破坏自愈（核心循环：基底随和平回血）
+  function recoverLand(world) {
+    for (const tile of world.tiles) {
+      if (tile.isSea) continue;
+      if (tile.basePopulation === undefined) tile.basePopulation = tile.population;
+      if (tile.devastation > 0) tile.devastation = Math.max(0, tile.devastation - 2);
+      if (!tile.occupier && tile.devastation < 30 && tile.population < tile.basePopulation) {
+        tile.population = Math.min(tile.basePopulation, Math.round((tile.population + .2) * 10) / 10);
+      }
+    }
+  }
+
+  // 战争疲惫硬惩罚：拖累合法性；和平时逐季消退（核心循环：军事压力→合法性）
+  function processWarExhaustion(world) {
+    for (const [polity, country] of Object.entries(world.countries)) {
+      if (!country.warfare) continue;
+      const exhaustion = country.warfare.warExhaustion || 0;
+      const atWar = world.diplomacy.wars.some(war => war.attackers.includes(polity) || war.defenders.includes(polity));
+      if (exhaustion > 5) {
+        country.legitimacy = Math.max(0, country.legitimacy - Math.min(3, Math.round((exhaustion - 5) / 10)));
+      }
+      if (!atWar && exhaustion > 0) country.warfare.warExhaustion = Math.max(0, exhaustion - 2);
     }
   }
 
