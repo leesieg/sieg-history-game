@@ -100,6 +100,21 @@ assert.ok((world.trade.routes.rhine.boost || 0) > boostBefore, "投资商路必�
 assert.equal(world.trade.selectedRoute, "rhine", "投资后必须记录选中路线");
 assert.throws(() => trade.investRoute(world, "法兰西王国", "maghreb"), /节点/, "无节点的商路必须拒绝投资");
 
+// 王权放大中央从产出流的汲取
+const crownWorld = worldEngine.createWorld([
+  { id: 1, isSea: false, polity: "法兰西王国", population: 12, control: 80, good: "grain", buildings: ["market"], devastation: 0 },
+]);
+economy.initializeEconomy(crownWorld);
+const crown = crownWorld.countries["法兰西王国"];
+const moneyAnchor = crown.money;
+crown.government.centralPower = 30;
+economy.settleCountry(crownWorld, "法兰西王国");
+const lowCrownGain = crown.money - moneyAnchor;
+crown.money = moneyAnchor;
+crown.government.centralPower = 100;
+economy.settleCountry(crownWorld, "法兰西王国");
+assert.ok(crown.money - moneyAnchor > lowCrownGain, "王权越高，中央汲取的金钱产出流越多");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");

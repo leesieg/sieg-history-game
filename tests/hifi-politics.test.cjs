@@ -130,6 +130,12 @@ assert.ok(france.military < 100, "不满的贵族必须惩罚军需流");
 assert.ok(france.unrest >= 1, "不满必须累积国内不满");
 assert.equal(france.estates.nobles.satisfaction, -59, "满意度必须向 0 缓慢回归");
 
+// 王权 ↔ 阶层权力此消彼长：高王权压低阶层权力
+france.government.centralPower = 80;
+france.estates.nobles.power = 50;
+politics.processEstates(world, "法兰西王国");
+assert.ok(france.estates.nobles.power < 50, "高王权必须压低阶层权力");
+
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert.ok(html.includes('id="countryModal"'));
 assert.ok(html.includes('id="countrySelectModal"'));

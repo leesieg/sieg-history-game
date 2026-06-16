@@ -332,6 +332,10 @@
   function processEstates(world, polity) {
     const country = world.countries[polity];
     if (!country.estates) return 0;
+    // 王权 ↔ 阶层权力此消彼长：高王权压低阶层权力，低王权放任坐大（核心循环：王权守恒）
+    const power = country.government?.centralPower ?? 60;
+    const powerDrift = power >= 60 ? -.5 : power <= 30 ? .5 : 0;
+    const crownCost = power > 70;                       // 集权代价：高王权每季压低满意
     let unrest = 0;
     for (const [key, estate] of Object.entries(country.estates)) {
       const satisfaction = estate.satisfaction;
@@ -346,6 +350,8 @@
       // 满意度向 0 缓慢回归：一次性政策冲击会淡化，长期制度成本（流乘数）才持久
       if (satisfaction > 0) estate.satisfaction = Math.max(0, satisfaction - 1);
       else if (satisfaction < 0) estate.satisfaction = Math.min(0, satisfaction + 1);
+      if (crownCost) estate.satisfaction = Math.max(-100, estate.satisfaction - 1);
+      if (powerDrift) estate.power = Math.max(0, Math.min(100, (estate.power || 0) + powerDrift));
     }
     country.unrest = Math.max(0, Math.round((country.unrest || 0) * .85 + unrest));
     return country.unrest;

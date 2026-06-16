@@ -68,9 +68,11 @@
       total.military += output.military;
       return total;
     }, { food: 0, money: 0, military: 0, tiles: territory.length });
+    // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
+    const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     country.food += report.food;
-    country.money += report.money;
-    country.military += report.military;
+    country.money += Math.round(report.money * central);
+    country.military += Math.round(report.military * central);
     if (country.tradePolicy === "open") {
       const trade = Math.max(2, Math.round(report.money * .12));
       country.money += trade;
