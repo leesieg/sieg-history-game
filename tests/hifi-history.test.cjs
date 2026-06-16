@@ -79,6 +79,15 @@ assert.ok(explorer.exploration.milestones.includes("atlantic"), "累积探索点
 assert.equal(explorer.exploration.colonial, true, "里程碑必须解锁殖民收入流");
 assert.ok(explorer.ideas > ideasBeforeMilestone, "里程碑必须给一次性思想奖励");
 
+// 压力层驱动转折：军事压力加速战争疲惫、财政压力压低合法性
+const pressured = world.countries["法兰西王国"];
+pressured.pressures = { military: 70, fiscal: 70, faith: 0, exploration: 0, trade: 0, ideas: 0 };
+pressured.warfare = { warExhaustion: 0 };
+pressured.legitimacy = 80;
+history.applyPressureEffects(world);
+assert.equal(pressured.warfare.warExhaustion, 1, "高军事压力必须加速战争疲惫");
+assert.ok(pressured.legitimacy < 80, "高财政压力必须压低合法性");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");
 const dialogSource = fs.readFileSync(path.join(root, "ui", "dialogs.js"), "utf8");

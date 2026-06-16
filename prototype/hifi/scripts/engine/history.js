@@ -54,7 +54,8 @@
         if (year < technology.year) continue;
         const neighborsKnown = Object.values(world.countries).filter(other => other.technology?.[key]).length;
         const printing = country.technology.printing ? 2 : 0;
-        country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + printing);
+        const ideasBoost = Math.floor((country.pressures?.ideas || 0) / 40); // 思想压力加速科技扩散流
+        country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + printing + ideasBoost);
       }
       if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += 1;
       if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {
@@ -63,6 +64,24 @@
         country.ideas += 10;
         country.money += 20;
         pushChronicle(world, country.name, "milestone", "开辟大西洋航路，殖民收入开始流入");
+      }
+    }
+  }
+
+  // 压力层驱动转折：把 pressures 从仪表盘变成真实输入（核心循环：压力→内政/军事/信仰）
+  function applyPressureEffects(world) {
+    for (const country of Object.values(world.countries)) {
+      const pressure = country.pressures || {};
+      if ((pressure.military || 0) > 60 && country.warfare) {
+        country.warfare.warExhaustion = (country.warfare.warExhaustion || 0) + 1; // 军事压力→战争疲惫加速
+      }
+      if ((pressure.fiscal || 0) > 60) {
+        country.legitimacy = Math.max(0, country.legitimacy - 1);                 // 财政压力→合法性承压
+      }
+      if ((pressure.faith || 0) > 50 && country.estates) {                        // 信仰压力→正统阶层张力
+        for (const key of ["church", "clergy", "imperial_church"]) {
+          if (country.estates[key]) country.estates[key].satisfaction = Math.max(-100, country.estates[key].satisfaction - 1);
+        }
       }
     }
   }
@@ -289,6 +308,7 @@
   }
 
   function processHistory(world) {
+    applyPressureEffects(world);
     processSituations(world);
     spreadTechnology(world);
     processMilestones(world);
@@ -314,6 +334,7 @@
 
   window.HIFI_HISTORY_ENGINE = {
     applyCausalChain,
+    applyPressureEffects,
     acknowledgeTransition,
     blockingIssues,
     checkEra,

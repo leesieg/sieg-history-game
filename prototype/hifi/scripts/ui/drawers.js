@@ -206,7 +206,7 @@
       ${develop}
       <div class="drawer-subtitle">贸易政策</div>${policies}
       <div class="drawer-subtitle">关税</div>${tariffs}
-      <div class="drawer-subtitle">结构压力</div>${pressures}
+      <div class="drawer-subtitle">${codexTerm("压力层", "结构压力")}</div>${pressures}
       <div class="drawer-subtitle">贸易路线</div>${routes}
       <div class="drawer-subtitle">国家敕令</div>${edicts}
       <div class="drawer-subtitle">国家议程</div>${agendas}
