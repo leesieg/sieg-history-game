@@ -87,6 +87,19 @@ assert.equal(country.agenda, null, "完成目标后必须结算并清空议程")
 assert.ok(country.legitimacy > legitimacyBeforeAgenda, "完成议程必须获得奖励");
 assert.ok(country.capital > capitalBeforeTrade, "开放贸易必须积累资本");
 
+// 贸易路线投资：点击商路现在有真实后果（流量加成），不再是只写不读的死字段
+vm.runInNewContext(fs.readFileSync(path.join(root, "data/trade.js"), "utf8"), context);
+vm.runInNewContext(fs.readFileSync(path.join(root, "engine/trade.js"), "utf8"), context);
+const trade = context.window.HIFI_TRADE_ENGINE;
+trade.initializeTrade(world);
+country.actionPoints.administrative = 2;
+country.money = 100;
+const boostBefore = world.trade.routes.rhine.boost || 0;
+trade.investRoute(world, "法兰西王国", "rhine");
+assert.ok((world.trade.routes.rhine.boost || 0) > boostBefore, "投资商路必须提升流量加成");
+assert.equal(world.trade.selectedRoute, "rhine", "投资后必须记录选中路线");
+assert.throws(() => trade.investRoute(world, "法兰西王国", "maghreb"), /节点/, "无节点的商路必须拒绝投资");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");
@@ -101,5 +114,7 @@ assert.ok(mainSource.includes("initializeEconomy"), "入口必须初始化经济
 assert.ok(mainSource.includes("constructBuilding"), "入口必须接通建筑操作");
 assert.ok(drawerSource.includes("data-integrate"), "国家抽屉必须提供领土整合入口");
 assert.ok(mainSource.includes("integrateTile"), "入口必须接通整合操作");
+assert.ok(mainSource.includes("investRoute"), "入口必须接通商路投资操作");
+assert.ok(mainSource.includes("data-focus-sel") || html.includes("data-focus-sel"), "命令坞/省份按钮必须带聚焦定位");
 
 console.log("hifi economy engine passed");

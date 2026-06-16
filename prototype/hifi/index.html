@@ -81,20 +81,20 @@
         <div class="data-row"><span>宗教</span><b id="provinceReligion">天主教</b><i></i></div>
       </div>
       <div class="province-actions">
-        <button class="province-action" data-open-system="经济"><span>⚒</span>建设</button>
-        <button class="province-action" data-open-system="军事"><span>♞</span>征兵</button>
-        <button class="province-action" data-open-system="国家"><span>✜</span>整合</button>
-        <button class="province-action" data-open-system="军事"><span>⚑</span>派驻</button>
+        <button class="province-action" data-open-system="经济" data-focus-sel="[data-building]"><span>⚒</span>建设</button>
+        <button class="province-action" data-open-system="军事" data-focus-sel="[data-mobilize='infantry']"><span>♞</span>征兵</button>
+        <button class="province-action" data-open-system="国家" data-focus-sel="[data-integrate]"><span>✜</span>整合</button>
+        <button class="province-action" data-open-system="军事" data-focus-sel="[data-army-open]"><span>⚑</span>派驻</button>
       </div>
     </aside>
 
     <div class="command-dock metal-frame" aria-label="高频命令">
-      <button class="command" data-open-system="外交"><span>⚔</span>宣战</button>
-      <button class="command" data-open-system="军事"><span>✦</span>议和</button>
-      <button class="command" data-open-system="外交"><span>⚖</span>贸易</button>
-      <button class="command" data-open-system="外交"><span>◇</span>结盟</button>
-      <button class="command" data-open-system="外交"><span>♛</span>联姻</button>
-      <button class="command" data-open-system="外交"><span>▤</span>通行权</button>
+      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='war:declare']"><span>⚔</span>宣战</button>
+      <button class="command" data-open-system="军事" data-focus-sel="[data-peace-war]"><span>✦</span>议和</button>
+      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:trade']"><span>⚖</span>贸易</button>
+      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:alliance']"><span>◇</span>结盟</button>
+      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:marriage']"><span>♛</span>联姻</button>
+      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:access']"><span>▤</span>通行权</button>
     </div>
 
     <aside class="map-tools metal-frame">
@@ -185,13 +185,13 @@
   <script src="scripts/engine/economy.js?v=5"></script>
   <script src="scripts/engine/diplomacy.js?v=5"></script>
   <script src="scripts/engine/warfare.js?v=7"></script>
-  <script src="scripts/engine/trade.js?v=1"></script>
+  <script src="scripts/engine/trade.js?v=2"></script>
   <script src="scripts/engine/history.js?v=7"></script>
   <script src="scripts/engine/strategy.js?v=1"></script>
   <script src="scripts/ui/store.js?v=4"></script>
   <script src="scripts/ui/map.js?v=6"></script>
-  <script src="scripts/ui/drawers.js?v=6"></script>
+  <script src="scripts/ui/drawers.js?v=7"></script>
   <script src="scripts/ui/dialogs.js?v=8"></script>
-  <script src="scripts/main.js?v=5"></script>
+  <script src="scripts/main.js?v=6"></script>
 </body>
 </html>

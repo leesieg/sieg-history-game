@@ -151,7 +151,7 @@
     });
     drawerBody.querySelectorAll("[data-trade-route]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
-        current.trade.selectedRoute = button.dataset.tradeRoute;
+        window.HIFI_TRADE_ENGINE.investRoute(current, current.playerPolity, button.dataset.tradeRoute);
         window.prototypeMap.setMode("trade");
       }));
     });
@@ -294,11 +294,22 @@
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
   });
 
+  function focusInDrawer(selector) {
+    if (!selector) return;
+    const element = drawerBody.querySelector(selector);
+    if (!element) return;
+    element.scrollIntoView({ block: "nearest" });
+    element.style.transition = "box-shadow .2s ease";
+    element.style.boxShadow = "0 0 0 2px #c99a31";
+    setTimeout(() => { element.style.boxShadow = ""; }, 1200);
+  }
+
   document.querySelectorAll("[data-open-system]").forEach(button => {
     button.addEventListener("click", () => {
       const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
       if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
       if (!target.classList.contains("active")) openSystem(target);
+      focusInDrawer(button.dataset.focusSel);
     });
   });
 

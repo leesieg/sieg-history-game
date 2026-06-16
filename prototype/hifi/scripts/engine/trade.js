@@ -10,8 +10,9 @@
       pools: { ...data.pools },
       routes: Object.fromEntries(Object.entries(data.routes).map(([key, value]) => [
         key,
-        { ...value, active: !value.unlock, cost: 0, flow: 0 },
+        { ...value, active: !value.unlock, cost: 0, flow: 0, boost: 0 },
       ])),
+      selectedRoute: null,
       lastIncome: {},
     };
     for (const country of Object.values(world.countries)) {
@@ -67,7 +68,7 @@
     for (const [routeKey, route] of Object.entries(world.trade.routes)) {
       route.active = routeUnlocked(world, route);
       route.cost = routeCost(world, route);
-      route.flow = route.active ? Math.max(0, Math.round(route.value * (1 - Math.min(.85, route.cost / 120)))) : 0;
+      route.flow = route.active ? Math.max(0, Math.round(route.value * (1 + (route.boost || 0)) * (1 - Math.min(.85, route.cost / 120)))) : 0;
       if (routeKey === "newWorld") world.trade.pools.silver += Math.round(route.flow * .08);
       const nodeShare = route.nodes.length ? route.flow / route.nodes.length : 0;
       for (const city of route.nodes) {
@@ -87,6 +88,20 @@
     return world.trade.lastIncome;
   }
 
+  function investRoute(world, polity, key) {
+    const route = world.trade.routes[key];
+    if (!route) throw new Error("未知贸易路线");
+    if (!route.active) throw new Error("路线尚未解锁");
+    const country = world.countries[polity];
+    if (!route.nodes.some(city => nodeTile(world, city)?.polity === polity)) throw new Error("本国没有该商路节点");
+    if (country.actionPoints.administrative < 1 || country.money < 15) throw new Error("投资资源不足");
+    country.actionPoints.administrative -= 1;
+    country.money -= 15;
+    route.boost = Math.min(.6, (route.boost || 0) + .15);
+    world.trade.selectedRoute = key;
+    return route;
+  }
+
   function setTariff(world, polity, value) {
     if (![0, 10, 25].includes(Number(value))) throw new Error("关税只能设为 0、10 或 25");
     world.countries[polity].tariff = Number(value);
@@ -102,6 +117,7 @@
   window.HIFI_TRADE_ENGINE = {
     computePressures,
     initializeTrade,
+    investRoute,
     processTrade,
     routeCost,
     routeView,

@@ -88,8 +88,11 @@
         `${lawValueLabels[value]} → ${lawValueLabels[next]}`
       );
     }).join("");
+    const assemblyType = country.government.assembly.type;
     const assembly = country.government.assembly.unlocked
-      ? actionButton("data-assembly", "tax:privilege", `召开${country.government.assembly.type}`, `支持 ${country.government.assembly.support}`)
+      ? `${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
+         ${actionButton("data-assembly", "tax:money", `${assemblyType}·收买议会`, "支持 +10 · 12 金钱")}
+         ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, `当前支持 ${country.government.assembly.support}`)}`
       : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
     const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) =>
       actionButton("data-decision", key, decision.label, decision.can(country, window.hifiGame?.store?.getState()) ? "可执行" : decision.why)
@@ -123,7 +126,9 @@
       actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前" : "调整", value === country.tariff)
     ).join("");
     const routes = Object.entries(world.trade.routes).map(([key, route]) =>
-      actionButton("data-trade-route", key, route.label, route.active ? `流量 ${route.flow} · 成本 ${route.cost}` : "尚未解锁")
+      actionButton("data-trade-route", key, route.label, route.active
+        ? `流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 投资 +${Math.round(route.boost * 100)}%` : " · 点击投资"}`
+        : "尚未解锁")
     ).join("");
     const pressures = Object.entries(country.pressures).map(([key, value]) =>
       `<div class="drawer-row">${pressureLabels[key]}<span>${value}</span></div>`
@@ -208,6 +213,7 @@
     const targetCountry = world.countries[target];
     const subject = engine.subjectBetween(world, country.name, target);
     const atWar = window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, target);
+    const truce = window.HIFI_WARFARE_ENGINE.underTruce(world, country.name, target);
     const targetButtons = targets.map(name =>
       actionButton(
         "data-diplomatic-target",
@@ -230,8 +236,12 @@
       ["subject:tributary", "要求朝贡", "高自主"],
       ["subject:vassal", "要求附庸", "中自主"],
       ["subject:puppet", "建立傀儡", "低自主"],
-      ["war:declare", "宣战", atWar ? "已处于战争" : "开启战争"],
-    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail, key === "war:declare" && atWar)).join("");
+    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
+    const warAction = atWar
+      ? '<div class="drawer-row">宣战<span>已处于战争</span></div>'
+      : truce
+        ? '<div class="drawer-row">宣战<span>停战协定期</span></div>'
+        : actionButton("data-diplomatic-action", "war:declare", "宣战", "开启战争");
     const subjectRows = subject
       ? `<div class="drawer-subtitle">权利结构</div>
         <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>
@@ -250,7 +260,7 @@
       <div class="drawer-row">信任<span>${relation.trust}</span></div>
       <div class="drawer-row">威胁<span>${relation.threat}</span></div>
       <div class="drawer-row">战略利益<span>${relation.strategicInterest}</span></div>
-      <div class="drawer-subtitle">外交行动</div>${actions}${subjectRows}`;
+      <div class="drawer-subtitle">外交行动</div>${actions}${warAction}${subjectRows}`;
   }
 
   function renderSystem(system, world) {
