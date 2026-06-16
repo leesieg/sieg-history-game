@@ -161,6 +161,24 @@ const artilleryArmy = warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "ar
 assert.equal(artilleryArmy.units[0].combatType, "artillery");
 assert.equal(fr.military, 70, "铸炮必须消耗军需 30");
 
+// 动员法律调节征召的人口流成本（需 politics 的 lawEffects）
+vm.runInNewContext(fs.readFileSync(path.join(root, "engine", "politics.js"), "utf8"), context);
+const levyWorld = worldEngine.createWorld([
+  { id: 0, isSea: false, polity: "法兰西王国", population: 30, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
+]);
+warfare.initializeWarfare(levyWorld);
+const levyCountry = levyWorld.countries["法兰西王国"];
+levyCountry.government.laws = { mobilization: "limited" };
+levyCountry.actionPoints.military = 5;
+const popBeforeLimited = levyWorld.tiles[0].population;
+warfare.mobilizeArmy(levyWorld, "法兰西王国", 0, "infantry");
+const limitedDrain = popBeforeLimited - levyWorld.tiles[0].population;
+levyCountry.government.laws.mobilization = "levy";
+const popBeforeLevy = levyWorld.tiles[0].population;
+warfare.mobilizeArmy(levyWorld, "法兰西王国", 0, "infantry");
+const levyDrain = popBeforeLevy - levyWorld.tiles[0].population;
+assert.ok(levyDrain < limitedDrain, "征召兵役必须比有限动员更省人口流");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const mapSource = fs.readFileSync(path.join(root, "ui", "map.js"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");

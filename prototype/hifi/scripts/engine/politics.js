@@ -67,6 +67,53 @@
     authority: ["dynastic", "civic", "constitutional", "absolute"],
   };
 
+  // 法律对「流」与阶层满意的真实效果（核心循环：法律 = 挂在产出流/人口流上的调节阀）。
+  // moneyMultiplier 被 economy.tileOutput 读取；levyCostFactor 被 warfare.mobilizeArmy 读取；
+  // estate 增减在 setLaw 即时结算（喂议会支持，并为后续阶层惩罚铺垫）；requires 为颁布前置。
+  // 阶层 key 因政体而异，只对存在的阶层生效（其余忽略）。
+  const lawEffects = {
+    taxation: {
+      customary: { moneyMultiplier: 1, estate: {} },
+      estate_exemptions: { moneyMultiplier: 0.85, estate: { nobles: 8, church: 8, patricians: 6, clergy: 6, port_nobles: 6 } },
+      uniform: {
+        moneyMultiplier: 1.15,
+        requires: country => country.government.centralPower >= 50,
+        why: "需要王权 ≥ 50 才能推行统一税制",
+        estate: { nobles: -10, patricians: -8, peasants: 4, commons: 4, faithful: 4, sailors: 4, herders: 4 },
+      },
+    },
+    mobilization: {
+      limited: { levyCostFactor: 1, estate: {} },
+      levy: { levyCostFactor: 0.7, estate: { peasants: -6, commons: -6, faithful: -6, sailors: -6, herders: -6 } },
+      standing: {
+        levyCostFactor: 1,
+        requires: country => (country.government.reforms.fiscal || 0) >= 2,
+        why: "需要财政改革 ≥ 2 才能维持常备军制",
+        estate: {},
+      },
+    },
+    religion: {
+      toleration: { estate: { church: -6, clergy: -6, imperial_church: -6 } },
+      orthodoxy: { estate: { church: 8, clergy: 8, imperial_church: 8 } },
+      reformed: {
+        requires: (country, world) => !!world.flags?.reformation,
+        why: "需要宗教改革浪潮出现",
+        estate: {},
+      },
+    },
+    authority: {
+      dynastic: { estate: {} },
+      civic: { estate: { merchants: 8, citizens: 8, companies: 6, guilds: 4 }, powerCap: 70 },
+      constitutional: { estate: {}, legitimacy: 4, powerCap: 60 },
+      absolute: {
+        requires: country => (country.government.reforms.fiscal || 0) >= 3,
+        why: "需要财政改革 ≥ 3 才能集中绝对权力",
+        estate: { nobles: -8, patricians: -8 },
+        power: 8,
+      },
+    },
+  };
+
   const decisions = {
     estates_general: {
       label: "召开等级会议",
@@ -134,12 +181,27 @@
     return entry;
   }
 
+  const clampSatisfaction = value => Math.max(-100, Math.min(100, value));
+
   function setLaw(world, polity, category, value) {
     const country = world.countries[polity];
     if (!lawOptions[category]?.includes(value)) throw new Error("未知法律");
+    if (country.government.laws[category] === value) throw new Error("已是当前法律");
     if (country.actionPoints.administrative < 1) throw new Error("行政点不足");
+    const effect = lawEffects[category]?.[value];
+    if (effect?.requires && !effect.requires(country, world)) throw new Error(effect.why || "尚不满足颁布条件");
     country.actionPoints.administrative -= 1;
     country.government.laws[category] = value;
+    if (effect) {
+      for (const [estateKey, delta] of Object.entries(effect.estate || {})) {
+        if (country.estates[estateKey]) {
+          country.estates[estateKey].satisfaction = clampSatisfaction(country.estates[estateKey].satisfaction + delta);
+        }
+      }
+      if (effect.legitimacy) country.legitimacy = Math.min(100, country.legitimacy + effect.legitimacy);
+      if (effect.power) country.government.centralPower = Math.min(100, country.government.centralPower + effect.power);
+      if (effect.powerCap) country.government.centralPower = Math.min(country.government.centralPower, effect.powerCap);
+    }
     recordDecision(world, polity, `law:${category}:${value}`, `颁布${category}法律：${value}`);
     return value;
   }
@@ -279,6 +341,7 @@
     decisions,
     enactDecision,
     holdAssembly,
+    lawEffects,
     lawOptions,
     setLaw,
   };

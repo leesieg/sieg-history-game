@@ -45,6 +45,16 @@
     }
     if (country.technology.accounting) money *= 1.1;
     if (country.technology.standingArmy) military *= 1.2;
+    // 税收法律调节金钱产出流（核心循环：法律→产出流）
+    const taxLaw = country.government?.laws?.taxation;
+    const taxMultiplier = window.HIFI_POLITICS_ENGINE?.lawEffects?.taxation?.[taxLaw]?.moneyMultiplier;
+    if (taxMultiplier) money *= taxMultiplier;
+    // 改革槽每级加成：财政→金钱产出流、军事→军需产出流（核心循环：改革→产出流）
+    const reforms = country.government?.reforms;
+    if (reforms) {
+      money *= 1 + (reforms.fiscal || 0) * .03;
+      military *= 1 + (reforms.military || 0) * .03;
+    }
     return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
   }
 
@@ -105,7 +115,9 @@
     if (country.money < 20 || country.actionPoints.administrative < 1) throw new Error("整合资源不足");
     country.money -= 20;
     country.actionPoints.administrative -= 1;
-    tile.control = Math.min(100, (tile.control ?? 0) + 20);
+    // 行政改革提升整合效率（核心循环：改革→控制度，回头放大产出流）
+    const integrateGain = 20 + (country.government?.reforms?.administrative || 0) * 2;
+    tile.control = Math.min(100, (tile.control ?? 0) + integrateGain);
     return tile;
   }
 

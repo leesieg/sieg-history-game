@@ -220,7 +220,10 @@
     if (tile.population < 2) throw new Error("地块人口不足以征召");
     const soldiers = combatType === "cavalry" ? 500 : 1200;
     country.actionPoints.military -= 1;
-    tile.population = Math.max(1, tile.population - soldiers / 1000);
+    // 动员法律调节征召的人口流成本（核心循环：法律→人口流→军队）
+    const mobLaw = country.government?.laws?.mobilization;
+    const levyCostFactor = window.HIFI_POLITICS_ENGINE?.lawEffects?.mobilization?.[mobLaw]?.levyCostFactor ?? 1;
+    tile.population = Math.max(1, tile.population - soldiers / 1000 * levyCostFactor);
     return createArmy(world, {
       owner: polity,
       tileId,
