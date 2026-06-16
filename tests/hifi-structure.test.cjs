@@ -19,9 +19,11 @@ const requiredFiles = [
   "scripts/engine/diplomacy.js",
   "scripts/engine/warfare.js",
   "scripts/engine/history.js",
+  "scripts/data/codex.js",
   "scripts/ui/store.js",
   "scripts/ui/map.js",
   "scripts/ui/drawers.js",
+  "scripts/ui/codex.js",
   "scripts/ui/dialogs.js",
 ];
 
@@ -43,6 +45,8 @@ for (const reference of [
   "scripts/engine/diplomacy.js",
   "scripts/engine/warfare.js",
   "scripts/engine/history.js",
+  "scripts/data/codex.js",
+  "scripts/ui/codex.js",
   "scripts/ui/dialogs.js",
   "scripts/main.js",
 ]) {

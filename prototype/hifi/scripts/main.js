@@ -21,6 +21,7 @@
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);
   window.HIFI_DIALOGS.bindArmyDialog(store);
   const narrativeDialogs = window.HIFI_DIALOGS.bindNarrativeDialogs(store);
+  window.HIFI_CODEX_UI.init();
 
   function showToast(text) {
     clearTimeout(toastTimer);
@@ -111,6 +112,12 @@
         showToast(error.message);
       }
     }
+    drawerBody.querySelectorAll("[data-country-tab]").forEach(button => {
+      button.addEventListener("click", () => {
+        window.HIFI_DRAWERS.setCountryTab(button.dataset.countryTab);
+        renderSystemBody(system);
+      });
+    });
     drawerBody.querySelectorAll("[data-reform]").forEach(reformButton => {
       reformButton.addEventListener("click", () => {
         runAction(current => window.HIFI_POLITICS_ENGINE.advanceReform(
@@ -308,7 +315,12 @@
     button.addEventListener("click", () => {
       const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
       if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
+      const tab = button.dataset.openSystem === "国家"
+        ? window.HIFI_DRAWERS.countryTabForSelector(button.dataset.focusSel)
+        : null;
+      if (tab) window.HIFI_DRAWERS.setCountryTab(tab);
       if (!target.classList.contains("active")) openSystem(target);
+      else if (tab) renderSystemBody(button.dataset.openSystem);
       focusInDrawer(button.dataset.focusSel);
     });
   });

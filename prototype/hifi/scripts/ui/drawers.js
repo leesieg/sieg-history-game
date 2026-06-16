@@ -67,43 +67,90 @@
     ];
   }
 
+  const countryTabs = ["概览", "政制", "议会", "决议"];
+  let countryTab = "概览";
+  function setCountryTab(tab) {
+    if (countryTabs.includes(tab)) countryTab = tab;
+  }
+  // 命令坞/省份按钮的聚焦定位可能指向某个 tab 内的控件，开抽屉前先切到对应 tab
+  function countryTabForSelector(selector) {
+    if (!selector) return null;
+    if (selector.includes("data-reform") || selector.includes("data-law")) return "政制";
+    if (selector.includes("data-assembly")) return "议会";
+    if (selector.includes("data-decision") || selector.includes("data-integrate")) return "决议";
+    return null;
+  }
+
   function renderPolitics(country, world) {
+    const tabBar = `<div class="drawer-tabs">${countryTabs.map(tab =>
+      `<button class="drawer-tab${tab === countryTab ? " active" : ""}" data-country-tab="${tab}">${tab}</button>`
+    ).join("")}</div>`;
+
+    if (countryTab === "概览") {
+      const ability = country.leader.abilities;
+      const rows = [
+        [codexTerm("政体", "政体"), country.government.typeLabel],
+        [codexTerm("王权", country.government.powerName), Math.round(country.government.centralPower)],
+        ["统治者", `${country.leader.title}${country.leader.name}`],
+        ["家族", country.leader.dynasty],
+        [codexTerm("统治者", "行政 / 外交 / 军事"), `${ability.administrative} / ${ability.diplomatic} / ${ability.military}`],
+        [codexTerm("合法性", "合法性"), Math.round(country.legitimacy)],
+        [codexTerm("议会", "议会"), country.government.assembly.unlocked ? country.government.assembly.type : "未解锁"],
+      ];
+      const basics = rows
+        .map(([label, value]) => `<div class="drawer-row">${label}<span>${value}</span></div>`)
+        .join("");
+      return `${tabBar}${basics}`;
+    }
+
+    if (countryTab === "政制") {
+      const reforms = Object.entries(country.government.reforms)
+        .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${value} / 5</span></button>`)
+        .join("");
+      const laws = Object.entries(country.government.laws).map(([category, value]) => {
+        const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
+        const next = options[(options.indexOf(value) + 1) % options.length];
+        return actionButton(
+          "data-law",
+          `${category}:${next}`,
+          lawCategoryLabels[category],
+          `${lawValueLabels[value]} → ${lawValueLabels[next]}`
+        );
+      }).join("");
+      return `${tabBar}<div class="drawer-subtitle">${codexTerm("改革", "改革槽")}</div>${reforms}
+        <div class="drawer-subtitle">${codexTerm("法律", "法律")}</div>${laws}`;
+    }
+
+    if (countryTab === "议会") {
+      const assemblyType = country.government.assembly.type;
+      const assembly = country.government.assembly.unlocked
+        ? `${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
+           ${actionButton("data-assembly", "tax:money", `${assemblyType}·收买议会`, "支持 +10 · 12 金钱")}
+           ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, `当前支持 ${country.government.assembly.support}`)}`
+        : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
+      const estates = Object.values(country.estates)
+        .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
+        .join("");
+      return `${tabBar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
+        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estates}`;
+    }
+
+    // 决议
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const integrate = tile && !tile.isSea && tile.polity === country.name
       ? actionButton("data-integrate", String(tile.id), `整合 ${tile.city || tile.region}`, `控制度 ${Math.round(tile.control ?? 0)} · 20 金钱`)
       : '<div class="drawer-row">整合：请选择己方地块<span>—</span></div>';
-    const reforms = Object.entries(country.government.reforms)
-      .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${value} / 5</span></button>`)
-      .join("");
-    const estates = Object.values(country.estates)
-      .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
-      .join("");
-    const laws = Object.entries(country.government.laws).map(([category, value]) => {
-      const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
-      const next = options[(options.indexOf(value) + 1) % options.length];
-      return actionButton(
-        "data-law",
-        `${category}:${next}`,
-        lawCategoryLabels[category],
-        `${lawValueLabels[value]} → ${lawValueLabels[next]}`
-      );
+    const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) => {
+      const can = decision.can(country, window.hifiGame?.store?.getState());
+      const effect = window.HIFI_CODEX?.decisions[key]?.effect;
+      return actionButton("data-decision", key, decision.label, can ? (effect || "可执行") : decision.why);
     }).join("");
-    const assemblyType = country.government.assembly.type;
-    const assembly = country.government.assembly.unlocked
-      ? `${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
-         ${actionButton("data-assembly", "tax:money", `${assemblyType}·收买议会`, "支持 +10 · 12 金钱")}
-         ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, `当前支持 ${country.government.assembly.support}`)}`
-      : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
-    const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) =>
-      actionButton("data-decision", key, decision.label, decision.can(country, window.hifiGame?.store?.getState()) ? "可执行" : decision.why)
-    ).join("");
-    return `${countryRows(country).map(([label, value]) => `<div class="drawer-row">${label}<span>${value}</span></div>`).join("")}
-      <div class="drawer-subtitle">改革槽</div>${reforms}
-      <div class="drawer-subtitle">法律</div>${laws}
-      <div class="drawer-subtitle">议会</div>${assembly}
-      <div class="drawer-subtitle">国家决议</div>${decisions}
-      <div class="drawer-subtitle">领土整合</div>${integrate}
-      <div class="drawer-subtitle">阶层：权力 / 满意</div>${estates}`;
+    return `${tabBar}<div class="drawer-subtitle">国家决议</div>${decisions}
+      <div class="drawer-subtitle">${codexTerm("领土整合", "领土整合")}</div>${integrate}`;
+  }
+
+  function codexTerm(key, label) {
+    return `<span class="codex-term" data-codex="${key}">${label}</span>`;
   }
 
   function actionButton(attribute, key, label, detail, active = false) {
@@ -393,5 +440,5 @@
     return { renderCountryModal, renderPendingElection };
   }
 
-  window.HIFI_DRAWERS = { bindCountryDialogs, renderSystem };
+  window.HIFI_DRAWERS = { bindCountryDialogs, renderSystem, setCountryTab, countryTabForSelector };
 })();
