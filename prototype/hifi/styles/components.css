@@ -379,14 +379,25 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .drawer-close { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 22px; }
 .drawer-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 56%);
   align-items: center;
+  column-gap: 10px;
   min-height: 42px;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(214,174,89,.14);
   color: #dcd1b4;
   font-size: 13px;
 }
 .drawer-row span { color: var(--gold-2); }
+/* 右侧详情列：右对齐、可换行、按词换行，避免长说明挤压标签或异常断行 */
+.drawer-row > span:last-child {
+  text-align: right;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
 .drawer-row.political-action {
   width: 100%;
   border-top: 0;

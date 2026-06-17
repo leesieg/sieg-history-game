@@ -41,23 +41,23 @@
       document.getElementById("armyDrawerTitle").textContent = army.name;
       body.innerHTML = `<div class="drawer-row">所属<span>${army.owner}</span></div>
         <div class="drawer-row">位置<span>${tile.city || tile.region}</span></div>
-        <div class="drawer-row">士气 / 组织 / 补给<span>${army.morale} / ${army.organization} / ${army.supply}</span></div>
+        <div class="drawer-row"><span class="codex-term" data-codex="军备状态">士气 / 组织 / 补给</span><span>${army.morale} / ${army.organization} / ${army.supply}</span></div>
         <div class="drawer-row">将领<span>${general?.name || (army.mercenaryLoyalty !== undefined ? "佣兵首领" : "未任命")}</span></div>
         ${army.mercenaryLoyalty === undefined ? "" : `<div class="drawer-row">契约 / 忠诚<span>${Math.max(0, army.contractEndsTurn - world.turn)} 季 / ${army.mercenaryLoyalty}</span></div>`}
         <div class="drawer-subtitle">编制</div>${composition}
-        <button class="dialog-command primary" data-army-plan="${army.id}">规划路线</button>
-        <button class="dialog-command" data-army-order="hold">原地防守</button>
-        <button class="dialog-command" data-army-order="march">继续行军</button>
+        <button class="dialog-command primary" data-army-plan="${army.id}">规划路线 · 选目标后自动行军</button>
+        <button class="dialog-command" data-army-order="hold">原地防守 · 停止移动并恢复补给</button>
+        <button class="dialog-command" data-army-order="march">继续行军 · 沿已定路线前进</button>
         <div class="drawer-subtitle">军团管理</div>
-        <button class="dialog-command" data-army-manage="split">拆分军团</button>
-        <button class="dialog-command" data-army-manage="reinforce">补充兵员</button>
-        <button class="dialog-command" data-army-manage="train">训练军团</button>
-        <button class="dialog-command" data-army-manage="demobilize">复员征召兵</button>
+        <button class="dialog-command" data-army-manage="split">拆分军团 · 分出半数为新军团</button>
+        <button class="dialog-command" data-army-manage="reinforce">补充兵员 · 耗军需补满缺额</button>
+        <button class="dialog-command" data-army-manage="train">训练军团 · 1 军事点 + 10 军需 → 经验/组织↑</button>
+        <button class="dialog-command" data-army-manage="demobilize">复员征召兵 · 兵员返乡、人口回流</button>
         ${army.mercenaryLoyalty === undefined
-          ? `<button class="dialog-command" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "撤下统治者" : "统治者领军"}</button>`
-          : `<button class="dialog-command" data-army-manage="renew-mercenary">续约两年</button>
-             <button class="dialog-command" data-army-manage="release-mercenary">结束契约</button>`}
-        ${mergeTargets.map(candidate => `<button class="dialog-command" data-army-merge="${candidate.id}">合并 ${candidate.name}</button>`).join("")}`;
+          ? `<button class="dialog-command" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}</button>`
+          : `<button class="dialog-command" data-army-manage="renew-mercenary">续约两年 · 付军饷 · 忠诚 +5</button>
+             <button class="dialog-command" data-army-manage="release-mercenary">结束契约 · 解散佣兵团</button>`}
+        ${mergeTargets.map(candidate => `<button class="dialog-command" data-army-merge="${candidate.id}">合并 ${candidate.name} · 并入本军团</button>`).join("")}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
         store.update(current => { current.warfare.planningArmy = armyId; });
         close();
@@ -142,9 +142,13 @@
       if (!event) return;
       document.getElementById("historyEventTitle").textContent = event.title;
       const body = document.getElementById("historyEventBody");
-      body.innerHTML = event.choices.map(choice =>
-        `<button class="drawer-row political-action" data-history-choice="${choice.id}">${choice.label}<span>裁断</span></button>`
-      ).join("");
+      const effectLabels = { food: "粮食", money: "金钱", military: "军需", legitimacy: "合法性", ideas: "思想" };
+      body.innerHTML = event.choices.map(choice => {
+        const effect = Object.entries(choice.effect || {})
+          .map(([resource, amount]) => `${effectLabels[resource] || resource} ${amount > 0 ? "+" : ""}${amount}`)
+          .join(" · ") || "裁断";
+        return `<button class="drawer-row political-action" data-history-choice="${choice.id}">${choice.label}<span>${effect}</span></button>`;
+      }).join("");
       body.querySelectorAll("[data-history-choice]").forEach(button => {
         button.addEventListener("click", () => {
           store.update(world => window.HIFI_HISTORY_ENGINE.resolvePlayerEvent(world, eventId, button.dataset.historyChoice));
