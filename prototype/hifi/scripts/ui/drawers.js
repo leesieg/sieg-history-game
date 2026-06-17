@@ -93,7 +93,7 @@
       "国家": [[/data-reform|data-law/, "政制"], [/data-assembly/, "议会"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
       "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
-      "外交": [[/treaty:|subject:|war:declare/, "条约"]],
+      "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"]],
     };
     for (const [pattern, tab] of (rules[system] || [])) if (pattern.test(selector)) return `${system}:${tab}`;
     return null;
@@ -289,21 +289,36 @@
     const wars = world.diplomacy.wars.filter(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const canRecruit = tile && !tile.isSea && tile.polity === country.name;
-    return `<div class="drawer-row">军事点<span>${country.actionPoints.military}</span></div>
-      <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${Math.round(country.warfare.warExhaustion)}</span></div>
-      <div class="drawer-subtitle">征募：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
-      ${actionButton("data-mobilize", "infantry", "动员步兵", "消耗地块 POP")}
-      ${actionButton("data-mobilize", "cavalry", "动员骑兵", "消耗地块 POP")}
-      ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "军需 30") : ""}
-      ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱")}
-      <div class="drawer-subtitle">军团</div>
-      ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
-      <div class="drawer-subtitle">战争</div>
+    const tab = currentTab("军事");
+    const bar = tabBar("军事");
+
+    if (tab === "概览") {
+      const totalSoldiers = armies.reduce((sum, army) => sum + window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army), 0);
+      return `${bar}
+        <div class="drawer-row">${codexTerm("军事点", "军事点")}<span>${country.actionPoints.military}</span></div>
+        <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${Math.round(country.warfare.warExhaustion)}</span></div>
+        <div class="drawer-row">${codexTerm("军团", "军团数")}<span>${armies.length}</span></div>
+        <div class="drawer-row">总兵力<span>${totalSoldiers} 人</span></div>
+        <div class="drawer-row">${codexTerm("战争", "进行中战争")}<span>${wars.length}</span></div>`;
+    }
+
+    if (tab === "军团") {
+      return `${bar}<div class="drawer-subtitle">${codexTerm("动员", "征募")}：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
+        ${actionButton("data-mobilize", "infantry", "动员步兵", "1 军事点 · 1200 步兵 · 耗地块人口")}
+        ${actionButton("data-mobilize", "cavalry", "动员骑兵", "1 军事点 · 500 骑兵 · 耗地块人口")}
+        ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "1 军事点 · 军需 30 · 300 炮兵") : ""}
+        ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱 · 约 2000 佣兵 · 8 季合约")}
+        <div class="drawer-subtitle">${codexTerm("军团", "现役军团")}</div>
+        ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人 · 点击整编`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
+    }
+
+    // 战争
+    return `${bar}<div class="drawer-subtitle">${codexTerm("战争", "战争")}</div>
       ${wars.length ? wars.map(war =>
         `<button class="drawer-row political-action" data-peace-war="${war.id}" data-peace-term="${
           war.primaryGoal.claimant === country.name ? "target_territory" : "status_quo"
         }">${war.name}<span>${
-          war.primaryGoal.claimant === country.name ? `索取目标 · ${war.score}` : "提议停战"
+          war.primaryGoal.claimant === country.name ? `索取目标 · 分数 ${war.score} · 点击议和` : "提议停战"
         }</span></button>`
       ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>'}`;
   }
@@ -327,44 +342,63 @@
         name === target
       )
     ).join("");
-    const actions = [
-      ["mission:improve", "派遣使节", "改善关系"],
-      ["leader:meeting", "私人会晤", "友谊与尊重"],
-      ["leader:gift", "赠送礼物", "20 金钱"],
-      ["leader:threaten", "公开威慑", "恐惧与宿怨"],
-      ["treaty:trade", "贸易协定", "长期承诺"],
-      ["treaty:access", "军事通行", "开放路线"],
-      ["treaty:marriage", "王室联姻", "结王朝纽带 · 便于整合"],
-      ["treaty:nonaggression", "互不侵犯", "短期止戈"],
-      ["treaty:alliance", "防御同盟", "盟友被攻击自动参战"],
-      ["subject:tributary", "要求朝贡", "高自主"],
-      ["subject:vassal", "要求附庸", "中自主"],
-      ["subject:puppet", "建立傀儡", "低自主"],
-    ].map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
-    const warAction = atWar
-      ? '<div class="drawer-row">宣战<span>已处于战争</span></div>'
-      : truce
-        ? '<div class="drawer-row">宣战<span>停战协定期</span></div>'
-        : actionButton("data-diplomatic-action", "war:declare", "宣战", "开启战争");
+    const renderActions = list => list.map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
+    const tab = currentTab("外交");
+    const bar = tabBar("外交");
+    const targetLine = `<div class="drawer-subtitle">当前对象：${targetCountry.name}（在「邦交」可切换）</div>`;
+
+    if (tab === "邦交") {
+      const leaderActions = renderActions([
+        ["mission:improve", "派遣使节", "1 外交点 · 改善关系（需空闲使节）"],
+        ["leader:meeting", "私人会晤", "1 外交点 · 友谊与尊重"],
+        ["leader:gift", "赠送礼物", "1 外交点 · 20 金钱 · 提升信任"],
+        ["leader:threaten", "公开威慑", "1 外交点 · 恐惧与宿怨"],
+      ]);
+      const warAction = atWar
+        ? '<div class="drawer-row">宣战<span>已处于战争</span></div>'
+        : truce
+          ? '<div class="drawer-row">宣战<span>停战协定期</span></div>'
+          : actionButton("data-diplomatic-action", "war:declare", "宣战", "开启战争");
+      return `${bar}
+        <div class="drawer-row">${codexTerm("外交点", "外交点")}<span>${country.actionPoints.diplomatic}</span></div>
+        <div class="drawer-row">${codexTerm("使节", "使节")}<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
+        <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${engine.capacityUsed(world, country.name)} / ${engine.capacity(world, country.name)}</span></div>
+        <div class="drawer-subtitle">外交对象</div><div class="drawer-scroll-list">${targetButtons}</div>
+        <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
+        <div class="drawer-row">${codexTerm("信任", "信任")}<span>${relation.trust}</span></div>
+        <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${relation.threat}</span></div>
+        <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${relation.strategicInterest}</span></div>
+        <div class="drawer-subtitle">元首外交</div>${leaderActions}${warAction}`;
+    }
+
+    if (tab === "条约") {
+      const treaties = renderActions([
+        ["treaty:trade", "贸易协定", "1 外交点 · 按贸易流计酬"],
+        ["treaty:access", "军事通行", "1 外交点 · 开放路线"],
+        ["treaty:marriage", "王室联姻", "1 外交点 · 结王朝纽带 · 便于整合"],
+        ["treaty:nonaggression", "互不侵犯", "1 外交点 · 短期止戈"],
+        ["treaty:alliance", "防御同盟", "2 外交点 · 盟友被攻击自动参战"],
+      ]);
+      return `${bar}${targetLine}${treaties}`;
+    }
+
+    // 从属
+    const subjects = renderActions([
+      ["subject:tributary", "要求朝贡", "2 外交点 · 高自主 · 收贡赋"],
+      ["subject:vassal", "要求附庸", "2 外交点 · 中自主"],
+      ["subject:puppet", "建立傀儡", "3 外交点 · 低自主"],
+    ]);
     const subjectRows = subject
-      ? `<div class="drawer-subtitle">权利结构</div>
+      ? `<div class="drawer-subtitle">${codexTerm("从属", "权利结构")}</div>
         <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>
         <div class="drawer-row">自主权<span>${subject.autonomy}</span></div>
         <div class="drawer-row">忠诚度<span>${subject.loyalty}</span></div>
         ${subject.overlord === country.name
-          ? `${actionButton("data-subject-control", "tighten", "收紧控制", "自主 -10")}
-             ${actionButton("data-subject-control", "loosen", "放宽自治", "忠诚 +12")}`
+          ? `${actionButton("data-subject-control", "tighten", "收紧控制", "1 外交点 · 自主 -10 · 贡赋 +1")}
+             ${actionButton("data-subject-control", "loosen", "放宽自治", "1 外交点 · 忠诚 +12 · 贡赋 -1")}`
           : ""}`
-      : "";
-    return `<div class="drawer-row">外交点<span>${country.actionPoints.diplomatic}</span></div>
-      <div class="drawer-row">使节<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
-      <div class="drawer-row">外交容量<span>${engine.capacityUsed(world, country.name)} / ${engine.capacity(world, country.name)}</span></div>
-      <div class="drawer-subtitle">外交对象</div><div class="drawer-scroll-list">${targetButtons}</div>
-      <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
-      <div class="drawer-row">信任<span>${relation.trust}</span></div>
-      <div class="drawer-row">威胁<span>${relation.threat}</span></div>
-      <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${relation.strategicInterest}</span></div>
-      <div class="drawer-subtitle">外交行动</div>${actions}${warAction}${subjectRows}`;
+      : `<div class="drawer-row">与 ${targetCountry.name} 暂无从属关系<span>—</span></div>`;
+    return `${bar}${targetLine}<div class="drawer-subtitle">${codexTerm("从属", "建立从属")}</div>${subjects}${subjectRows}`;
   }
 
   function renderSystem(system, world) {
