@@ -73,6 +73,7 @@
     "经济": ["财政", "贸易", "建设"],
     "军事": ["概览", "军团", "战争"],
     "外交": ["邦交", "条约", "从属"],
+    "发展": ["概览", "科技"],
   };
   const activeTab = {};
   function currentTab(system) { return activeTab[system] || systemTabs[system][0]; }
@@ -262,7 +263,27 @@
       <div class="drawer-subtitle">${codexTerm("资本池", "资本开发")}</div>${develop}`;
   }
 
+  const resourceLabel = key => resourceLabels[key] || key;
+
   function renderDevelopment(country, world) {
+    const tab = currentTab("发展");
+    const bar = tabBar("发展");
+
+    if (tab === "概览") {
+      const missions = window.HIFI_HISTORY_ENGINE.missions(world).map(mission => {
+        const reward = Object.entries(mission.reward || {}).map(([res, amount]) => `${resourceLabel(res)} +${amount}`).join(" · ");
+        return `<div class="drawer-row"><span>${mission.label}</span><span>${mission.done ? "已完成" : `奖励 ${reward}`}</span></div>`;
+      }).join("");
+      const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
+      return `${bar}
+        <div class="drawer-row">${codexTerm("思想点", "思想点")}<span>${Math.round(country.ideas)}</span></div>
+        <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${country.ageProgress}%</span></div>
+        <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
+        <div class="drawer-subtitle">${codexTerm("时代使命", "时代使命")}</div>${missions}
+        <div class="drawer-subtitle">导师指引</div><div class="drawer-row"><span>${tutorial?.label || "已完成全部指引"}</span><span>${world.tutorial.step} / 5</span></div>`;
+    }
+
+    // 科技
     const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) =>
       actionButton(
         "data-technology",
@@ -272,16 +293,7 @@
         country.technology[key]
       )
     ).join("");
-    const missions = window.HIFI_HISTORY_ENGINE.missions(world).map(mission =>
-      `<div class="drawer-row">${mission.label}<span>${mission.done ? "完成" : "进行中"}</span></div>`
-    ).join("");
-    const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
-    return `<div class="drawer-row">${codexTerm("思想点", "思想点")}<span>${Math.round(country.ideas)}</span></div>
-      <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${country.ageProgress}%</span></div>
-      <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
-      <div class="drawer-subtitle">${codexTerm("时代使命", "时代使命")}</div>${missions}
-      <div class="drawer-subtitle">导师指引</div><div class="drawer-row">${tutorial?.label || "已完成全部指引"}<span>${world.tutorial.step} / 5</span></div>
-      <div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
+    return `${bar}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
   }
 
   function renderMilitary(country, world) {

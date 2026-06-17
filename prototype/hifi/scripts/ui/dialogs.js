@@ -45,19 +45,24 @@
         <div class="drawer-row">将领<span>${general?.name || (army.mercenaryLoyalty !== undefined ? "佣兵首领" : "未任命")}</span></div>
         ${army.mercenaryLoyalty === undefined ? "" : `<div class="drawer-row">契约 / 忠诚<span>${Math.max(0, army.contractEndsTurn - world.turn)} 季 / ${army.mercenaryLoyalty}</span></div>`}
         <div class="drawer-subtitle">编制</div>${composition}
-        <button class="dialog-command primary" data-army-plan="${army.id}">规划路线 · 选目标后自动行军</button>
-        <button class="dialog-command" data-army-order="hold">原地防守 · 停止移动并恢复补给</button>
-        <button class="dialog-command" data-army-order="march">继续行军 · 沿已定路线前进</button>
+        <div class="drawer-subtitle">行军指令</div>
+        <div class="icon-cmd-row">
+          <button class="icon-cmd primary" data-tip="规划路线 · 选目标后自动行军" aria-label="规划路线" data-army-plan="${army.id}">⌖</button>
+          <button class="icon-cmd" data-tip="原地防守 · 停止移动并恢复补给" aria-label="原地防守" data-army-order="hold">▣</button>
+          <button class="icon-cmd" data-tip="继续行军 · 沿已定路线前进" aria-label="继续行军" data-army-order="march">➤</button>
+        </div>
         <div class="drawer-subtitle">军团管理</div>
-        <button class="dialog-command" data-army-manage="split">拆分军团 · 分出半数为新军团</button>
-        <button class="dialog-command" data-army-manage="reinforce">补充兵员 · 耗军需补满缺额</button>
-        <button class="dialog-command" data-army-manage="train">训练军团 · 1 军事点 + 10 军需 → 经验/组织↑</button>
-        <button class="dialog-command" data-army-manage="demobilize">复员征召兵 · 兵员返乡、人口回流</button>
-        ${army.mercenaryLoyalty === undefined
-          ? `<button class="dialog-command" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}</button>`
-          : `<button class="dialog-command" data-army-manage="renew-mercenary">续约两年 · 付军饷 · 忠诚 +5</button>
-             <button class="dialog-command" data-army-manage="release-mercenary">结束契约 · 解散佣兵团</button>`}
-        ${mergeTargets.map(candidate => `<button class="dialog-command" data-army-merge="${candidate.id}">合并 ${candidate.name} · 并入本军团</button>`).join("")}`;
+        <div class="icon-cmd-row">
+          <button class="icon-cmd" data-tip="拆分军团 · 分出半数为新军团" aria-label="拆分军团" data-army-manage="split">⇄</button>
+          <button class="icon-cmd" data-tip="补充兵员 · 耗军需补满缺额" aria-label="补充兵员" data-army-manage="reinforce">✚</button>
+          <button class="icon-cmd" data-tip="训练军团 · 1 军事点 + 10 军需 → 经验/组织↑" aria-label="训练军团" data-army-manage="train">⚔</button>
+          <button class="icon-cmd" data-tip="复员征召兵 · 兵员返乡、人口回流" aria-label="复员征召兵" data-army-manage="demobilize">⌂</button>
+          ${army.mercenaryLoyalty === undefined
+            ? `<button class="icon-cmd" data-tip="${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}" aria-label="${general?.ruler ? "撤下统治者" : "统治者领军"}" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "♟" : "♛"}</button>`
+            : `<button class="icon-cmd" data-tip="续约两年 · 付军饷 · 忠诚 +5" aria-label="续约两年" data-army-manage="renew-mercenary">↻</button>
+               <button class="icon-cmd" data-tip="结束契约 · 解散佣兵团" aria-label="结束契约" data-army-manage="release-mercenary">✕</button>`}
+        </div>
+        ${mergeTargets.length ? `<div class="drawer-subtitle">合并到同地军团</div><div class="icon-cmd-row">${mergeTargets.map(candidate => `<button class="icon-cmd wide" data-tip="并入本军团" aria-label="合并 ${candidate.name}" data-army-merge="${candidate.id}">⊕ ${candidate.name}</button>`).join("")}</div>` : ""}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
         store.update(current => { current.warfare.planningArmy = armyId; });
         close();

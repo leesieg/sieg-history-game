@@ -114,6 +114,7 @@
       key: mission.key,
       label: mission.label,
       done: country.missionsDone.includes(mission.key),
+      reward: mission.reward,
     }));
   }
 

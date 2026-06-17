@@ -395,8 +395,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   font-size: 12px;
   line-height: 1.35;
   white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .drawer-row.political-action {
   width: 100%;
@@ -468,6 +467,29 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .estate-pie { display: block; margin: 8px auto 6px; }
 .estate-pie path { stroke: #1a140c; stroke-width: 1; }
 .estate-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
+/* 图标命令按钮（军团整编等）：悬浮显示说明 */
+.icon-cmd-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
+.icon-cmd {
+  position: relative;
+  min-width: 42px; height: 40px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  border: 1px solid rgba(214,174,89,.32); border-radius: 8px;
+  background: rgba(173,123,50,.1); color: var(--gold-2);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}
+.icon-cmd.wide { font-size: 13px; }
+.icon-cmd.primary { border-color: var(--gold-3); background: rgba(173,123,50,.26); color: var(--gold-3); }
+.icon-cmd:hover { background: rgba(173,123,50,.32); color: var(--gold-3); }
+.icon-cmd[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  width: 168px; z-index: 40;
+  background: #211a10; color: #ddd0b2;
+  border: 1px solid var(--gold-1); border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; line-height: 1.4; text-align: left;
+  white-space: normal; pointer-events: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,.5);
+}
 .army-drawer {
   position: absolute;
   z-index: 18;
