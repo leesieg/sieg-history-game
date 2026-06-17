@@ -112,9 +112,9 @@
         showToast(error.message);
       }
     }
-    drawerBody.querySelectorAll("[data-country-tab]").forEach(button => {
+    drawerBody.querySelectorAll("[data-drawer-tab]").forEach(button => {
       button.addEventListener("click", () => {
-        window.HIFI_DRAWERS.setCountryTab(button.dataset.countryTab);
+        window.HIFI_DRAWERS.setDrawerTab(button.dataset.drawerTab);
         renderSystemBody(system);
       });
     });
@@ -320,10 +320,8 @@
     button.addEventListener("click", () => {
       const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
       if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
-      const tab = button.dataset.openSystem === "国家"
-        ? window.HIFI_DRAWERS.countryTabForSelector(button.dataset.focusSel)
-        : null;
-      if (tab) window.HIFI_DRAWERS.setCountryTab(tab);
+      const tab = window.HIFI_DRAWERS.drawerTabForSelector(button.dataset.openSystem, button.dataset.focusSel);
+      if (tab) window.HIFI_DRAWERS.setDrawerTab(tab);
       if (!target.classList.contains("active")) openSystem(target);
       else if (tab) renderSystemBody(button.dataset.openSystem);
       focusInDrawer(button.dataset.focusSel);

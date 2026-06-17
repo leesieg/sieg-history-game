@@ -67,26 +67,43 @@
     ];
   }
 
-  const countryTabs = ["概览", "政制", "议会", "决议"];
-  let countryTab = "概览";
-  function setCountryTab(tab) {
-    if (countryTabs.includes(tab)) countryTab = tab;
+  // 通用抽屉分 tab 机制（所有系统共用）
+  const systemTabs = {
+    "国家": ["概览", "政制", "议会", "决议"],
+    "经济": ["财政", "贸易", "建设"],
+    "军事": ["概览", "军团", "战争"],
+    "外交": ["邦交", "条约", "从属"],
+  };
+  const activeTab = {};
+  function currentTab(system) { return activeTab[system] || systemTabs[system][0]; }
+  function setDrawerTab(token) {
+    const [system, tab] = String(token).split(":");
+    if (systemTabs[system]?.includes(tab)) activeTab[system] = tab;
   }
-  // 命令坞/省份按钮的聚焦定位可能指向某个 tab 内的控件，开抽屉前先切到对应 tab
-  function countryTabForSelector(selector) {
+  function tabBar(system) {
+    const cur = currentTab(system);
+    return `<div class="drawer-tabs">${systemTabs[system].map(tab =>
+      `<button class="drawer-tab${tab === cur ? " active" : ""}" data-drawer-tab="${system}:${tab}">${tab}</button>`
+    ).join("")}</div>`;
+  }
+  // 命令坞/省份按钮的聚焦定位可能指向某个 tab 内的控件，开抽屉前先切到对应 tab；返回 "system:tab"
+  function drawerTabForSelector(system, selector) {
     if (!selector) return null;
-    if (selector.includes("data-reform") || selector.includes("data-law")) return "政制";
-    if (selector.includes("data-assembly")) return "议会";
-    if (selector.includes("data-decision") || selector.includes("data-integrate")) return "决议";
+    const rules = {
+      "国家": [[/data-reform|data-law/, "政制"], [/data-assembly/, "议会"], [/data-decision|data-integrate/, "决议"]],
+      "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
+      "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
+      "外交": [[/treaty:|subject:|war:declare/, "条约"]],
+    };
+    for (const [pattern, tab] of (rules[system] || [])) if (pattern.test(selector)) return `${system}:${tab}`;
     return null;
   }
 
   function renderPolitics(country, world) {
-    const tabBar = `<div class="drawer-tabs">${countryTabs.map(tab =>
-      `<button class="drawer-tab${tab === countryTab ? " active" : ""}" data-country-tab="${tab}">${tab}</button>`
-    ).join("")}</div>`;
+    const activeCountryTab = currentTab("国家");
+    const bar = tabBar("国家");
 
-    if (countryTab === "概览") {
+    if (activeCountryTab === "概览") {
       const ability = country.leader.abilities;
       const rows = [
         [codexTerm("政体", "政体"), country.government.typeLabel],
@@ -100,10 +117,10 @@
       const basics = rows
         .map(([label, value]) => `<div class="drawer-row">${label}<span>${value}</span></div>`)
         .join("");
-      return `${tabBar}${basics}`;
+      return `${bar}${basics}`;
     }
 
-    if (countryTab === "政制") {
+    if (activeCountryTab === "政制") {
       const reforms = Object.entries(country.government.reforms)
         .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${value} / 5</span></button>`)
         .join("");
@@ -117,11 +134,11 @@
           `${lawValueLabels[value]} → ${lawValueLabels[next]}`
         );
       }).join("");
-      return `${tabBar}<div class="drawer-subtitle">${codexTerm("改革", "改革槽")}</div>${reforms}
+      return `${bar}<div class="drawer-subtitle">${codexTerm("改革", "改革槽")}</div>${reforms}
         <div class="drawer-subtitle">${codexTerm("法律", "法律")}</div>${laws}`;
     }
 
-    if (countryTab === "议会") {
+    if (activeCountryTab === "议会") {
       const assemblyType = country.government.assembly.type;
       const assembly = country.government.assembly.unlocked
         ? `${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
@@ -134,7 +151,7 @@
       const unrestRow = country.unrest
         ? `<div class="drawer-row">${codexTerm("阶层", "国内不满")}<span>${Math.round(country.unrest)}</span></div>`
         : "";
-      return `${tabBar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
+      return `${bar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
         <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estatePie(country.estates)}${estates}${unrestRow}`;
     }
 
@@ -148,7 +165,7 @@
       const effect = window.HIFI_CODEX?.decisions[key]?.effect;
       return actionButton("data-decision", key, decision.label, can ? (effect || "可执行") : decision.why);
     }).join("");
-    return `${tabBar}<div class="drawer-subtitle">国家决议</div>${decisions}
+    return `${bar}<div class="drawer-subtitle">国家决议</div>${decisions}
       <div class="drawer-subtitle">${codexTerm("领土整合", "领土整合")}</div>${integrate}`;
   }
 
@@ -185,52 +202,64 @@
   function renderEconomy(country, world) {
     const rules = window.HIFI_RULES;
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
-    const policies = [
-      ["closed", "封闭贸易", "本土产出 +5% · 商路分成减半"],
-      ["normal", "常规贸易", "均衡"],
-      ["open", "开放贸易", "商路分成 +30% · 积累资本"],
-    ].map(([key, label, detail]) =>
-      actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)
-    ).join("");
-    const tariffs = [0, 10, 25].map(value =>
-      actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前" : "调整", value === country.tariff)
-    ).join("");
-    const routes = Object.entries(world.trade.routes).map(([key, route]) =>
-      actionButton("data-trade-route", key, route.label, route.active
-        ? `流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 投资 +${Math.round(route.boost * 100)}%` : " · 点击投资"}`
-        : "尚未解锁")
-    ).join("");
-    const pressures = Object.entries(country.pressures).map(([key, value]) =>
-      `<div class="drawer-row">${pressureLabels[key]}<span>${value}</span></div>`
-    ).join("");
-    const edicts = Object.entries(rules.edicts).map(([key, edict]) =>
-      actionButton("data-edict", key, edict.label, Object.entries(edict.cost).map(([resource, cost]) => `${resourceLabels[resource]} ${cost}`).join(" · "))
-    ).join("");
-    const agendas = Object.entries(rules.agendas).map(([key, agenda]) =>
-      actionButton("data-agenda", key, agenda.label, `${resourceLabels[agenda.target]} ≥ ${agenda.threshold}`, country.agenda === key)
-    ).join("");
-    const buildings = Object.entries(rules.buildings).map(([key, building]) =>
-      actionButton("data-building", key, building.label, `${building.cost} 金钱`)
-    ).join("");
+    const tab = currentTab("经济");
+    const bar = tabBar("经济");
+
+    if (tab === "财政") {
+      const policies = [
+        ["closed", "封闭贸易", "本土产出 +5% · 商路分成减半"],
+        ["normal", "常规贸易", "均衡"],
+        ["open", "开放贸易", "商路分成 +30% · 积累资本"],
+      ].map(([key, label, detail]) => actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)).join("");
+      const tariffs = [0, 10, 25].map(value =>
+        actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前 · 本国分成 +" : "切换 · 免费", value === country.tariff)
+      ).join("");
+      const edicts = Object.entries(rules.edicts).map(([key, edict]) => {
+        const cost = Object.entries(edict.cost).map(([resource, amount]) => `${resourceLabels[resource]} ${amount}`).join(" · ");
+        const effect = ["food", "money", "military", "legitimacy"].filter(r => edict[r]).map(r => `${resourceLabels[r]} ${edict[r] > 0 ? "+" : ""}${edict[r]}`).join(" · ");
+        return actionButton("data-edict", key, edict.label, `耗 ${cost} → ${effect}`);
+      }).join("");
+      const agendas = Object.entries(rules.agendas).map(([key, agenda]) => {
+        const reward = Object.entries(agenda.reward).map(([resource, amount]) => `${resourceLabels[resource]} +${amount}`).join(" · ");
+        return actionButton("data-agenda", key, agenda.label, `${resourceLabels[agenda.target]} ≥ ${agenda.threshold} → ${reward}`, country.agenda === key);
+      }).join("");
+      return `${bar}
+        <div class="drawer-row">${codexTerm("粮食", "粮食")}<span>${Math.round(country.food)}</span></div>
+        <div class="drawer-row">${codexTerm("国库", "国库")}<span>${Math.round(country.money)}</span></div>
+        <div class="drawer-row">${codexTerm("军需", "军需")}<span>${Math.round(country.military)}</span></div>
+        <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
+        <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
+        <div class="drawer-subtitle">${codexTerm("贸易政策", "贸易政策")}</div>${policies}
+        <div class="drawer-subtitle">${codexTerm("关税", "关税")}</div>${tariffs}
+        <div class="drawer-subtitle">${codexTerm("国家敕令", "国家敕令")}</div>${edicts}
+        <div class="drawer-subtitle">${codexTerm("国家议程", "国家议程")}</div>${agendas}`;
+    }
+
+    if (tab === "贸易") {
+      const routes = Object.entries(world.trade.routes).map(([key, route]) =>
+        actionButton("data-trade-route", key, route.label, route.active
+          ? `流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 已投资 +${Math.round(route.boost * 100)}%` : ""} · 投资 15 钱 + 1 行政`
+          : "尚未解锁")
+      ).join("");
+      const pressures = Object.entries(country.pressures).map(([key, value]) =>
+        `<div class="drawer-row">${pressureLabels[key]}<span>${value}</span></div>`
+      ).join("");
+      return `${bar}<div class="drawer-subtitle">${codexTerm("贸易路线", "贸易路线")}</div>${routes}
+        <div class="drawer-subtitle">${codexTerm("压力层", "结构压力")}</div>${pressures}`;
+    }
+
+    // 建设
     const tileLabel = tile && !tile.isSea
       ? `${tile.city || tile.region} · ${tile.polity === country.name ? "可建设" : "非己方地块"}`
       : "请选择己方陆地";
+    const buildings = Object.entries(rules.buildings).map(([key, building]) =>
+      actionButton("data-building", key, building.label, `${building.cost} 金钱 + 1 行政 · ${building.effect}`)
+    ).join("");
     const develop = tile && !tile.isSea && tile.polity === country.name
-      ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 · 人口 +1")
+      ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 + 1 行政 · 人口 +1")
       : '<div class="drawer-row">资本开发：请选择己方地块<span>—</span></div>';
-    return `<div class="drawer-row">粮食<span>${Math.round(country.food)}</span></div>
-      <div class="drawer-row">国库<span>${Math.round(country.money)}</span></div>
-      <div class="drawer-row">军需<span>${Math.round(country.military)}</span></div>
-      <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
-      <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
-      ${develop}
-      <div class="drawer-subtitle">贸易政策</div>${policies}
-      <div class="drawer-subtitle">关税</div>${tariffs}
-      <div class="drawer-subtitle">${codexTerm("压力层", "结构压力")}</div>${pressures}
-      <div class="drawer-subtitle">贸易路线</div>${routes}
-      <div class="drawer-subtitle">国家敕令</div>${edicts}
-      <div class="drawer-subtitle">国家议程</div>${agendas}
-      <div class="drawer-subtitle">地块建设：${tileLabel}</div>${buildings}`;
+    return `${bar}<div class="drawer-subtitle">${codexTerm("地块建设", "地块建设")}：${tileLabel}</div>${buildings}
+      <div class="drawer-subtitle">${codexTerm("资本池", "资本开发")}</div>${develop}`;
   }
 
   function renderDevelopment(country, world) {
@@ -239,7 +268,7 @@
         "data-technology",
         key,
         technology.label,
-        country.technology[key] ? "已采纳" : `${technology.cost} 思想 · 传播 ${country.technologyAwareness[key]}%`,
+        country.technology[key] ? `已采纳 · ${technology.effect}` : `${technology.cost} 思想 · 传播 ${country.technologyAwareness[key]}% · ${technology.effect}`,
         country.technology[key]
       )
     ).join("");
@@ -247,12 +276,12 @@
       `<div class="drawer-row">${mission.label}<span>${mission.done ? "完成" : "进行中"}</span></div>`
     ).join("");
     const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
-    return `<div class="drawer-row">思想点<span>${Math.round(country.ideas)}</span></div>
-      <div class="drawer-row">时代进度<span>${country.ageProgress}%</span></div>
+    return `<div class="drawer-row">${codexTerm("思想点", "思想点")}<span>${Math.round(country.ideas)}</span></div>
+      <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${country.ageProgress}%</span></div>
       <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
-      <div class="drawer-subtitle">时代使命</div>${missions}
+      <div class="drawer-subtitle">${codexTerm("时代使命", "时代使命")}</div>${missions}
       <div class="drawer-subtitle">导师指引</div><div class="drawer-row">${tutorial?.label || "已完成全部指引"}<span>${world.tutorial.step} / 5</span></div>
-      <div class="drawer-subtitle">科技采纳</div>${technologies}`;
+      <div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
   }
 
   function renderMilitary(country, world) {
@@ -468,5 +497,5 @@
     return { renderCountryModal, renderPendingElection };
   }
 
-  window.HIFI_DRAWERS = { bindCountryDialogs, renderSystem, setCountryTab, countryTabForSelector };
+  window.HIFI_DRAWERS = { bindCountryDialogs, renderSystem, setDrawerTab, drawerTabForSelector };
 })();
