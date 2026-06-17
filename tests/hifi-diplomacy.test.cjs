@@ -108,6 +108,32 @@ world.diplomacy.wars.push({
 diplomacy.processDiplomacy(world);
 assert.ok(diplomacy.relationView(world, "法兰西王国", "英格兰王国").territorialConflict > 0, "交战必须抬升领土矛盾");
 
+// 王朝纽带（联姻）提升从属提案接受度
+const engViewOfFr = diplomacy.leaderRelationView(world, "英格兰王国", "法兰西王国");
+engViewOfFr.kinship = false;
+const subjectScoreNoKin = diplomacy.evaluateProposal(world, "法兰西王国", "英格兰王国", "vassal").score;
+engViewOfFr.kinship = true;
+assert.ok(diplomacy.evaluateProposal(world, "法兰西王国", "英格兰王国", "vassal").score > subjectScoreNoKin, "王朝纽带必须提升从属提案接受度");
+// proposeTreaty 联姻结成王朝纽带
+diplomacy.relationView(world, "布列塔尼公国", "法兰西王国").trust = 95;
+diplomacy.leaderRelationView(world, "布列塔尼公国", "法兰西王国").friendship = 80;
+world.countries["法兰西王国"].actionPoints.diplomatic = 5;
+diplomacy.proposeTreaty(world, "法兰西王国", "布列塔尼公国", "marriage");
+assert.equal(diplomacy.leaderRelationView(world, "法兰西王国", "布列塔尼公国").kinship, true, "联姻必须结成王朝纽带");
+
+// 共享商路抬升战略利益
+world.trade = { routes: { rhine: { active: true, nodes: ["巴黎", "伦敦"] } }, lastIncome: {} };
+const strategicBefore = diplomacy.relationView(world, "法兰西王国", "英格兰王国").strategicInterest;
+diplomacy.processDiplomacy(world);
+assert.ok(diplomacy.relationView(world, "法兰西王国", "英格兰王国").strategicInterest > strategicBefore, "共享商路必须抬升战略利益");
+
+// 贸易协定按真实贸易流计酬
+world.trade.lastIncome = { "法兰西王国": 100 };
+world.diplomacy.treaties.push({ id: "treaty-flow", type: "trade", parties: ["法兰西王国", "英格兰王国"], startedTurn: world.turn, minimumUntilTurn: world.turn + 4, endsTurn: world.turn + 16 });
+const moneyBeforeTradeTreaty = world.countries["法兰西王国"].money;
+diplomacy.processDiplomacy(world);
+assert.ok(world.countries["法兰西王国"].money - moneyBeforeTradeTreaty >= 15, "贸易协定必须按贸易流计酬（100×0.15=15）");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");

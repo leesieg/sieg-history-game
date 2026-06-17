@@ -34,6 +34,31 @@
     if (country.government.assembly.unlocked && country.government.assembly.support < 45 && country.actionPoints.administrative > 0) {
       window.HIFI_POLITICS_ENGINE.holdAssembly(world, polity, "tax", "privilege");
     }
+    pursueDiplomacy(world, polity);
+  }
+
+  // AI 主动外交：与友好国缔结贸易协定，或向戒备的强邻派使节缓和（每季至多一项，防御式）
+  function pursueDiplomacy(world, polity) {
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    if (!diplomacy || !world.diplomacy) return;
+    const country = world.countries[polity];
+    const targets = Object.keys(world.countries).filter(name => name !== polity);
+    if (country.actionPoints.diplomatic > 0) {
+      for (const target of targets) {
+        const attitude = diplomacy.diplomaticAttitude(world, polity, target);
+        if (!["close", "cooperative"].includes(attitude)) continue;
+        if (diplomacy.treatyBetween(world, polity, target, "trade")) continue;
+        const evaluation = diplomacy.evaluateProposal(world, polity, target, "trade");
+        if (!evaluation.available || !evaluation.accepted) continue;
+        try { diplomacy.proposeTreaty(world, polity, target, "trade"); return; } catch (error) { /* 容量/资源不足则跳过 */ }
+      }
+    }
+    if (diplomacy.freeEnvoys(world, polity) > 0 && country.actionPoints.diplomatic > 0) {
+      const tense = targets.find(target => ["wary", "rival", "hostile"].includes(diplomacy.diplomaticAttitude(world, polity, target)));
+      if (tense) {
+        try { diplomacy.startMission(world, polity, tense, "improve"); } catch (error) { /* 已有任务则跳过 */ }
+      }
+    }
   }
 
   function processAI(world) {

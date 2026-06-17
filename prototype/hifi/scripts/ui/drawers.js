@@ -285,7 +285,7 @@
       ["leader:threaten", "公开威慑", "恐惧与宿怨"],
       ["treaty:trade", "贸易协定", "长期承诺"],
       ["treaty:access", "军事通行", "开放路线"],
-      ["treaty:marriage", "王室联姻", "长期联结"],
+      ["treaty:marriage", "王室联姻", "结王朝纽带 · 便于整合"],
       ["treaty:nonaggression", "互不侵犯", "短期止戈"],
       ["treaty:alliance", "防御同盟", "盟友被攻击自动参战"],
       ["subject:tributary", "要求朝贡", "高自主"],

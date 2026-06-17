@@ -218,7 +218,7 @@
       ["提案本身", definition.base],
       ["国家信任", Math.round((relation.trust - 50) * .7)],
       ["战略利益", Math.round(relation.strategicInterest * .55)],
-      ["领导人关系", Math.round(leader.friendship * .35 + leader.respect * .25 - leader.grudge * .4)],
+      ["领导人关系", Math.round(leader.friendship * .35 + leader.respect * .25 - leader.grudge * .4) + (leader.kinship ? 12 : 0)],
       ["国家威胁", -Math.round(relation.threat * .38)],
       ["领土矛盾", -Math.round(relation.territorialConflict * .42)],
       ["制度冲突", -Math.round(relation.institutionalConflict * .25)],
@@ -226,6 +226,7 @@
     if (subjectTypes[type]) {
       parts.push(["实力差距", Math.round((countryStrength(world, actor) - countryStrength(world, target)) / 2)]);
       parts.push(["主权损失", type === "tributary" ? -10 : type === "vassal" ? -24 : -42]);
+      if (leader.kinship) parts.push(["王朝纽带", 15]); // 联姻为和平继承式整合铺路
     }
     const score = parts.reduce((sum, [, value]) => sum + value, 0);
     return { available: true, accepted: score >= definition.threshold, reason: "", score, threshold: definition.threshold, parts };
@@ -248,6 +249,11 @@
     world.diplomacy.treaties.push(treaty);
     relationView(world, actor, target).trust = clamp(relationView(world, actor, target).trust + 5);
     relationView(world, target, actor).trust = clamp(relationView(world, target, actor).trust + 5);
+    // 王室联姻结成王朝纽带：便于日后和平整合（继承式附庸）并持续抬升信任
+    if (type === "marriage") {
+      leaderRelationView(world, actor, target).kinship = true;
+      leaderRelationView(world, target, actor).kinship = true;
+    }
     return treaty;
   }
 
@@ -310,7 +316,18 @@
     }
     world.diplomacy.treaties = world.diplomacy.treaties.filter(treaty => {
       if (world.turn >= treaty.endsTurn) return false;
-      if (treaty.type === "trade") treaty.parties.forEach(party => { world.countries[party].money += 10; });
+      // 贸易协定按缔约方真实贸易流计酬（不再固定 +10）
+      if (treaty.type === "trade") treaty.parties.forEach(party => {
+        const tradeIncome = world.trade?.lastIncome?.[party] || 0;
+        world.countries[party].money += Math.max(4, Math.round(tradeIncome * .15));
+      });
+      // 王室联姻：王朝纽带持续抬升信任至亲缘水平
+      if (treaty.type === "marriage") {
+        for (const [viewer, other] of [[treaty.parties[0], treaty.parties[1]], [treaty.parties[1], treaty.parties[0]]]) {
+          const view = relationView(world, viewer, other);
+          if (view.trust < 60) view.trust = clamp(view.trust + 1);
+        }
+      }
       return true;
     });
     for (const subject of world.diplomacy.subjects) {
@@ -334,6 +351,19 @@
             side.territorialConflict = clamp(side.territorialConflict + 1);
             side.threat = clamp(side.threat + 1);
           }
+        }
+      }
+    }
+    // 关系随贸易流演化：共享同一条商路的国家逐季累积战略利益（核心循环：贸易流→外交关系）
+    for (const route of Object.values(world.trade?.routes || {})) {
+      if (!route.active) continue;
+      const owners = [...new Set(route.nodes
+        .map(city => world.tiles.find(tile => tile.city === city && !tile.isSea)?.polity)
+        .filter(polity => polity && world.countries[polity]))];
+      for (let i = 0; i < owners.length; i++) {
+        for (let j = i + 1; j < owners.length; j++) {
+          relationView(world, owners[i], owners[j]).strategicInterest = clamp(relationView(world, owners[i], owners[j]).strategicInterest + 1);
+          relationView(world, owners[j], owners[i]).strategicInterest = clamp(relationView(world, owners[j], owners[i]).strategicInterest + 1);
         }
       }
     }
