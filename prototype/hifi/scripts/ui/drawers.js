@@ -129,13 +129,13 @@
            ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, `当前支持 ${country.government.assembly.support}`)}`
         : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
       const estates = Object.values(country.estates)
-        .map(estate => `<div class="drawer-row">${estate.label}<span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
+        .map((estate, index) => `<div class="drawer-row"><span><span class="estate-swatch" style="background:${estateColors[index % estateColors.length]}"></span>${estate.label}</span><span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
         .join("");
       const unrestRow = country.unrest
         ? `<div class="drawer-row">${codexTerm("阶层", "国内不满")}<span>${Math.round(country.unrest)}</span></div>`
         : "";
       return `${tabBar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
-        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estates}${unrestRow}`;
+        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estatePie(country.estates)}${estates}${unrestRow}`;
     }
 
     // 决议
@@ -154,6 +154,26 @@
 
   function codexTerm(key, label) {
     return `<span class="codex-term" data-codex="${key}">${label}</span>`;
+  }
+
+  const estateColors = ["#c9a227", "#a8842f", "#7d6b3f", "#b5763a", "#8f9e6a", "#6e5848", "#9c5a3c"];
+
+  // 阶层权力分布饼图（无依赖原生 SVG）
+  function estatePie(estates) {
+    const list = Object.values(estates);
+    const total = list.reduce((sum, estate) => sum + (estate.power || 0), 0) || 1;
+    const cx = 60, cy = 60, r = 54;
+    let angle = -Math.PI / 2;
+    const slices = list.map((estate, index) => {
+      const fraction = (estate.power || 0) / total;
+      const next = angle + fraction * Math.PI * 2;
+      const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+      const x2 = cx + r * Math.cos(next), y2 = cy + r * Math.sin(next);
+      const large = fraction > .5 ? 1 : 0;
+      angle = next;
+      return `<path d="M${cx} ${cy} L${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)} Z" fill="${estateColors[index % estateColors.length]}"></path>`;
+    }).join("");
+    return `<svg class="estate-pie" viewBox="0 0 120 120" width="118" height="118" role="img" aria-label="阶层权力分布">${slices}</svg>`;
   }
 
   function actionButton(attribute, key, label, detail, active = false) {
