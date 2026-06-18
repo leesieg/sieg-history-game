@@ -47,6 +47,10 @@
     legitimacy: "合法性",
     ideas: "思想点",
   };
+  // 敕令「效果」一律写入 country[resource] 库存（如 country.military 是军需），与花费走 actionPoints 的军事点不同，单独覆盖标签
+  const effectLabels = {
+    military: "军需",
+  };
   const attitudeLabels = {
     close: "亲密",
     cooperative: "合作",
@@ -194,8 +198,8 @@
     return `<svg class="estate-pie" viewBox="0 0 120 120" width="118" height="118" role="img" aria-label="阶层权力分布">${slices}</svg>`;
   }
 
-  function actionButton(attribute, key, label, detail, active = false) {
-    return `<button class="drawer-row political-action${active ? " active" : ""}" ${attribute}="${key}">
+  function actionButton(attribute, key, label, detail, active = false, disabled = false) {
+    return `<button class="drawer-row political-action${active ? " active" : ""}" ${attribute}="${key}"${disabled ? " disabled" : ""}>
       ${label}<span>${detail}</span>
     </button>`;
   }
@@ -217,7 +221,8 @@
       ).join("");
       const edicts = Object.entries(rules.edicts).map(([key, edict]) => {
         const cost = Object.entries(edict.cost).map(([resource, amount]) => `${resourceLabels[resource]} ${amount}`).join(" · ");
-        const effect = ["food", "money", "military", "legitimacy"].filter(r => edict[r]).map(r => `${resourceLabels[r]} ${edict[r] > 0 ? "+" : ""}${edict[r]}`).join(" · ");
+        // 敕令效果直接加到 country[resource]（如 military 对应「军需」库存），与 cost 里走 actionPoints 的「军事点」是两套量，不能共用同一份标签表
+        const effect = ["food", "money", "military", "legitimacy"].filter(r => edict[r]).map(r => `${effectLabels[r] || resourceLabels[r]} ${edict[r] > 0 ? "+" : ""}${edict[r]}`).join(" · ");
         return actionButton("data-edict", key, edict.label, `耗 ${cost} → ${effect}`);
       }).join("");
       const agendas = Object.entries(rules.agendas).map(([key, agenda]) => {
@@ -253,9 +258,17 @@
     const tileLabel = tile && !tile.isSea
       ? `${tile.city || tile.region} · ${tile.polity === country.name ? "可建设" : "非己方地块"}`
       : "请选择己方陆地";
-    const buildings = Object.entries(rules.buildings).map(([key, building]) =>
-      actionButton("data-building", key, building.label, `${building.cost} 金钱 + 1 行政 · ${building.effect}`)
-    ).join("");
+    const buildings = Object.entries(rules.buildings).map(([key, building]) => {
+      const built = Boolean(tile && !tile.isSea && tile.buildings.includes(key));
+      return actionButton(
+        "data-building",
+        key,
+        built ? `${building.label}（已建成）` : building.label,
+        built ? "已建成" : `${building.cost} 金钱 + 1 行政 · ${building.effect}`,
+        built,
+        built
+      );
+    }).join("");
     const develop = tile && !tile.isSea && tile.polity === country.name
       ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 + 1 行政 · 人口 +1")
       : '<div class="drawer-row">资本开发：请选择己方地块<span>—</span></div>';
