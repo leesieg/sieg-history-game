@@ -1,6 +1,14 @@
 (() => {
   "use strict";
 
+  const governmentMarks = {
+    monarchy: "⚜",
+    republic: "◆",
+    merchant_republic: "⚓",
+    empire: "♛",
+    theocracy: "✝",
+    tribal: "◇",
+  };
   const reformLabels = {
     administrative: "行政改革",
     fiscal: "财政改革",
@@ -496,12 +504,17 @@
 
     function renderChoices(filter = "") {
       const query = filter.trim().toLowerCase();
+      const playerPolity = store.getState().playerPolity;
       const countries = Object.values(store.getState().countries).filter(country =>
         !query || country.name.toLowerCase().includes(query) || country.government.typeLabel.includes(query)
       );
-      strip.innerHTML = countries.map(country =>
-        `<button class="country-choice" data-polity="${country.name}">${country.name}<br><small>${country.government.typeLabel}</small></button>`
-      ).join("");
+      strip.innerHTML = countries.map(country => {
+        const mark = governmentMarks[country.government.type] || "◆";
+        const isCurrent = country.name === playerPolity;
+        return `<button class="country-choice${isCurrent ? " selected" : ""}" data-polity="${country.name}">
+          <span class="country-choice-mark" aria-hidden="true">${mark}</span>${country.name}<br><small>${country.government.typeLabel}</small>
+        </button>`;
+      }).join("");
       strip.querySelectorAll(".country-choice").forEach(button => {
         button.addEventListener("click", () => {
           selectedPolity = button.dataset.polity;
@@ -510,6 +523,8 @@
       });
       if (!countries.some(country => country.name === selectedPolity)) selectedPolity = countries[0]?.name || store.getState().playerPolity;
       renderChoicePreview();
+      const currentButton = strip.querySelector(`.country-choice[data-polity="${playerPolity}"]`);
+      currentButton?.scrollIntoView({ block: "nearest", inline: "center" });
     }
 
     function renderPendingElection() {

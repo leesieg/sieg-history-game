@@ -338,9 +338,14 @@
       current.selectedTile = event.detail.tileId;
       window.HIFI_HISTORY_ENGINE.completeTutorial(current, "select_tile");
       if (current.warfare?.planningArmy) {
-        window.HIFI_WARFARE_ENGINE.planArmyRoute(current, current.warfare.planningArmy, event.detail.tileId);
+        const planningArmy = current.warfare.planningArmy;
         current.warfare.planningArmy = null;
-        showToast("军团路线已规划");
+        try {
+          window.HIFI_WARFARE_ENGINE.planArmyRoute(current, planningArmy, event.detail.tileId);
+          showToast("军团路线已规划");
+        } catch (error) {
+          showToast(error.message === "目标不可达" ? "目标不可达，已退出规划" : error.message);
+        }
       }
     });
   });

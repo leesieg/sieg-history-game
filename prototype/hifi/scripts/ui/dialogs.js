@@ -65,6 +65,7 @@
         ${mergeTargets.length ? `<div class="drawer-subtitle">合并到同地军团</div><div class="icon-cmd-row">${mergeTargets.map(candidate => `<button class="icon-cmd wide" data-tip="并入本军团" aria-label="合并 ${candidate.name}" data-army-merge="${candidate.id}">⊕ ${candidate.name}</button>`).join("")}</div>` : ""}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
         store.update(current => { current.warfare.planningArmy = armyId; });
+        window.hifiGame?.showToast?.("规划路线中 · 点击地图目标地块");
         close();
       });
       body.querySelectorAll("[data-army-order]").forEach(button => {
