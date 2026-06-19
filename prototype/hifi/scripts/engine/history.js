@@ -331,6 +331,30 @@
     world.pendingTransition = null;
   }
 
+  // 季度账本：把本季 settleCountry 写入的 lastReport 重述成可读的资源变化与来源构成（修 22 号 #12）
+  function quarterLedger(world, polity = world.playerPolity) {
+    const country = world.countries[polity];
+    const report = country.lastReport || {};
+    const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
+    const domesticMoney = country.tradePolicy === "closed" ? (report.money || 0) * 1.05 : (report.money || 0);
+    const moneyProd = Math.round(domesticMoney * central);
+    const moneyTrade = report.trade || 0;
+    const moneyColonial = report.colonial || 0;
+    const moneySources = [];
+    if (moneyProd) moneySources.push(`地块产出 +${moneyProd}`);
+    if (moneyTrade) moneySources.push(`贸易 +${moneyTrade}`);
+    if (moneyColonial) moneySources.push(`殖民 +${moneyColonial}`);
+    const militaryDelta = Math.round((report.military || 0) * central);
+    return {
+      turn: world.turn,
+      tiles: report.tiles || 0,
+      food: { delta: report.food || 0, sources: report.food ? [`地块产出 +${report.food}`] : [] },
+      money: { delta: moneyProd + moneyTrade + moneyColonial, sources: moneySources },
+      military: { delta: militaryDelta, sources: militaryDelta ? [`地块产出 +${militaryDelta}`] : [] },
+      completedAgenda: report.completedAgenda || null,
+    };
+  }
+
   function processHistory(world) {
     applyPressureEffects(world);
     processSituations(world);
@@ -375,6 +399,7 @@
     runRegency,
     completeTutorial,
     forecast,
+    quarterLedger,
     missions,
     spreadTechnology,
     shouldInterruptRegency,

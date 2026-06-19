@@ -160,6 +160,11 @@
       const summary = window.HIFI_HISTORY_ENGINE.councilSummary(world);
       const mission = window.HIFI_OBJECTIVES_ENGINE.nationalMission(world, polity);
       const proposals = window.HIFI_OBJECTIVES_ENGINE.advisorProposals(world, polity);
+      const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(world, polity);
+      const ledgerRow = (label, entry) => `<div class="drawer-row">${label} ${entry.delta >= 0 ? "+" : ""}${entry.delta}<span>${entry.sources[0] || "—"}</span></div>`;
+      const ledgerHtml = (ledger.money.delta || ledger.food.delta || ledger.military.delta)
+        ? `<div class="drawer-subtitle">本季季报</div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
+        : "";
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);
       document.getElementById("councilSubtitle").textContent = `${summary.era} · ${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}`;
       document.getElementById("councilBody").innerHTML = `
@@ -168,6 +173,7 @@
         <div class="drawer-subtitle">国家预警</div>${warnings.map(text => `<div class="drawer-row">${text}<span>!</span></div>`).join("")}
         <div class="drawer-subtitle">顾问建议</div>${proposals.map((item, index) => renderProposalCard(item, index)).join("")}
         <div class="drawer-subtitle">世界局势</div>${summary.situations.map(text => `<div class="drawer-row">${text}<span>◈</span></div>`).join("") || '<div class="drawer-row">暂无大型局势<span>—</span></div>'}
+        ${ledgerHtml}
         ${world.pendingTransition ? `<button class="dialog-command primary" data-ack-transition>确认时代转折</button>` : ""}
         <button class="dialog-command" data-run-regency>垂帘听政 4 季</button>`;
       document.querySelector("[data-ack-transition]")?.addEventListener("click", () => {
