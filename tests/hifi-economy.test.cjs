@@ -42,7 +42,9 @@ assert.deepEqual(
 const before = { food: country.food, money: country.money, military: country.military };
 const report = economy.settleCountry(world, "法兰西王国");
 assert.ok(country.food > before.food);
-assert.ok(country.money > before.money);
+// 结算已扣建筑维护费：money 账面变化应等于产出净额（可能小于产出本身），而非简单大于赛前值
+assert.equal(country.money - before.money, report.money - report.maintenance.money,
+  "money 账面变化应等于产出减建筑维护");
 assert.ok(country.military > before.military);
 assert.equal(report.tiles, 2);
 
@@ -80,7 +82,8 @@ assert.equal(country.tradePolicy, "open");
 const capitalBeforeTrade = country.capital;
 economy.setAgenda(world, "法兰西王国", "fiscal");
 assert.equal(country.agenda, "fiscal");
-country.money = 120;
+// 留出余量盖过本季建筑维护费扣减，确保结算后仍 >= 议程门槛（120）
+country.money = 140;
 const legitimacyBeforeAgenda = country.legitimacy;
 economy.settleCountry(world, "法兰西王国");
 assert.equal(country.agenda, null, "完成目标后必须结算并清空议程");
@@ -202,6 +205,30 @@ assert.ok(mainSource.includes("data-focus-sel") || html.includes("data-focus-sel
   const bm = economy.buildingMaintenance(maintWorld, polity);
   assert.ok(bm > 0, "建筑应产生金钱维护");
   console.log("A1 维护费纯函数 OK");
+}
+
+// --- Task A2: settleCountry 扣维护 ---
+{
+  const settleWorld = worldEngine.createWorld([
+    { id: 1, isSea: false, polity: "法兰西王国", population: 12, control: 80, good: "grain", buildings: ["farm", "market"], city: "巴黎", devastation: 0 },
+    { id: 2, isSea: false, polity: "法兰西王国", population: 8, control: 55, good: "iron", buildings: ["fort"], city: "", devastation: 0 },
+  ]);
+  economy.initializeEconomy(settleWorld);
+  const polity = settleWorld.playerPolity;
+  settleWorld.warfare = { armies: {} };
+  settleWorld.warfare.armies["big"] = {
+    id: "big", owner: polity,
+    units: [{ combatType: "infantry", serviceType: "standing", soldiers: 20000 }],
+  };
+  const before = { ...settleWorld.countries[polity] };
+  const report = economy.settleCountry(settleWorld, polity);
+  assert.ok(report.maintenance, "report 应含 maintenance 段");
+  assert.ok(report.maintenance.food > 0 && report.maintenance.military > 0, "大军应有粮/军需维护");
+  // 净额 = 产出 - 维护，账面变化应反映扣减
+  const foodDelta = settleWorld.countries[polity].food - before.food;
+  assert.equal(foodDelta, report.food - report.maintenance.food,
+    "粮食账面变化应等于产出减维护");
+  console.log("A2 settleCountry 扣维护 OK");
 }
 
 console.log("hifi economy engine passed");
