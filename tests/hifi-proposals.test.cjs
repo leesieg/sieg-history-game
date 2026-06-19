@@ -96,6 +96,22 @@ const noEnvoyResult = proposals.validate(world, polity, envoyProposal2);
 assert.equal(noEnvoyResult.ok, false, "无空闲使节必须 validate 失败");
 assert.ok(/[一-龥]/.test(noEnvoyResult.reason));
 
+// --- 外交行动：propose_trade 在 evaluateProposal.available===true 但 .accepted===false 时，
+//     validate 必须拦截（否则 execute 会委托 proposeTreaty 抛出"对方拒绝"未捕获异常）---
+country.actionPoints.diplomatic = 5;
+const tradeEvaluation = diplomacy.evaluateProposal(world, polity, "英格兰王国", "trade");
+assert.equal(tradeEvaluation.available, true, "初始世界的贸易提案应当是 available（无重复契约/容量未满）");
+assert.equal(tradeEvaluation.accepted, false, "初始世界法兰西/英格兰初始信任不足以达到贸易门槛，应天然被拒绝");
+const tradeProposal = { type: "propose_trade", params: { target: "英格兰王国" } };
+const tradeResult = proposals.validate(world, polity, tradeProposal);
+assert.equal(tradeResult.ok, false, "对方会拒绝的贸易提案必须 validate 失败，不能留给 execute 抛异常");
+assert.ok(tradeResult.reason && /[一-龥]/.test(tradeResult.reason), "失败原因必须是非空中文");
+assert.throws(
+  () => proposals.execute(world, polity, tradeProposal),
+  /[一-龥]/,
+  "若强行 execute 不可行的贸易提案，proposeTreaty 仍应抛出中文错误（双重防线）"
+);
+
 // --- 军事行动：mobilize_army 可行场景 ---
 country.actionPoints.military = 3;
 country.warfare.warExhaustion = 0;

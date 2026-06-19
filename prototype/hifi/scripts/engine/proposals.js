@@ -22,8 +22,7 @@
     return !tile.buildings.includes("market");
   }
 
-  function buildMarketCost(world, polity) {
-    const country = world.countries[polity];
+  function buildMarketCost() {
     return { money: buildingCost("market"), administrative: 1 };
   }
 
@@ -52,7 +51,7 @@
     const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
     if (!params?.target || params.target === polity) return false;
     const evaluation = diplomacy.evaluateProposal(world, polity, params.target, "trade");
-    return evaluation.available;
+    return evaluation.available && evaluation.accepted;
   }
 
   // --- mobilize_army ---
@@ -71,7 +70,7 @@
     build_market: {
       label: "建设市场",
       advisor: "fiscal",
-      cost: (world, polity) => buildMarketCost(world, polity),
+      cost: () => buildMarketCost(),
       apply: (world, polity, params) =>
         window.HIFI_ECONOMY_ENGINE.constructBuilding(world, polity, params.tileId, "market"),
       preview: (world, polity, params) => ({
@@ -170,6 +169,12 @@
       if (country.actionPoints.diplomatic < 1) return "外交点不足";
     } else if (type === "propose_trade") {
       if (country.actionPoints.diplomatic < 1) return "外交点不足";
+      const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+      if (params?.target && params.target !== polity) {
+        const evaluation = diplomacy.evaluateProposal(world, polity, params.target, "trade");
+        if (!evaluation.available) return evaluation.reason || "外交容量已满或契约已存在";
+        if (!evaluation.accepted) return "对方不会接受贸易协定";
+      }
     } else if (type === "mobilize_army") {
       if (country.actionPoints.military < 1) return "军事点不足";
     }
