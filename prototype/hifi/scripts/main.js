@@ -82,7 +82,12 @@
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
     const count = issues.length;
-    topPending.textContent = count ? `待办 ${count} ›` : "待办已清";
+    const seasonHint = window.HIFI_OBJECTIVES_ENGINE
+      ? window.HIFI_OBJECTIVES_ENGINE.seasonTasks(current).length
+      : 0;
+    topPending.textContent = count
+      ? `待办 ${count} ›`
+      : (seasonHint ? `本季 ${seasonHint} 件事 ›` : "待办已清");
     seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : "结束季度";
     seasonControl.classList.toggle("ready", blocking.length === 0);
     document.getElementById("issueList").innerHTML = issues.map(issue =>
@@ -328,6 +333,12 @@
     });
   });
 
+  window.addEventListener("hifi:open-system", event => {
+    const target = document.querySelector(`.system-button[data-system="${event.detail.system}"]`);
+    if (!target) return;
+    if (!target.classList.contains("active")) openSystem(target);
+  });
+
   window.addEventListener("hifi:tile-selected", event => {
     window.dispatchEvent(new CustomEvent("hifi:army-close"));
     drawer.classList.remove("open");
@@ -338,9 +349,14 @@
       current.selectedTile = event.detail.tileId;
       window.HIFI_HISTORY_ENGINE.completeTutorial(current, "select_tile");
       if (current.warfare?.planningArmy) {
-        window.HIFI_WARFARE_ENGINE.planArmyRoute(current, current.warfare.planningArmy, event.detail.tileId);
+        const planningArmy = current.warfare.planningArmy;
         current.warfare.planningArmy = null;
-        showToast("军团路线已规划");
+        try {
+          window.HIFI_WARFARE_ENGINE.planArmyRoute(current, planningArmy, event.detail.tileId);
+          showToast("军团路线已规划");
+        } catch (error) {
+          showToast(error.message === "目标不可达" ? "目标不可达，已退出规划" : error.message);
+        }
       }
     });
   });

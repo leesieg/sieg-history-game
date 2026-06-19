@@ -96,4 +96,24 @@ assert.ok(html.includes("councilModal"));
 assert.ok(mainSource.includes("blockingIssues"));
 assert.ok(dialogSource.includes("bindNarrativeDialogs"));
 
+// --- 2.1：战争/外交/经济进入待办队列（issues 队列扩展）---
+context.window.HIFI_DIPLOMACY_ENGINE = { capacityUsed: () => 0, diplomaticAttitude: () => "wary" };
+world.playerPolity = "法兰西王国";
+world.diplomacy = { wars: [{ attackers: ["英格兰王国"], defenders: ["法兰西王国"], name: "百年战争" }] };
+const queue = history.issues(world);
+assert.ok(queue.some(item => item.kind === "war"), "进行中战争必须进入待办队列");
+assert.ok(queue.some(item => item.kind === "war" && item.label.includes("英格兰王国")), "战争待办应指明交战对手");
+assert.ok(queue.some(item => item.kind === "diplomacy"), "紧张邻国必须形成外交待办");
+
+// --- 2.2：季度账本 quarterLedger ---
+const ledgerCountry = world.countries["法兰西王国"];
+ledgerCountry.lastReport = { food: 12, money: 40, military: 8, trade: 5, tiles: 3 };
+ledgerCountry.government = Object.assign({}, ledgerCountry.government, { centralPower: 60 });
+ledgerCountry.tradePolicy = "open";
+const ledger2 = history.quarterLedger(world, "法兰西王国");
+assert.ok(ledger2.money.delta > 0, "季报国库变化必须为正数值");
+assert.ok(Array.isArray(ledger2.money.sources) && ledger2.money.sources.length > 0, "季报国库必须有来源构成");
+assert.ok(ledger2.money.sources.some(s => s.includes("贸易")), "开放贸易时季报应含贸易来源");
+assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food");
+
 console.log("hifi history engine passed");
