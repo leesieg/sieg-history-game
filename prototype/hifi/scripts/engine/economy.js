@@ -137,6 +137,23 @@
         country.agenda = null;
       }
     }
+    if (country.food < 0) {
+      const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+      armies.forEach(a => { a.supply = Math.max(0, a.supply - 10); });
+      report.shortage = { ...(report.shortage || {}), food: -country.food };
+      country.food = 0;
+    }
+    if (country.military < 0) {
+      const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+      armies.forEach(a => { a.organization = Math.max(0, a.organization - 8); });
+      report.shortage = { ...(report.shortage || {}), military: -country.military };
+      country.military = 0;
+    }
+    if (country.money < 0) {
+      country.legitimacy = Math.max(0, country.legitimacy - 3);
+      report.shortage = { ...(report.shortage || {}), money: -country.money };
+      country.money = 0;
+    }
     country.lastReport = report;
     country.log.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：粮 +${report.food}，钱 +${report.money}，军需 +${report.military}。`);
     return report;
