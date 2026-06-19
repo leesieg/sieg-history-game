@@ -82,7 +82,12 @@
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
     const count = issues.length;
-    topPending.textContent = count ? `待办 ${count} ›` : "待办已清";
+    const seasonHint = window.HIFI_OBJECTIVES_ENGINE
+      ? window.HIFI_OBJECTIVES_ENGINE.seasonTasks(current).length
+      : 0;
+    topPending.textContent = count
+      ? `待办 ${count} ›`
+      : (seasonHint ? `本季 ${seasonHint} 件事 ›` : "待办已清");
     seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : "结束季度";
     seasonControl.classList.toggle("ready", blocking.length === 0);
     document.getElementById("issueList").innerHTML = issues.map(issue =>
