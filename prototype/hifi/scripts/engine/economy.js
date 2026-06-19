@@ -3,6 +3,14 @@
 
   const rules = window.HIFI_RULES;
 
+  // 维护费系数：让"什么都不做"净增近零，扩军/铺建筑压成负，逼出取舍。
+  // 系数在 longrun 测试反推标定，初值如下。
+  const MAINTENANCE = {
+    food: 0.4,        // 每 1000 兵每季消耗的粮食
+    military: { guard: 0, levy: 0.2, professional: 0.6, standing: 0.8, mercenary: 0.5 }, // 每 1000 兵
+    building: 3,      // 每栋建筑每季消耗的金钱（行政维护）
+  };
+
   function initializeEconomy(world) {
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
@@ -58,6 +66,25 @@
     // 物价指数推升名义金钱产出流（价格革命：白银流入→物价上行）
     if (country.priceIndex) money *= country.priceIndex;
     return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
+  }
+
+  function armyMaintenance(world, polity) {
+    const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+    let food = 0, military = 0;
+    for (const army of armies) {
+      for (const unit of army.units) {
+        const k = unit.soldiers / 1000;
+        food += MAINTENANCE.food * k;
+        military += (MAINTENANCE.military[unit.serviceType] || 0) * k;
+      }
+    }
+    return { food: Math.round(food), military: Math.round(military) };
+  }
+
+  function buildingMaintenance(world, polity) {
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
+    const count = tiles.reduce((sum, tile) => sum + (tile.buildings?.length || 0), 0);
+    return Math.round(count * MAINTENANCE.building);
   }
 
   function settleCountry(world, polity) {
@@ -198,11 +225,14 @@
 
   window.HIFI_ECONOMY_ENGINE = {
     adoptTechnology,
+    armyMaintenance,
+    buildingMaintenance,
     constructBuilding,
     developTile,
     enactEdict,
     initializeEconomy,
     integrateTile,
+    MAINTENANCE,
     setAgenda,
     setTradePolicy,
     settleCountry,

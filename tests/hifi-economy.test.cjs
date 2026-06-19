@@ -169,4 +169,39 @@ assert.ok(mainSource.includes("integrateTile"), "入口必须接通整合操作"
 assert.ok(mainSource.includes("investRoute"), "入口必须接通商路投资操作");
 assert.ok(mainSource.includes("data-focus-sel") || html.includes("data-focus-sel"), "命令坞/省份按钮必须带聚焦定位");
 
+// --- Task A1: 维护费纯函数 ---
+{
+  const maintWorld = worldEngine.createWorld([
+    { id: 1, isSea: false, polity: "法兰西王国", population: 12, control: 80, good: "grain", buildings: ["farm", "market"], city: "巴黎", devastation: 0 },
+    { id: 2, isSea: false, polity: "法兰西王国", population: 8, control: 55, good: "iron", buildings: ["fort"], city: "", devastation: 0 },
+  ]);
+  economy.initializeEconomy(maintWorld);
+  const polity = maintWorld.playerPolity;
+  maintWorld.warfare = { armies: {} };
+  // 造一支 3000 兵的常备军
+  maintWorld.warfare.armies["test-army"] = {
+    id: "test-army", owner: polity,
+    units: [{ combatType: "infantry", serviceType: "standing", soldiers: 3000 }],
+  };
+  const am = economy.armyMaintenance(maintWorld, polity);
+  assert.ok(am.food > 0, "常备军应产生粮食维护");
+  assert.ok(am.military > 0, "常备军应产生军需维护");
+
+  // 征召兵军需维护低于常备军
+  maintWorld.warfare.armies["levy-army"] = {
+    id: "levy-army", owner: polity,
+    units: [{ combatType: "infantry", serviceType: "levy", soldiers: 3000 }],
+  };
+  // 简化断言：常备军单位的军需维护系数 > 征召兵
+  assert.ok(economy.MAINTENANCE.military.standing > economy.MAINTENANCE.military.levy,
+    "常备军军需维护系数应高于征召兵");
+
+  // 建筑维护：给首都地块加 2 栋建筑
+  const maintTiles = maintWorld.tiles.filter(t => t.polity === polity && !t.isSea);
+  maintTiles[0].buildings = ["market", "fort"];
+  const bm = economy.buildingMaintenance(maintWorld, polity);
+  assert.ok(bm > 0, "建筑应产生金钱维护");
+  console.log("A1 维护费纯函数 OK");
+}
+
 console.log("hifi economy engine passed");
