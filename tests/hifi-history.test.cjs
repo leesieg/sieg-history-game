@@ -96,4 +96,13 @@ assert.ok(html.includes("councilModal"));
 assert.ok(mainSource.includes("blockingIssues"));
 assert.ok(dialogSource.includes("bindNarrativeDialogs"));
 
+// --- 2.1：战争/外交/经济进入待办队列（issues 队列扩展）---
+context.window.HIFI_DIPLOMACY_ENGINE = { capacityUsed: () => 0, diplomaticAttitude: () => "wary" };
+world.playerPolity = "法兰西王国";
+world.diplomacy = { wars: [{ attackers: ["英格兰王国"], defenders: ["法兰西王国"], name: "百年战争" }] };
+const queue = history.issues(world);
+assert.ok(queue.some(item => item.kind === "war"), "进行中战争必须进入待办队列");
+assert.ok(queue.some(item => item.kind === "war" && item.label.includes("英格兰王国")), "战争待办应指明交战对手");
+assert.ok(queue.some(item => item.kind === "diplomacy"), "紧张邻国必须形成外交待办");
+
 console.log("hifi history engine passed");

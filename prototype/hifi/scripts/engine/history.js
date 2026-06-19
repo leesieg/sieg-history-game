@@ -275,6 +275,29 @@
       .filter(warning => !warning.startsWith("国家目前没有"))
       .forEach((warning, index) => result.push({ id: `warning-${index}`, label: warning, detail: "顾问预警", blocking: false, kind: "council" }));
     world.situations.forEach(item => result.push({ id: `situation-${item.key}`, label: item.label, detail: item.phase, blocking: false, kind: "council" }));
+    const player = world.playerPolity;
+    // 战争待办：玩家参战的每场战争（修 22 号 #3：战争没进队列）
+    (world.diplomacy?.wars || []).forEach((war, index) => {
+      const inAttack = war.attackers?.includes(player);
+      const inDefend = war.defenders?.includes(player);
+      if (!inAttack && !inDefend) return;
+      const foes = (inAttack ? war.defenders : war.attackers) || [];
+      const foe = foes[0] || "敌国";
+      result.push({ id: `war-${index}`, label: `与${foe}交战中`, detail: war.name ? `${war.name} · 可推进战争目标或议和` : "可推进战争目标或议和", blocking: false, kind: "war" });
+    });
+    // 外交机会：与紧张邻国的关系（可派使节改善或威慑）
+    if (window.HIFI_DIPLOMACY_ENGINE) {
+      const tense = Object.keys(world.countries).find(target =>
+        target !== player
+        && ["wary", "rival", "hostile"].includes(window.HIFI_DIPLOMACY_ENGINE.diplomaticAttitude(world, player, target)));
+      if (tense) result.push({ id: "diplomacy-tense", label: `与${tense}关系紧张`, detail: "可派使节改善或威慑", blocking: false, kind: "diplomacy" });
+    }
+    // 经济机会：可建设增收的己方地块
+    if (window.HIFI_WORLD_ENGINE) {
+      const buildable = window.HIFI_WORLD_ENGINE.controlledTiles(world, player)
+        .find(tile => tile && !tile.isSea && Array.isArray(tile.buildings) && !tile.buildings.includes("market") && tile.population >= 2);
+      if (buildable) result.push({ id: `economy-${buildable.id}`, label: `${buildable.city || buildable.name || buildable.id}可建设增收`, detail: "可建市场提升产出", blocking: false, kind: "economy" });
+    }
     return result;
   }
 
