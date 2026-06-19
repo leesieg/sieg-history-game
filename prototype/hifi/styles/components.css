@@ -389,6 +389,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   font-size: 13px;
 }
 .drawer-row span { color: var(--gold-2); }
+.drawer-row.ledger-neg b { color: var(--danger-hi); }
 /* 右侧详情列：右对齐、可换行、按词换行，避免长说明挤压标签或异常断行 */
 .drawer-row > span:last-child {
   text-align: right;

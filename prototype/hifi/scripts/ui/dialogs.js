@@ -161,8 +161,14 @@
       const mission = window.HIFI_OBJECTIVES_ENGINE.nationalMission(world, polity);
       const proposals = window.HIFI_OBJECTIVES_ENGINE.advisorProposals(world, polity);
       const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(world, polity);
-      const ledgerRow = (label, entry) => `<div class="drawer-row">${label} ${entry.delta >= 0 ? "+" : ""}${entry.delta}<span>${entry.sources[0] || "—"}</span></div>`;
-      const ledgerHtml = (ledger.money.delta || ledger.food.delta || ledger.military.delta)
+      const ledgerRow = (label, e) => {
+        const parts = [`产出 +${e.gross}`];
+        if (e.maintenance) parts.push(`维护 −${e.maintenance}`);
+        if (e.event) parts.push(`事件 −${e.event}`);
+        const cls = e.net < 0 ? " ledger-neg" : "";
+        return `<div class="drawer-row${cls}">${label} <b>${e.net >= 0 ? "+" : ""}${e.net}</b><span>${parts.join(" ")}</span></div>`;
+      };
+      const ledgerHtml = (ledger.money.net || ledger.food.net || ledger.military.net || ledger.money.gross || ledger.food.gross)
         ? `<div class="drawer-subtitle">本季季报</div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
         : "";
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);

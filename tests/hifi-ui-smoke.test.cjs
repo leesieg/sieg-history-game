@@ -56,4 +56,12 @@ assert.match(dialogs, /HIFI_OBJECTIVES_ENGINE\.advisorProposals/, "renderCouncil
 assert.match(dialogs, /HIFI_PROPOSALS_ENGINE\.execute/, "执行建议必须委托 HIFI_PROPOSALS_ENGINE.execute");
 assert.match(main, /hifi:open-system/, "main.js 必须接住御前会议的跳转面板事件");
 
+// --- Task A6: 季报三段渲染 ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts/ui/dialogs.js"), "utf8");
+  assert(/ledger-neg/.test(src), "季报应有净负高亮类 ledger-neg");
+  assert(/maintenance/.test(src) && /\.net/.test(src), "季报渲染应读 maintenance 与 net");
+  console.log("A6 季报渲染 OK");
+}
+
 console.log("hifi UI smoke contracts passed");
