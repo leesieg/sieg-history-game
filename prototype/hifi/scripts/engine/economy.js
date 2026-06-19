@@ -100,9 +100,10 @@
     // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     // 军团/建筑维护费回灌产出流：扩军/铺建筑必须从产出里扣，逼出取舍（核心循环：基底→维护→产出净额）
+    const army = armyMaintenance(world, polity);
     const maintenance = {
-      food: armyMaintenance(world, polity).food,
-      military: armyMaintenance(world, polity).military,
+      food: army.food,
+      military: army.military,
       money: buildingMaintenance(world, polity),
     };
     report.maintenance = maintenance;

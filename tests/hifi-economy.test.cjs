@@ -82,12 +82,42 @@ assert.equal(country.tradePolicy, "open");
 const capitalBeforeTrade = country.capital;
 economy.setAgenda(world, "法兰西王国", "fiscal");
 assert.equal(country.agenda, "fiscal");
-// 留出余量盖过本季建筑维护费扣减，确保结算后仍 >= 议程门槛（120）
-country.money = 140;
+// 推导本季结算会让 money 净变化多少，从而反推出"结算后恰好打到门槛"所需的赛前 money。
+// settleCountry 在 money 写回之后才检查 country[agenda.target] >= agenda.threshold，
+// 因此门槛判定用的是净额（产出 - 维护 [+ 开放贸易加成]）落地后的余额，而非产出本身。
+// 此处 world 从未设置 world.warfare，armyMaintenance 恒为 0，唯一的维护扣减来自建筑维护。
+const fiscalThreshold = rules.agendas.fiscal.threshold;
+const territoryBeforeAgenda = worldEngine.controlledTiles(world, "法兰西王国");
+const moneyOutputBeforeAgenda = territoryBeforeAgenda.reduce(
+  (sum, tile) => sum + economy.tileOutput(tile, country).money, 0
+);
+const centralBeforeAgenda = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
+const domesticMoneyBeforeAgenda = country.tradePolicy === "closed"
+  ? moneyOutputBeforeAgenda * 1.05
+  : moneyOutputBeforeAgenda;
+const moneyProdBeforeAgenda = Math.round(domesticMoneyBeforeAgenda * centralBeforeAgenda);
+const buildingMaintenanceBeforeAgenda = economy.buildingMaintenance(world, "法兰西王国");
+const tradeBonusBeforeAgenda = country.tradePolicy === "open"
+  ? Math.max(2, Math.round(moneyOutputBeforeAgenda * .12))
+  : 0;
+const netMoneyChange = moneyProdBeforeAgenda - buildingMaintenanceBeforeAgenda + tradeBonusBeforeAgenda;
+// 赛前 money = 门槛 - 本季净变化，使结算后 money 恰好等于门槛（边界值，而非留宽松余量）
+const requiredMoney = fiscalThreshold - netMoneyChange;
+country.money = requiredMoney;
 const legitimacyBeforeAgenda = country.legitimacy;
 economy.settleCountry(world, "法兰西王国");
+assert.equal(country.money, fiscalThreshold, "结算后 money 应恰好落在议程门槛上（边界值）");
 assert.equal(country.agenda, null, "完成目标后必须结算并清空议程");
 assert.ok(country.legitimacy > legitimacyBeforeAgenda, "完成议程必须获得奖励");
+
+// 边界负例：赛前少 1 金钱，结算后净额差一点未达门槛，议程不应完成
+economy.setAgenda(world, "法兰西王国", "fiscal");
+country.money = requiredMoney - 1;
+const legitimacyBeforeAgendaMiss = country.legitimacy;
+economy.settleCountry(world, "法兰西王国");
+assert.equal(country.agenda, "fiscal", "未达门槛时议程不应被清空");
+assert.equal(country.legitimacy, legitimacyBeforeAgendaMiss, "未完成议程不应发放奖励");
+country.agenda = null;
 assert.ok(country.capital > capitalBeforeTrade, "开放贸易必须积累资本");
 
 // 贸易路线投资：点击商路现在有真实后果（流量加成），不再是只写不读的死字段
