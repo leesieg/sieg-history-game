@@ -129,4 +129,20 @@ assert.ok(Array.isArray(ledger2.money.sources) && ledger2.money.sources.length >
 assert.ok(ledger2.money.sources.some(s => s.includes("贸易")), "开放贸易时季报应含贸易来源");
 assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food");
 
+// --- Task A5: 季报净额三段 ---
+{
+  const polity = world.playerPolity;
+  world.countries[polity].lastReport = {
+    food: 100, money: 200, military: 50, tiles: 5,
+    maintenance: { food: 30, money: 40, military: 10 },
+    event: { food: 12, money: 8 },
+  };
+  const ledger = history.quarterLedger(world, polity);
+  assert(ledger.food.gross === 100 && ledger.food.maintenance === 30 && ledger.food.event === 12,
+    "粮食三段应分列");
+  assert(ledger.food.net === 100 - 30 - 12, "粮食净额 = 产出-维护-事件");
+  assert(ledger.food.delta === ledger.food.net, "delta 应等于 net（兼容旧渲染）");
+  console.log("A5 季报净额 OK");
+}
+
 console.log("hifi history engine passed");

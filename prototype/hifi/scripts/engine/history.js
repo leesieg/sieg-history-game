@@ -357,12 +357,20 @@
     if (moneyTrade) moneySources.push(`贸易 +${moneyTrade}`);
     if (moneyColonial) moneySources.push(`殖民 +${moneyColonial}`);
     const militaryDelta = Math.round((report.military || 0) * central);
+    const maint = report.maintenance || { food: 0, money: 0, military: 0 };
+    const event = report.event || { food: 0, money: 0 };
+    const seg = (gross, m, e, sources) => {
+      const net = gross - m - e;
+      return { gross, maintenance: m, event: e, net, delta: net, sources };
+    };
     return {
       turn: world.turn,
       tiles: report.tiles || 0,
-      food: { delta: report.food || 0, sources: report.food ? [`地块产出 +${report.food}`] : [] },
-      money: { delta: moneyProd + moneyTrade + moneyColonial, sources: moneySources },
-      military: { delta: militaryDelta, sources: militaryDelta ? [`地块产出 +${militaryDelta}`] : [] },
+      food: seg(report.food || 0, maint.food || 0, event.food || 0,
+        report.food ? [`地块产出 +${report.food}`] : []),
+      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, moneySources),
+      military: seg(militaryDelta, maint.military || 0, 0,
+        militaryDelta ? [`地块产出 +${militaryDelta}`] : []),
       completedAgenda: report.completedAgenda || null,
     };
   }
