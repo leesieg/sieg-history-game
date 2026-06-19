@@ -195,6 +195,18 @@
         }
         situation.lastEffectTurn = world.turn;
       }
+      if (situation.phase === "爆发") {
+        // 救济成本：爆发期消耗粮/钱（事件脉冲，写进季报事件段）
+        for (const key of Object.keys(world.countries)) {
+          const country = world.countries[key];
+          country.lastReport = country.lastReport || {};
+          const ev = country.lastReport.event || { food: 0, money: 0 };
+          const foodCost = Math.min(country.food, 12);
+          const moneyCost = Math.min(country.money, 8);
+          country.food -= foodCost; country.money -= moneyCost;
+          country.lastReport.event = { food: ev.food + foodCost, money: ev.money + moneyCost };
+        }
+      }
     }
   }
 

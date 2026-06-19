@@ -32,6 +32,19 @@ history.processHistory(world);
 assert.ok(world.situations.some(item => item.key === "black_death"));
 assert.ok(world.worldEvents.some(event => event.kind === "situation"));
 
+// --- Task A4: 事件爆发期消耗 ---
+{
+  const polity = world.playerPolity;
+  const c = world.countries[polity];
+  c.food = 1000; c.money = 1000;
+  c.lastReport = {};
+  world.situations = [{ key: "black_death", label: "黑死病", phase: "爆发", progress: 60, lastEffectTurn: null, eventGenerated: true }];
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "黑死病爆发应记录救济粮消耗");
+  assert.ok(c.food < 1000, "黑死病爆发应扣粮");
+  console.log("A4 事件消耗 OK");
+}
+
 const chain = history.applyCausalChain(world, "constantinople_falls");
 assert.equal(chain.length, 7, "历史因果链必须有七跳");
 assert.equal(world.flags.constantinopleFallen, true);
