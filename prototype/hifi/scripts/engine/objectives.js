@@ -162,7 +162,61 @@
     return tasks.slice(0, 3);
   }
 
+  // --- advisorProposals：把财政/外交/军务三条顾问线各落到一个具体、当前可执行的行动 ---
+  // 找不到合法目标/资源不足时，降级为「跳转面板」卡（不悄悄换成别的行动类型）。
+  const advisorPanels = { fiscal: "经济", diplomacy: "外交", military: "军事", internal: "发展" };
+
+  function buildFiscalProposal(world, polity) {
+    const proposals = window.HIFI_PROPOSALS_ENGINE;
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
+    const target = tiles.find(tile => !tile.buildings.includes("market"));
+    if (target) {
+      const proposal = { type: "build_market", params: { tileId: target.id } };
+      const validation = proposals.validate(world, polity, proposal);
+      if (validation.ok) return { advisor: "fiscal", proposal, preview: proposals.preview(world, polity, proposal) };
+    }
+    return { advisor: "fiscal", proposal: { type: "goto", panel: advisorPanels.fiscal }, preview: null };
+  }
+
+  function buildDiplomacyProposal(world, polity) {
+    const proposals = window.HIFI_PROPOSALS_ENGINE;
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    const tenseAttitudes = new Set(["wary", "rival", "hostile"]);
+    if (diplomacy.freeEnvoys(world, polity) > 0) {
+      const target = Object.keys(world.countries)
+        .filter(candidate => candidate !== polity)
+        .find(candidate => tenseAttitudes.has(diplomacy.diplomaticAttitude(world, polity, candidate)));
+      if (target) {
+        const proposal = { type: "send_envoy", params: { target } };
+        const validation = proposals.validate(world, polity, proposal);
+        if (validation.ok) return { advisor: "diplomacy", proposal, preview: proposals.preview(world, polity, proposal) };
+      }
+    }
+    return { advisor: "diplomacy", proposal: { type: "goto", panel: advisorPanels.diplomacy }, preview: null };
+  }
+
+  function buildMilitaryProposal(world, polity) {
+    const proposals = window.HIFI_PROPOSALS_ENGINE;
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
+    const target = tiles.find(tile => tile.population >= 2);
+    if (target) {
+      const proposal = { type: "mobilize_army", params: { tileId: target.id } };
+      const validation = proposals.validate(world, polity, proposal);
+      if (validation.ok) return { advisor: "military", proposal, preview: proposals.preview(world, polity, proposal) };
+    }
+    return { advisor: "military", proposal: { type: "goto", panel: advisorPanels.military }, preview: null };
+  }
+
+  function advisorProposals(world, polity = world.playerPolity) {
+    return [
+      buildFiscalProposal(world, polity),
+      buildDiplomacyProposal(world, polity),
+      buildMilitaryProposal(world, polity),
+    ].slice(0, 3);
+  }
+
   window.HIFI_OBJECTIVES_ENGINE = {
+    advisorProposals,
     midAgenda,
     nationalMission,
     seasonTasks,

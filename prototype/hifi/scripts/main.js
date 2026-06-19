@@ -328,6 +328,12 @@
     });
   });
 
+  window.addEventListener("hifi:open-system", event => {
+    const target = document.querySelector(`.system-button[data-system="${event.detail.system}"]`);
+    if (!target) return;
+    if (!target.classList.contains("active")) openSystem(target);
+  });
+
   window.addEventListener("hifi:tile-selected", event => {
     window.dispatchEvent(new CustomEvent("hifi:army-close"));
     drawer.classList.remove("open");

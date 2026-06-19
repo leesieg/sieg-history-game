@@ -117,13 +117,56 @@
       document.getElementById(id).classList.add("open");
       document.getElementById(id).setAttribute("aria-hidden", "false");
     }
+    const advisorNames = { fiscal: "财政官", diplomacy: "外交官", military: "军务官", internal: "内政官" };
+    const advisorPanels = { fiscal: "经济", diplomacy: "外交", military: "军事", internal: "发展" };
+    function advisorPanelFor(advisor) {
+      return advisorPanels[advisor] || "国家";
+    }
+
+    function warningsWithWarStatus(world, polity, warnings) {
+      const wars = world.diplomacy?.wars || [];
+      const activeWar = wars.find(war => war.attackers.includes(polity) || war.defenders.includes(polity));
+      const isPlaceholderOnly = warnings.length === 0 || (warnings.length === 1 && warnings[0].startsWith("国家目前没有"));
+      if (activeWar && isPlaceholderOnly) {
+        const warLabel = activeWar.name === "百年战争" ? "仍在百年战争中" : "仍处于战争中";
+        return [warLabel];
+      }
+      return warnings;
+    }
+
+    function renderProposalCard(item, index) {
+      const advisorLabel = advisorNames[item.advisor] || item.advisor;
+      const isGoto = item.proposal.type === "goto";
+      const label = isGoto
+        ? `当前没有可立即执行的行动，前往${item.proposal.panel}面板查看`
+        : (window.HIFI_PROPOSALS_ENGINE.actionCatalog[item.proposal.type]?.label || item.proposal.type);
+      const previewRows = item.preview
+        ? `<div class="drawer-row">成本<span>${item.preview.cost}</span></div>
+           <div class="drawer-row">收益<span>${item.preview.gain}</span></div>
+           <div class="drawer-row">风险<span>${item.preview.risk}</span></div>`
+        : "";
+      return `<div class="drawer-subtitle">${advisorLabel}</div>
+        <div class="drawer-row">${label}</div>
+        ${previewRows}
+        <div class="icon-cmd-row">
+          ${isGoto ? "" : `<button class="dialog-command primary" data-proposal-exec="${index}">执行建议</button>`}
+          <button class="dialog-command" data-proposal-goto="${index}">跳转面板</button>
+        </div>`;
+    }
+
     function renderCouncil() {
       const world = store.getState();
+      const polity = world.playerPolity;
       const summary = window.HIFI_HISTORY_ENGINE.councilSummary(world);
+      const mission = window.HIFI_OBJECTIVES_ENGINE.nationalMission(world, polity);
+      const proposals = window.HIFI_OBJECTIVES_ENGINE.advisorProposals(world, polity);
+      const warnings = warningsWithWarStatus(world, polity, summary.warnings);
       document.getElementById("councilSubtitle").textContent = `${summary.era} · ${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}`;
       document.getElementById("councilBody").innerHTML = `
-        <div class="drawer-subtitle">国家预警</div>${summary.warnings.map(text => `<div class="drawer-row">${text}<span>!</span></div>`).join("")}
-        <div class="drawer-subtitle">顾问建议</div>${summary.advisors.map(text => `<div class="drawer-row">${text}<span>›</span></div>`).join("")}
+        <div class="drawer-subtitle">国家使命</div>
+        <div class="drawer-row">${mission.title}<span>${mission.why}</span></div>
+        <div class="drawer-subtitle">国家预警</div>${warnings.map(text => `<div class="drawer-row">${text}<span>!</span></div>`).join("")}
+        <div class="drawer-subtitle">顾问建议</div>${proposals.map((item, index) => renderProposalCard(item, index)).join("")}
         <div class="drawer-subtitle">世界局势</div>${summary.situations.map(text => `<div class="drawer-row">${text}<span>◈</span></div>`).join("") || '<div class="drawer-row">暂无大型局势<span>—</span></div>'}
         ${world.pendingTransition ? `<button class="dialog-command primary" data-ack-transition>确认时代转折</button>` : ""}
         <button class="dialog-command" data-run-regency>垂帘听政 4 季</button>`;
@@ -140,6 +183,29 @@
         store.update(() => {});
         document.getElementById("councilModal").classList.remove("open");
         return advanced;
+      });
+      document.querySelectorAll("[data-proposal-exec]").forEach(button => {
+        button.addEventListener("click", () => {
+          const item = proposals[Number(button.dataset.proposalExec)];
+          if (!item) return;
+          const label = window.HIFI_PROPOSALS_ENGINE.actionCatalog[item.proposal.type]?.label || item.proposal.type;
+          try {
+            store.update(current => window.HIFI_PROPOSALS_ENGINE.execute(current, current.playerPolity, item.proposal));
+            document.getElementById("councilModal").classList.remove("open");
+            window.hifiGame?.showToast?.(`已执行：${label}`);
+          } catch (error) {
+            window.hifiGame?.showToast?.(error.message);
+          }
+        });
+      });
+      document.querySelectorAll("[data-proposal-goto]").forEach(button => {
+        button.addEventListener("click", () => {
+          const item = proposals[Number(button.dataset.proposalGoto)];
+          if (!item) return;
+          const panel = item.proposal.type === "goto" ? item.proposal.panel : advisorPanelFor(item.advisor);
+          document.getElementById("councilModal").classList.remove("open");
+          window.dispatchEvent(new CustomEvent("hifi:open-system", { detail: { system: panel } }));
+        });
       });
       open("councilModal");
     }

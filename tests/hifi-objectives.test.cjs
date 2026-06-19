@@ -9,6 +9,8 @@ const context = { window: {} };
 for (const file of [
   "data/countries.js",
   "data/rules.js",
+  "data/geography.js",
+  "data/trade.js",
   "engine/world.js",
   "engine/turn.js",
   "engine/politics.js",
@@ -17,6 +19,7 @@ for (const file of [
   "engine/warfare.js",
   "engine/history.js",
   "engine/objectives.js",
+  "engine/proposals.js",
 ]) {
   vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 }
@@ -28,6 +31,7 @@ const diplomacy = context.window.HIFI_DIPLOMACY_ENGINE;
 const warfare = context.window.HIFI_WARFARE_ENGINE;
 const history = context.window.HIFI_HISTORY_ENGINE;
 const objectives = context.window.HIFI_OBJECTIVES_ENGINE;
+const proposals = context.window.HIFI_PROPOSALS_ENGINE;
 
 assert.ok(objectives, "HIFI_OBJECTIVES_ENGINE 必须挂到 window 上");
 assert.equal(typeof objectives.nationalMission, "function");
@@ -100,5 +104,32 @@ const poorFrance = world.countries["法兰西王国"];
 poorFrance.money = 10;
 const poorTasks = objectives.seasonTasks(world, "法兰西王国");
 assert.ok(poorTasks.some(task => task.advisor === "fiscal"), "国库枯竭时必须出现财政顾问任务");
+
+// --- advisorProposals：≤3 条，每条非降级建议必须落在 actionCatalog 内并通过校验，预览三字段非空 ---
+assert.equal(typeof objectives.advisorProposals, "function", "HIFI_OBJECTIVES_ENGINE 必须提供 advisorProposals");
+assert.ok(proposals, "需要 HIFI_PROPOSALS_ENGINE 配合校验");
+
+const franceProposals = objectives.advisorProposals(world, "法兰西王国");
+assert.ok(Array.isArray(franceProposals));
+assert.ok(franceProposals.length <= 3, "advisorProposals 最多 3 条");
+for (const item of franceProposals) {
+  assert.ok(item.advisor, "每条必须标明 advisor");
+  assert.ok(item.proposal && item.proposal.type, "每条必须有 proposal.type");
+  if (item.proposal.type === "goto") {
+    assert.ok(item.proposal.panel, "降级卡必须带 panel");
+    assert.equal(item.preview, null, "降级卡 preview 必须为 null");
+  } else {
+    assert.ok(
+      Object.keys(proposals.actionCatalog).includes(item.proposal.type),
+      `非降级建议的 type 必须在 actionCatalog 内，实际：${item.proposal.type}`
+    );
+    const validation = proposals.validate(world, "法兰西王国", item.proposal);
+    assert.ok(validation.ok, `advisorProposals 给出的非降级建议必须通过 validate：${validation.reason || ""}`);
+    assert.ok(item.preview, "非降级建议必须带 preview");
+    assert.ok(item.preview.cost && item.preview.cost.length > 0, "preview.cost 不能为空");
+    assert.ok(item.preview.gain && item.preview.gain.length > 0, "preview.gain 不能为空");
+    assert.ok(item.preview.risk && item.preview.risk.length > 0, "preview.risk 不能为空");
+  }
+}
 
 console.log("hifi objectives engine passed");
