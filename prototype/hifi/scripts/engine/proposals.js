@@ -214,10 +214,12 @@
     if (!entry) return { cost: {}, effect: {}, available: { ok: false }, reason: "未知行动类型" };
     const resolvedParams = params || {};
     const avail = entry.available(world, polity, resolvedParams);
-    const ok = avail === true || avail?.ok === true;
+    const structurallyOk = avail === true || avail?.ok === true;
+    const resourceReason = insufficientResourceReason(world, polity, type, resolvedParams);
+    const ok = structurallyOk && !resourceReason;
     let reason = "";
     if (!ok) {
-      reason = insufficientResourceReason(world, polity, type, resolvedParams) || avail?.reason || "条件不满足";
+      reason = resourceReason || avail?.reason || "条件不满足";
     }
     return {
       cost: entry.cost(world, polity, resolvedParams),
