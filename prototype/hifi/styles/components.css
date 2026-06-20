@@ -115,20 +115,14 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   left: 102px;
   right: 0;
   height: var(--top-h);
-  display: grid;
-  grid-template-columns: minmax(220px, .85fr) minmax(260px, .95fr) minmax(520px, 1.7fr);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
   border-bottom: 3px solid var(--gold-0);
   background:
     linear-gradient(180deg, rgba(23, 39, 34, .99), rgba(7, 17, 14, .99)),
     repeating-linear-gradient(90deg, transparent 0 90px, rgba(255,255,255,.02) 91px);
   box-shadow: inset 0 -1px rgba(230, 190, 100, .38), 0 5px 16px rgba(0,0,0,.46);
-}
-.brand-block {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  padding: 0 14px 0 31px;
-  border-right: 1px solid rgba(214, 174, 89, .34);
 }
 .shield {
   position: relative;
@@ -154,36 +148,26 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   clip-path: inherit;
   background: linear-gradient(145deg, #174b87, #092c58);
 }
-.game-title {
-  min-width: 0;
-  margin-left: 13px;
-  overflow: hidden;
-  color: var(--gold-3);
-  font-size: clamp(17px, 1.45vw, 25px);
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-shadow: 0 2px 2px #000;
-}
 
 .chronicle {
-  display: grid;
-  grid-template-columns: 1fr 104px;
-  align-items: stretch;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
   min-width: 0;
+  padding: 0 14px 0 31px;
   border-right: 1px solid rgba(214, 174, 89, .34);
 }
 .date-plaque {
   position: relative;
   display: grid;
   place-content: center;
+  margin-left: 13px;
   text-align: center;
 }
 .date-plaque::before {
   content: "✧";
   position: absolute;
-  left: 12px;
+  left: -22px;
   top: 50%;
   color: var(--gold-2);
   font-size: 30px;
@@ -191,27 +175,20 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .date-main { color: var(--gold-3); font-size: 17px; letter-spacing: .08em; }
 .date-era { margin-top: 4px; color: var(--muted); font-size: 11px; }
-.top-pending {
-  border: 0;
-  border-left: 1px solid rgba(214, 174, 89, .34);
-  background: linear-gradient(180deg, rgba(111, 76, 25, .34), rgba(34, 25, 13, .24));
-  color: #f0c967;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-}
-.top-pending:hover { background: rgba(173, 123, 50, .26); }
 
 .resource-strip {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(61px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: flex-end;
   min-width: 0;
-  align-items: stretch;
+  max-width: 520px;
   padding-right: 5px;
 }
 .resource-token {
   position: relative;
   min-width: 0;
+  flex: 0 0 74px;
   display: grid;
   grid-template-columns: 20px auto;
   grid-template-rows: 22px 15px;
@@ -549,7 +526,22 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   font-size: 16px;
   font-weight: 700;
   letter-spacing: .08em;
+  cursor: pointer;
 }
+.issue-panel.issue-empty {
+  width: 132px;
+  padding: 4px 9px;
+  max-height: none;
+  overflow: visible;
+}
+.issue-panel.issue-empty .issue-heading {
+  height: 28px;
+  border-bottom: 0;
+  font-size: 12px;
+  letter-spacing: .04em;
+  opacity: .82;
+}
+.issue-panel.issue-empty #issueList { display: none; }
 .issue {
   width: 100%;
   min-height: 54px;
@@ -919,15 +911,13 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 
 @media (max-width: 1180px) {
   :root { --rail-w: 110px; }
-  .top-command-bar { left: 104px; grid-template-columns: minmax(210px,.75fr) minmax(250px,.9fr) minmax(420px,1.5fr); }
+  .top-command-bar { left: 104px; }
   .ruler-plaque { width: 118px; height: 124px; }
-  .brand-block { padding-left: 26px; }
-  .game-title { font-size: 19px; }
+  .chronicle { padding-left: 26px; }
   .shield { width: 43px; height: 50px; flex-basis: 43px; }
-  .chronicle { grid-template-columns: 1fr 95px; }
   .date-main { font-size: 16px; }
-  .resource-strip { grid-template-columns: repeat(7,minmax(52px,1fr)); }
-  .resource-token { grid-template-columns: 19px auto; }
+  .resource-strip { max-width: 420px; }
+  .resource-token { flex-basis: 64px; grid-template-columns: 19px auto; }
   .resource-icon { font-size: 17px; }
   .resource-total { font-size: 12px; }
   .system-rail { top: 132px; }
@@ -942,20 +932,17 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
-  :root { --top-h: 60px; --rail-w: 78px; }
-  .top-command-bar { left: 86px; grid-template-columns: minmax(160px,.75fr) 205px minmax(350px,1.55fr); }
+  :root { --top-h: 76px; --rail-w: 78px; }
+  .top-command-bar { left: 86px; }
   .ruler-plaque { width: 96px; height: 105px; }
   .ruler-level { width: 29px; height: 29px; font-size: 11px; }
-  .brand-block { padding-left: 16px; }
+  .chronicle { padding-left: 16px; }
   .shield { width: 36px; height: 44px; flex-basis: 36px; font-size: 12px; }
-  .game-title { margin-left: 7px; font-size: 15px; }
-  .chronicle { grid-template-columns: 1fr 76px; }
   .date-plaque::before { display: none; }
   .date-main { font-size: 13px; }
   .date-era { font-size: 8px; }
-  .top-pending { font-size: 13px; }
-  .resource-strip { grid-template-columns: repeat(7,minmax(43px,1fr)); }
-  .resource-token { grid-template-columns: 14px auto; grid-template-rows: 21px 14px; column-gap: 2px; }
+  .resource-strip { max-width: 300px; }
+  .resource-token { flex-basis: 48px; grid-template-columns: 14px auto; grid-template-rows: 21px 14px; column-gap: 2px; }
   .resource-icon { font-size: 13px; }
   .resource-total { font-size: 10px; }
   .resource-trend { font-size: 8px; }

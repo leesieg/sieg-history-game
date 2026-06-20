@@ -6,7 +6,8 @@
   const drawerBody = document.getElementById("drawerBody");
   const seasonControl = document.getElementById("seasonControl");
   const seasonText = document.getElementById("seasonText");
-  const topPending = document.getElementById("topPending");
+  const issuePanel = document.getElementById("issuePanel");
+  const issueHeading = document.getElementById("issueHeading");
   const toast = document.getElementById("toast");
   let toastTimer;
 
@@ -118,13 +119,9 @@
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
     const count = issues.length;
-    const seasonHint = window.HIFI_OBJECTIVES_ENGINE
-      ? window.HIFI_OBJECTIVES_ENGINE.seasonTasks(current).length
-      : 0;
-    topPending.textContent = count
-      ? `待办 ${count} ›`
-      : (seasonHint ? `本季 ${seasonHint} 件事 ›` : "待办已清");
-    seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : "结束季度";
+    issueHeading.textContent = count ? `问题与对象 · ${count}` : "问题与对象";
+    issuePanel.classList.toggle("issue-empty", count === 0);
+    seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : (count ? `待办 ${count}` : "结束季度");
     seasonControl.classList.toggle("ready", blocking.length === 0);
     document.getElementById("issueList").innerHTML = issues.map(issue =>
       `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}">
@@ -342,7 +339,7 @@
     store.update(current => window.HIFI_HISTORY_ENGINE.completeTutorial(current, "open_country"));
     dialogs.renderCountryModal();
   });
-  topPending.addEventListener("click", narrativeDialogs.renderCouncil);
+  issueHeading.addEventListener("click", narrativeDialogs.renderCouncil);
   seasonControl.addEventListener("click", () => {
     const current = store.getState();
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);

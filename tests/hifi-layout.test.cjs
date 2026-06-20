@@ -36,4 +36,15 @@ assert.ok(!/@media \(max-width: 900px\)[\s\S]*?\.map-tools\s*\{\s*display:\s*non
 assert.ok(html.includes('preserveAspectRatio="xMidYMid slice"'));
 assert.ok(html.includes('aria-hidden="true"'));
 
+// --- Task C1: HUD 顶栏 ---
+{
+  assert(!/class="game-title"/.test(html), "应删除游戏名称 game-title");
+  assert(!/id="topPending"/.test(html), "应删除顶部待办按钮 topPending");
+  assert(/id="dateMain"/.test(html), "日期牌保留");
+  assert(/id="countryShield"/.test(html), "国家盾徽保留");
+  assert(css.includes("justify-content: space-between"), "顶栏应两端对齐，中间留白");
+  assert(css.includes("flex-wrap: wrap"), "资源栏应可换行成两栏");
+  console.log("C1 HUD 顶栏 OK");
+}
+
 console.log("hifi layout contract passed");
