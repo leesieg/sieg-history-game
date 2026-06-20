@@ -168,4 +168,17 @@ assert.ok(objectivesIndex >= 0 && proposalsIndex > objectivesIndex, "proposals.j
   console.log("B1 actionPreview OK");
 }
 
+// --- Task B2: 预览口径一致 ---
+{
+  country.money = 100;
+  country.actionPoints.administrative = 3;
+  const tile = tiles.find(t => t.polity === polity && !t.isSea && !t.buildings.includes("market"));
+  const preview = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  const moneyBefore = country.money;
+  proposals.execute(world, polity, { type: "build_market", params: { tileId: tile.id } });
+  const spent = moneyBefore - country.money;
+  assert.equal(spent, preview.cost.money || 0, `成本预览(${preview.cost.money})应等于实际花费(${spent})`);
+  console.log("B2 口径一致 OK");
+}
+
 console.log("hifi proposals engine passed");
