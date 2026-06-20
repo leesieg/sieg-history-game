@@ -67,6 +67,32 @@
     rival: "敌对竞争",
     hostile: "强烈敌视",
   };
+  // 行动预览成本标签：复用上方 resourceLabels，缺省项在此补充（envoy 等不在通用资源表里的口径）
+  const previewCostLabels = Object.assign({ envoy: "使节名额", capital: "资本" }, resourceLabels);
+  function costLabel(key) { return previewCostLabels[key] || key; }
+
+  // 拼出按钮下方的成本/预期小字；不可行时附 action-blocked 类与原因（供按钮 title 复用）。
+  // 注：actionPreview().effect 是 actionCatalog 条目的 preview() 返回值 { cost, gain, risk } 这一整块文案，
+  // 不是逐资源的数值表——这里直接取 gain（必要时附 risk）展示，不能像 cost 一样 Object.entries 遍历。
+  function actionPreviewHtml(world, polity, type, params) {
+    const engine = window.HIFI_PROPOSALS_ENGINE;
+    if (!engine) return "";
+    const p = engine.actionPreview(world, polity, type, params);
+    const costStr = Object.entries(p.cost || {}).map(([key, value]) => `${value}${costLabel(key)}`).join(" + ");
+    const effStr = p.effect?.gain || "—";
+    const blocked = p.available?.ok === false;
+    const cls = blocked ? " action-blocked" : "";
+    const titleAttr = blocked && p.reason ? ` title="${p.reason}"` : "";
+    return `<div class="action-preview${cls}"${titleAttr}>成本：${costStr || "—"}　预期：${effStr}</div>`;
+  }
+
+  // 返回该 catalog 行动是否可行 + 原因，供按钮自身加 disabled/action-disabled 与 title
+  function actionAvailability(world, polity, type, params) {
+    const engine = window.HIFI_PROPOSALS_ENGINE;
+    if (!engine) return { ok: true, reason: "" };
+    const p = engine.actionPreview(world, polity, type, params);
+    return { ok: p.available?.ok !== false, reason: p.reason || "" };
+  }
 
   function countryRows(country) {
     return [
@@ -171,7 +197,8 @@
     // 决议
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const integrate = tile && !tile.isSea && tile.polity === country.name
-      ? actionButton("data-integrate", String(tile.id), `整合 ${tile.city || tile.region}`, `控制度 ${Math.round(tile.control ?? 0)} · 20 金钱`)
+      ? actionButton("data-integrate", String(tile.id), `整合 ${tile.city || tile.region}`, `控制度 ${Math.round(tile.control ?? 0)} · 20 金钱`,
+          false, false, { world, polity: country.name, type: "integrate_tile", params: { tileId: tile.id } })
       : '<div class="drawer-row">整合：请选择己方地块<span>—</span></div>';
     const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) => {
       const can = decision.can(country, window.hifiGame?.store?.getState());
@@ -206,10 +233,25 @@
     return `<svg class="estate-pie" viewBox="0 0 120 120" width="118" height="118" role="img" aria-label="阶层权力分布">${slices}</svg>`;
   }
 
-  function actionButton(attribute, key, label, detail, active = false, disabled = false) {
-    return `<button class="drawer-row political-action${active ? " active" : ""}" ${attribute}="${key}"${disabled ? " disabled" : ""}>
+  function actionButton(attribute, key, label, detail, active = false, disabled = false, preview = null) {
+    // preview: 可选 { world, polity, type, params }，对应 actionCatalog 行动时附成本/预期小字并按可行性置灰
+    let blockedClass = "";
+    let titleAttr = "";
+    let previewHtml = "";
+    let isDisabled = disabled;
+    if (preview) {
+      const { world, polity, type, params } = preview;
+      const availability = actionAvailability(world, polity, type, params);
+      if (!availability.ok) {
+        isDisabled = true;
+        blockedClass = " action-disabled";
+        titleAttr = availability.reason ? ` title="${availability.reason}"` : "";
+      }
+      previewHtml = actionPreviewHtml(world, polity, type, params);
+    }
+    return `<button class="drawer-row political-action${active ? " active" : ""}${blockedClass}" ${attribute}="${key}"${isDisabled ? " disabled" : ""}${titleAttr}>
       ${label}<span>${detail}</span>
-    </button>`;
+    </button>${previewHtml}`;
   }
 
   function renderEconomy(country, world) {
@@ -268,17 +310,23 @@
       : "请选择己方陆地";
     const buildings = Object.entries(rules.buildings).map(([key, building]) => {
       const built = Boolean(tile && !tile.isSea && tile.buildings.includes(key));
+      // 仅 market 在 actionCatalog 中登记，能调 actionPreview；其余建筑维持原有按钮文案，不挂预览
+      const preview = key === "market" && tile && !built
+        ? { world, polity: country.name, type: "build_market", params: { tileId: tile.id } }
+        : null;
       return actionButton(
         "data-building",
         key,
         built ? `${building.label}（已建成）` : building.label,
         built ? "已建成" : `${building.cost} 金钱 + 1 行政 · ${building.effect}`,
         built,
-        built
+        built,
+        preview
       );
     }).join("");
     const develop = tile && !tile.isSea && tile.polity === country.name
-      ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 + 1 行政 · 人口 +1")
+      ? actionButton("data-develop", String(tile.id), `资本开发 ${tile.city || tile.region}`, "30 资本 + 1 行政 · 人口 +1",
+          false, false, { world, polity: country.name, type: "develop_tile", params: { tileId: tile.id } })
       : '<div class="drawer-row">资本开发：请选择己方地块<span>—</span></div>';
     return `${bar}<div class="drawer-subtitle">${codexTerm("地块建设", "地块建设")}：${tileLabel}</div>${buildings}
       <div class="drawer-subtitle">${codexTerm("资本池", "资本开发")}</div>${develop}`;
@@ -336,10 +384,13 @@
     }
 
     if (tab === "军团") {
+      const mobilizePreview = combatType => tile
+        ? { world, polity: country.name, type: "mobilize_army", params: { tileId: tile.id, combatType } }
+        : null;
       return `${bar}<div class="drawer-subtitle">${codexTerm("动员", "征募")}：${canRecruit ? tile.city || tile.region : "请选择己方地块"}</div>
-        ${actionButton("data-mobilize", "infantry", "动员步兵", "1 军事点 · 1200 步兵 · 耗地块人口")}
-        ${actionButton("data-mobilize", "cavalry", "动员骑兵", "1 军事点 · 500 骑兵 · 耗地块人口")}
-        ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "1 军事点 · 军需 30 · 300 炮兵") : ""}
+        ${actionButton("data-mobilize", "infantry", "动员步兵", "1 军事点 · 1200 步兵 · 耗地块人口", false, false, mobilizePreview("infantry"))}
+        ${actionButton("data-mobilize", "cavalry", "动员骑兵", "1 军事点 · 500 骑兵 · 耗地块人口", false, false, mobilizePreview("cavalry"))}
+        ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "1 军事点 · 军需 30 · 300 炮兵", false, false, mobilizePreview("artillery")) : ""}
         ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱 · 约 2000 佣兵 · 8 季合约")}
         <div class="drawer-subtitle">${codexTerm("军团", "现役军团")}</div>
         ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人 · 点击整编`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
@@ -375,14 +426,18 @@
         name === target
       )
     ).join("");
-    const renderActions = list => list.map(([key, label, detail]) => actionButton("data-diplomatic-action", key, label, detail)).join("");
+    // 第四个元素是可选的 catalog 行动类型（send_envoy/propose_trade），用于挂成本/预期预览；其余外交动作（私人会晤等）不在 catalog 中，维持原样
+    const renderActions = list => list.map(([key, label, detail, catalogType]) => {
+      const preview = catalogType ? { world, polity: country.name, type: catalogType, params: { target } } : null;
+      return actionButton("data-diplomatic-action", key, label, detail, false, false, preview);
+    }).join("");
     const tab = currentTab("外交");
     const bar = tabBar("外交");
     const targetLine = `<div class="drawer-subtitle">当前对象：${targetCountry.name}（在「邦交」可切换）</div>`;
 
     if (tab === "邦交") {
       const leaderActions = renderActions([
-        ["mission:improve", "派遣使节", "1 外交点 · 改善关系（需空闲使节）"],
+        ["mission:improve", "派遣使节", "1 外交点 · 改善关系（需空闲使节）", "send_envoy"],
         ["leader:meeting", "私人会晤", "1 外交点 · 友谊与尊重"],
         ["leader:gift", "赠送礼物", "1 外交点 · 20 金钱 · 提升信任"],
         ["leader:threaten", "公开威慑", "1 外交点 · 恐惧与宿怨"],
@@ -406,7 +461,7 @@
 
     if (tab === "条约") {
       const treaties = renderActions([
-        ["treaty:trade", "贸易协定", "1 外交点 · 按贸易流计酬"],
+        ["treaty:trade", "贸易协定", "1 外交点 · 按贸易流计酬", "propose_trade"],
         ["treaty:access", "军事通行", "1 外交点 · 开放路线"],
         ["treaty:marriage", "王室联姻", "1 外交点 · 结王朝纽带 · 便于整合"],
         ["treaty:nonaggression", "互不侵犯", "1 外交点 · 短期止戈"],
