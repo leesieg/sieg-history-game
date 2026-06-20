@@ -371,16 +371,35 @@
     setTimeout(() => { element.style.boxShadow = ""; }, 1200);
   }
 
-  document.querySelectorAll("[data-open-system]").forEach(button => {
-    button.addEventListener("click", () => {
-      const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
-      if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
-      const tab = window.HIFI_DRAWERS.drawerTabForSelector(button.dataset.openSystem, button.dataset.focusSel);
-      if (tab) window.HIFI_DRAWERS.setDrawerTab(tab);
-      if (!target.classList.contains("active")) openSystem(target);
-      else if (tab) renderSystemBody(button.dataset.openSystem);
-      focusInDrawer(button.dataset.focusSel);
-    });
+  // 用事件委托而非逐按钮 addEventListener：省份面板的 data-open-system 按钮由
+  // tileActionsFor 按归属动态重渲染（见 map.js updateProvince），固定绑定会在重渲染后失效。
+  document.addEventListener("click", event => {
+    const button = event.target.closest("[data-open-system]");
+    if (!button) return;
+    if (button.dataset.markTarget !== undefined) {
+      store.update(current => { current.diplomacy.selectedTarget = button.dataset.tilePolity; });
+    }
+    const target = document.querySelector(`.system-button[data-system="${button.dataset.openSystem}"]`);
+    if (!target) throw new Error(`缺少系统入口：${button.dataset.openSystem}`);
+    const tab = window.HIFI_DRAWERS.drawerTabForSelector(button.dataset.openSystem, button.dataset.focusSel);
+    if (tab) window.HIFI_DRAWERS.setDrawerTab(tab);
+    if (!target.classList.contains("active")) openSystem(target);
+    else if (tab) renderSystemBody(button.dataset.openSystem);
+    focusInDrawer(button.dataset.focusSel);
+  });
+
+  // 省份面板的「查看国家」「标记目标」不开抽屉，单独委托处理。
+  document.addEventListener("click", event => {
+    const viewCountryButton = event.target.closest("[data-view-country]");
+    if (viewCountryButton) {
+      dialogs.renderCountryModal(viewCountryButton.dataset.tilePolity);
+      return;
+    }
+    const markOnlyButton = event.target.closest("[data-mark-target]:not([data-open-system])");
+    if (markOnlyButton) {
+      store.update(current => { current.diplomacy.selectedTarget = markOnlyButton.dataset.tilePolity; });
+      showToast(`已标记外交目标：${markOnlyButton.dataset.tilePolity}`);
+    }
   });
 
   window.addEventListener("hifi:open-system", event => {
@@ -428,4 +447,5 @@
   renderHud(store.getState());
   window.hifiGame = { store, showToast };
   window.prototypeMap.renderMainMap();
+  window.prototypeMap.refreshSelected();
 })();
