@@ -45,6 +45,39 @@ assert.ok(world.worldEvents.some(event => event.kind === "situation"));
   console.log("A4 事件消耗 OK");
 }
 
+// --- Task A7: 救济成本与人口损耗同步，每 4 季才结算一次（节奏标定，非逐季） ---
+{
+  const polity = world.playerPolity;
+  const c = world.countries[polity];
+  c.food = 1000; c.money = 1000;
+  c.lastReport = {};
+  const situation = { key: "black_death", label: "黑死病", phase: "爆发", progress: 60, lastEffectTurn: null, eventGenerated: true };
+  world.situations = [situation];
+  world.turn = 100;
+
+  // 首次脉冲：lastEffectTurn 为 null，应当立即结算救济成本
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "首次爆发脉冲应结算救济成本");
+  const firstReliefFood = c.lastReport.event.food;
+  assert.equal(situation.lastEffectTurn, 100, "首次脉冲后应记录 lastEffectTurn");
+
+  // 未满 4 季：再次调用不应重复结算救济成本
+  world.turn = 102;
+  c.lastReport = {};
+  history.processSituations(world);
+  assert.ok(!c.lastReport.event || c.lastReport.event.food === 0, "未满 4 季不应再次结算救济成本");
+  assert.equal(situation.lastEffectTurn, 100, "未满 4 季 lastEffectTurn 不应推进");
+
+  // 满 4 季：应再次结算救济成本
+  world.turn = 104;
+  c.lastReport = {};
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "满 4 季应再次结算救济成本");
+  assert.equal(c.lastReport.event.food, firstReliefFood, "节流后的救济成本结构应与首次脉冲一致");
+  assert.equal(situation.lastEffectTurn, 104, "满 4 季后应更新 lastEffectTurn");
+  console.log("A7 救济成本 4 季节流 OK");
+}
+
 const chain = history.applyCausalChain(world, "constantinople_falls");
 assert.equal(chain.length, 7, "历史因果链必须有七跳");
 assert.equal(world.flags.constantinopleFallen, true);

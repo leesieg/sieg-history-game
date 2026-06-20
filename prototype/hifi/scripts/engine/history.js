@@ -186,9 +186,10 @@
         });
       }
       // 爆发期效果节流闸：人口损耗（黑死病专属）与救济成本（所有情势通用）
-      // 本是同一次"爆发脉冲"的两面，共用同一个 lastEffectTurn 字段、同一次判定，
-      // 避免人口损耗先跑一次把 lastEffectTurn 推到当季、导致救济成本误判为"刚结算过"而跳过
-      // （两者逐季都打全量也会过度惩罚爆发期，详见 Task A7 节奏标定）。
+      // 是同一次"爆发脉冲"的两面，共用同一个 lastEffectTurn 字段、同一次判定。
+      // 节奏标定（平衡性决策，非 bug 修复）：救济成本原为爆发期逐季结算，
+      // 改为与人口损耗同步、每 4 季才结算一次——逐季全量会与人口损耗叠加，
+      // 对爆发期惩罚过重，详见 Task A7 节奏标定。
       const eruptionPulseDue = situation.phase === "爆发"
         && (situation.lastEffectTurn === null || world.turn - situation.lastEffectTurn >= 4);
       if (situation.key === "black_death" && eruptionPulseDue) {
