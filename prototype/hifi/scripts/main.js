@@ -119,9 +119,18 @@
     const issues = window.HIFI_HISTORY_ENGINE.issues(current);
     const blocking = window.HIFI_HISTORY_ENGINE.blockingIssues(current);
     const count = issues.length;
-    issueHeading.textContent = count ? `问题与对象 · ${count}` : "问题与对象";
+    const seasonHint = !count && window.HIFI_OBJECTIVES_ENGINE
+      ? window.HIFI_OBJECTIVES_ENGINE.seasonTasks(current, current.playerPolity).length
+      : 0;
+    if (count) {
+      issueHeading.textContent = `问题与对象 · ${count}`;
+    } else if (seasonHint) {
+      issueHeading.textContent = `本季 ${seasonHint} 件事 ›`;
+    } else {
+      issueHeading.textContent = "问题与对象";
+    }
     issuePanel.classList.toggle("issue-empty", count === 0);
-    seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : (count ? `待办 ${count}` : "结束季度");
+    seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : (count ? `问题 ${count}` : "结束季度");
     seasonControl.classList.toggle("ready", blocking.length === 0);
     document.getElementById("issueList").innerHTML = issues.map(issue =>
       `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}">
