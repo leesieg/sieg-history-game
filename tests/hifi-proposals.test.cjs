@@ -156,4 +156,16 @@ const objectivesIndex = html.indexOf("scripts/engine/objectives.js");
 const proposalsIndex = html.indexOf("scripts/engine/proposals.js");
 assert.ok(objectivesIndex >= 0 && proposalsIndex > objectivesIndex, "proposals.js 必须在 objectives.js 之后加载");
 
+// --- Task B1: actionPreview ---
+{
+  country.money = 100;
+  country.actionPoints.administrative = 3;
+  const tile = tiles.find(t => t.polity === polity && !t.isSea && !t.buildings.includes("market"));
+  const p = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  assert.ok(p.cost && typeof p.cost === "object", "应返回成本对象");
+  assert.ok(p.effect && typeof p.effect === "object", "应返回效果预览");
+  assert.equal(typeof p.available.ok, "boolean", "应返回可用性布尔");
+  console.log("B1 actionPreview OK");
+}
+
 console.log("hifi proposals engine passed");
