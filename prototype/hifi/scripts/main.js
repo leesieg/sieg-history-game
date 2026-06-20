@@ -30,6 +30,42 @@
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
   }
 
+  const RESOURCE_DIFF_LABELS = {
+    food: "粮食",
+    money: "金钱",
+    military: "军需",
+    legitimacy: "合法性",
+    ideas: "思潮",
+    capital: "资本",
+    administrative: "行政点",
+    diplomatic: "外交点",
+    militaryPoint: "军事点",
+  };
+
+  function snapshotResources(world) {
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
+    return {
+      food: country.food,
+      money: country.money,
+      military: country.military,
+      legitimacy: country.legitimacy,
+      ideas: country.ideas,
+      capital: country.capital,
+      administrative: country.actionPoints.administrative,
+      diplomatic: country.actionPoints.diplomatic,
+      militaryPoint: country.actionPoints.military,
+    };
+  }
+
+  function diffResources(before, after) {
+    const parts = [];
+    for (const key of Object.keys(RESOURCE_DIFF_LABELS)) {
+      const delta = (after[key] || 0) - (before[key] || 0);
+      if (delta) parts.push(`${RESOURCE_DIFF_LABELS[key]} ${delta > 0 ? "+" : "−"}${Math.abs(Math.round(delta))}`);
+    }
+    return parts.length ? parts.join("，") : null;
+  }
+
   function setResource(key, value) {
     const token = document.querySelector(`[data-resource="${key}"] .resource-total`);
     if (token) token.textContent = String(Math.round(value));
@@ -109,10 +145,18 @@
     const custom = window.HIFI_DRAWERS.renderSystem(system, store.getState());
     if (!custom) throw new Error(`未知系统界面：${system}`);
     drawerBody.innerHTML = custom;
-    function runAction(action) {
+    function actionLabel(button) {
+      if (!button) return "操作";
+      const firstNode = Array.from(button.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+      return (firstNode ? firstNode.textContent : button.textContent).trim() || "操作";
+    }
+    function runAction(action, button) {
+      const before = snapshotResources(store.getState());
       try {
         store.update(action);
         renderSystemBody(system);
+        const diff = diffResources(before, snapshotResources(store.getState()));
+        if (diff) showToast(`${actionLabel(button)} —— ${diff}`);
       } catch (error) {
         showToast(error.message);
       }
@@ -129,53 +173,53 @@
             current,
             current.playerPolity,
             reformButton.dataset.reform
-        ));
+        ), reformButton);
       });
     });
     drawerBody.querySelectorAll("[data-law]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         const [category, value] = button.dataset.law.split(":");
         return window.HIFI_POLITICS_ENGINE.setLaw(current, current.playerPolity, category, value);
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-assembly]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         const [agenda, concession] = button.dataset.assembly.split(":");
         return window.HIFI_POLITICS_ENGINE.holdAssembly(current, current.playerPolity, agenda, concession);
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-decision]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_POLITICS_ENGINE.enactDecision(current, current.playerPolity, button.dataset.decision)
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-trade-policy]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         (window.HIFI_ECONOMY_ENGINE.setTradePolicy(current, current.playerPolity, button.dataset.tradePolicy),
         window.HIFI_HISTORY_ENGINE.completeTutorial(current, "set_trade"))
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-tariff]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         (window.HIFI_TRADE_ENGINE.setTariff(current, current.playerPolity, Number(button.dataset.tariff)),
         window.HIFI_HISTORY_ENGINE.completeTutorial(current, "set_trade"))
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-trade-route]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         window.HIFI_TRADE_ENGINE.investRoute(current, current.playerPolity, button.dataset.tradeRoute);
         window.prototypeMap.setMode("trade");
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-edict]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.enactEdict(current, current.playerPolity, button.dataset.edict)
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-agenda]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.setAgenda(current, current.playerPolity, button.dataset.agenda)
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-building]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
@@ -185,17 +229,17 @@
           current.selectedTile,
           button.dataset.building
         )
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-technology]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.adoptTechnology(current, current.playerPolity, button.dataset.technology)
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-diplomatic-target]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         current.diplomacy.selectedTarget = button.dataset.diplomaticTarget;
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-diplomatic-action]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
@@ -206,17 +250,17 @@
         if (group === "treaty") return window.HIFI_DIPLOMACY_ENGINE.proposeTreaty(current, current.playerPolity, target, action);
         if (group === "war") return window.HIFI_WARFARE_ENGINE.declareWarOn(current, current.playerPolity, target);
         return window.HIFI_DIPLOMACY_ENGINE.proposeSubject(current, current.playerPolity, target, action);
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-integrate]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.integrateTile(current, current.playerPolity, Number(button.dataset.integrate))
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-develop]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.developTile(current, current.playerPolity, Number(button.dataset.develop))
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-subject-control]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
@@ -231,7 +275,7 @@
           subject.id,
           button.dataset.subjectControl
         );
-      }));
+      }, button));
     });
     drawerBody.querySelectorAll("[data-army-open]").forEach(button => {
       button.addEventListener("click", () => window.dispatchEvent(new CustomEvent("hifi:army-selected", {
@@ -246,12 +290,12 @@
           current.selectedTile,
           button.dataset.mobilize
         )
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-hire-mercenary]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_WARFARE_ENGINE.hireMercenary(current, current.playerPolity, current.selectedTile)
-      ));
+      , button));
     });
     drawerBody.querySelectorAll("[data-peace-war]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
@@ -261,7 +305,7 @@
           current.playerPolity,
           [{ type: button.dataset.peaceTerm }]
         )
-      ));
+      , button));
     });
   }
 

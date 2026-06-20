@@ -73,4 +73,12 @@ assert.match(main, /hifi:open-system/, "main.js 必须接住御前会议的跳�
   console.log("B3 按钮预览渲染 OK");
 }
 
+// --- Task B4: 执行后 toast ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts/main.js"), "utf8");
+  // 执行动作前后快照资源并 toast 差值
+  assert(/toast/.test(src) && /(before|snapshot)/i.test(src), "动作执行应快照并 toast 差值");
+  console.log("B4 执行 toast OK");
+}
+
 console.log("hifi UI smoke contracts passed");
