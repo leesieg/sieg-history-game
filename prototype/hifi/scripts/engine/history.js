@@ -185,17 +185,18 @@
           ],
         });
       }
-      if (
-        situation.key === "black_death"
-        && situation.phase === "爆发"
-        && (situation.lastEffectTurn === null || world.turn - situation.lastEffectTurn >= 4)
-      ) {
+      // 爆发期效果节流闸：人口损耗（黑死病专属）与救济成本（所有情势通用）
+      // 本是同一次"爆发脉冲"的两面，共用同一个 lastEffectTurn 字段、同一次判定，
+      // 避免人口损耗先跑一次把 lastEffectTurn 推到当季、导致救济成本误判为"刚结算过"而跳过
+      // （两者逐季都打全量也会过度惩罚爆发期，详见 Task A7 节奏标定）。
+      const eruptionPulseDue = situation.phase === "爆发"
+        && (situation.lastEffectTurn === null || world.turn - situation.lastEffectTurn >= 4);
+      if (situation.key === "black_death" && eruptionPulseDue) {
         for (const tile of world.tiles.filter(item => !item.isSea)) {
           tile.population = Math.max(1, tile.population - 1);
         }
-        situation.lastEffectTurn = world.turn;
       }
-      if (situation.phase === "爆发") {
+      if (eruptionPulseDue) {
         // 救济成本：爆发期消耗粮/钱（事件脉冲，写进季报事件段）
         for (const key of Object.keys(world.countries)) {
           const country = world.countries[key];
@@ -206,6 +207,7 @@
           country.food -= foodCost; country.money -= moneyCost;
           country.lastReport.event = { food: ev.food + foodCost, money: ev.money + moneyCost };
         }
+        situation.lastEffectTurn = world.turn;
       }
     }
   }
