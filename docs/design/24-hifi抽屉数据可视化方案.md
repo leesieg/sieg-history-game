@@ -5,8 +5,10 @@ tags:
   - hifi
   - ui-ux
   - dataviz
-status: in-progress
+status: done
 ---
+
+> **落地（2026-06-21）**：基元 `widgets.js` + 五系统全部接线完成，新增运行时渲染冒烟 `hifi-drawers-render`（实跑五抽屉×全 tab）。全套 35 测试通过。
 
 # 24 - hifi 抽屉数据可视化方案
 
