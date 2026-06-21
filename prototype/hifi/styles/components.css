@@ -472,7 +472,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   border: 1px solid rgba(214,174,89,.32); border-radius: 8px;
   background: rgba(173,123,50,.1); color: var(--gold-2);
-  font-size: 18px; line-height: 1; cursor: pointer;
+  font-size: 13px; line-height: 1; cursor: pointer;
 }
 .icon-cmd.wide { font-size: 13px; }
 .icon-cmd.primary { border-color: var(--gold-3); background: rgba(173,123,50,.26); color: var(--gold-3); }
