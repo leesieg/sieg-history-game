@@ -485,6 +485,51 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .estate-pie { display: block; margin: 8px auto 6px; }
 .estate-pie path { stroke: #1a140c; stroke-width: 1; }
 .estate-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
+
+/* === 抽屉数据可视化基元（widgets.js） === */
+.ui-meter {
+  position: relative;
+  display: inline-block;
+  width: 92px;
+  height: 9px;
+  vertical-align: middle;
+  border: 1px solid rgba(214,174,89,.3);
+  border-radius: 5px;
+  background: rgba(8,19,16,.65);
+  overflow: hidden;
+}
+.ui-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--gold-2); }
+.ui-meter--green .ui-meter-fill { background: #5a9a55; }
+.ui-meter--red .ui-meter-fill { background: #b34736; }
+.ui-meter--blue .ui-meter-fill { background: #4f80a8; }
+.ui-meter-mark { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--cream); opacity: .7; }
+.ui-diverge {
+  position: relative;
+  display: inline-block;
+  width: 92px;
+  height: 9px;
+  vertical-align: middle;
+  border: 1px solid rgba(214,174,89,.3);
+  border-radius: 5px;
+  background: rgba(8,19,16,.65);
+  overflow: hidden;
+}
+.ui-diverge::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(235,199,113,.5); }
+.ui-diverge-fill { position: absolute; top: 0; bottom: 0; }
+.ui-diverge--pos { background: #5a9a55; }
+.ui-diverge--neg { background: #b34736; }
+.ui-pips { display: inline-flex; gap: 3px; vertical-align: middle; }
+.ui-pip { width: 9px; height: 9px; border: 1px solid rgba(214,174,89,.45); border-radius: 2px; background: rgba(8,19,16,.6); }
+.ui-pip.on { background: var(--gold-2); border-color: var(--gold-3); }
+.ui-radar { display: block; margin: 4px auto 2px; width: 132px; height: 132px; }
+.ui-radar-grid { fill: rgba(214,174,89,.04); stroke: rgba(214,174,89,.2); stroke-width: .6; }
+.ui-radar-spoke { stroke: rgba(214,174,89,.22); stroke-width: .6; }
+.ui-radar-area { fill: rgba(173,123,50,.34); stroke: var(--gold-3); stroke-width: 1.4; }
+.ui-radar-label { fill: var(--muted); font-size: 8px; }
+.ui-checklist { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; justify-content: flex-end; }
+.ui-check { color: #b34736; font-size: 10px; }
+.ui-check.met { color: #6fa84a; }
+.ui-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
 /* 图标命令按钮（军团整编等）：悬浮显示说明 */
 .icon-cmd-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
 .icon-cmd {

@@ -22,6 +22,7 @@ const requiredFiles = [
   "scripts/data/codex.js",
   "scripts/ui/store.js",
   "scripts/ui/map.js",
+  "scripts/ui/widgets.js",
   "scripts/ui/drawers.js",
   "scripts/ui/codex.js",
   "scripts/ui/dialogs.js",
