@@ -1,6 +1,9 @@
 (() => {
   "use strict";
 
+  // 数据可视化基元（widgets.js，按 index.html 顺序先于本文件加载）。
+  const wd = () => window.HIFI_WIDGETS;
+
   const governmentMarks = {
     monarchy: "⚜",
     republic: "◆",
@@ -144,24 +147,30 @@
 
     if (activeCountryTab === "概览") {
       const ability = country.leader.abilities;
+      const abilityMax = Math.max(6, ability.administrative, ability.diplomatic, ability.military);
+      const abilityRadar = wd().radar([
+        { label: "行政", value: ability.administrative, max: abilityMax },
+        { label: "外交", value: ability.diplomatic, max: abilityMax },
+        { label: "军事", value: ability.military, max: abilityMax },
+      ]);
       const rows = [
         [codexTerm("政体", "政体"), country.government.typeLabel],
         [codexTerm("王权", country.government.powerName), Math.round(country.government.centralPower)],
         ["统治者", `${country.leader.title}${country.leader.name}`],
         ["家族", country.leader.dynasty],
-        [codexTerm("统治者", "行政 / 外交 / 军事"), `${ability.administrative} / ${ability.diplomatic} / ${ability.military}`],
-        [codexTerm("合法性", "合法性"), Math.round(country.legitimacy)],
+        [codexTerm("合法性", "合法性"), `${wd().meter(country.legitimacy, 100)} ${Math.round(country.legitimacy)}`],
         [codexTerm("议会", "议会"), country.government.assembly.unlocked ? country.government.assembly.type : "未解锁"],
       ];
       const basics = rows
         .map(([label, value]) => `<div class="drawer-row">${label}<span>${value}</span></div>`)
         .join("");
-      return `${bar}${basics}`;
+      return `${bar}${basics}
+        <div class="drawer-subtitle">${codexTerm("统治者", "统治者能力")}</div>${abilityRadar}`;
     }
 
     if (activeCountryTab === "政制") {
       const reforms = Object.entries(country.government.reforms)
-        .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${value} / 5</span></button>`)
+        .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${wd().pips(value, 5)}</span></button>`)
         .join("");
       const laws = Object.entries(country.government.laws).map(([category, value]) => {
         const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
@@ -179,19 +188,23 @@
 
     if (activeCountryTab === "议会") {
       const assemblyType = country.government.assembly.type;
+      const supportRow = country.government.assembly.unlocked
+        ? `<div class="drawer-row">${codexTerm("议会", "议会支持")}<span>${wd().meter(country.government.assembly.support, 100, { threshold: 50 })} ${Math.round(country.government.assembly.support)}</span></div>`
+        : "";
       const assembly = country.government.assembly.unlocked
-        ? `${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
+        ? `${supportRow}
+           ${actionButton("data-assembly", "tax:privilege", `${assemblyType}·让渡特权`, "支持 +15 · 阶层权力 +2")}
            ${actionButton("data-assembly", "tax:money", `${assemblyType}·收买议会`, "支持 +10 · 12 金钱")}
-           ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, `当前支持 ${country.government.assembly.support}`)}`
+           ${actionButton("data-assembly", "tax:none", `${assemblyType}·强硬施压`, "拒绝让步")}`
         : '<div class="drawer-row">议会尚未解锁<span>—</span></div>';
       const estates = Object.values(country.estates)
-        .map((estate, index) => `<div class="drawer-row"><span><span class="estate-swatch" style="background:${estateColors[index % estateColors.length]}"></span>${estate.label}</span><span>${Math.round(estate.power)} / ${Math.round(estate.satisfaction)}</span></div>`)
+        .map((estate, index) => `<div class="drawer-row"><span><span class="estate-swatch" style="background:${estateColors[index % estateColors.length]}"></span>${estate.label}</span><span>${Math.round(estate.satisfaction)} ${wd().diverging(estate.satisfaction, 100)}</span></div>`)
         .join("");
       const unrestRow = country.unrest
-        ? `<div class="drawer-row">${codexTerm("阶层", "国内不满")}<span>${Math.round(country.unrest)}</span></div>`
+        ? `<div class="drawer-row">${codexTerm("阶层", "国内不满")}<span>${wd().meter(country.unrest, 100, { tone: "red" })} ${Math.round(country.unrest)}</span></div>`
         : "";
       return `${bar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
-        <div class="drawer-subtitle">${codexTerm("阶层", "阶层：权力 / 满意")}</div>${estatePie(country.estates)}${estates}${unrestRow}`;
+        <div class="drawer-subtitle">${codexTerm("阶层", "阶层 · 权力分布（扇形）/ 满意（双向条）")}</div>${estatePie(country.estates)}${estates}${unrestRow}`;
     }
 
     // 决议
@@ -285,23 +298,24 @@
         <div class="drawer-row">${codexTerm("军需", "军需")}<span>${Math.round(country.military)}</span></div>
         <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
         <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
-        <div class="drawer-subtitle">${codexTerm("贸易政策", "贸易政策")}</div>${policies}
-        <div class="drawer-subtitle">${codexTerm("关税", "关税")}</div>${tariffs}
+        <div class="drawer-subtitle">${codexTerm("贸易政策", "贸易政策")}</div><div class="ui-segmented">${policies}</div>
+        <div class="drawer-subtitle">${codexTerm("关税", "关税")}</div><div class="ui-segmented">${tariffs}</div>
         <div class="drawer-subtitle">${codexTerm("国家敕令", "国家敕令")}</div>${edicts}
         <div class="drawer-subtitle">${codexTerm("国家议程", "国家议程")}</div>${agendas}`;
     }
 
     if (tab === "贸易") {
+      const maxFlow = Math.max(1, ...Object.values(world.trade.routes).map(route => route.flow || 0));
       const routes = Object.entries(world.trade.routes).map(([key, route]) =>
         actionButton("data-trade-route", key, route.label, route.active
-          ? `流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 已投资 +${Math.round(route.boost * 100)}%` : ""} · 投资 15 钱 + 1 行政`
+          ? `${wd().meter(route.flow, maxFlow, { tone: "green" })} 流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 已投资 +${Math.round(route.boost * 100)}%` : ""} · 投资 15 钱 + 1 行政`
           : "尚未解锁")
       ).join("");
-      const pressures = Object.entries(country.pressures).map(([key, value]) =>
-        `<div class="drawer-row">${pressureLabels[key]}<span>${value}</span></div>`
-      ).join("");
+      const pressureMax = Math.max(10, ...Object.values(country.pressures));
+      const pressureRadar = wd().radar(Object.entries(country.pressures).map(([key, value]) =>
+        ({ label: pressureLabels[key], value, max: pressureMax })));
       return `${bar}<div class="drawer-subtitle">${codexTerm("贸易路线", "贸易路线")}</div>${routes}
-        <div class="drawer-subtitle">${codexTerm("压力层", "结构压力")}</div>${pressures}`;
+        <div class="drawer-subtitle">${codexTerm("压力层", "结构压力")}</div>${pressureRadar}`;
     }
 
     // 建设
@@ -341,27 +355,30 @@
     if (tab === "概览") {
       const missions = window.HIFI_HISTORY_ENGINE.missions(world).map(mission => {
         const reward = Object.entries(mission.reward || {}).map(([res, amount]) => `${resourceLabel(res)} +${amount}`).join(" · ");
-        return `<div class="drawer-row"><span>${mission.label}</span><span>${mission.done ? "已完成" : `奖励 ${reward}`}</span></div>`;
+        return `<div class="drawer-row"><span><span class="ui-check${mission.done ? " met" : ""}">${mission.done ? "✓" : "✗"}</span> ${mission.label}</span><span>${mission.done ? "已完成" : `奖励 ${reward}`}</span></div>`;
       }).join("");
       const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
       return `${bar}
         <div class="drawer-row">${codexTerm("思想点", "思想点")}<span>${Math.round(country.ideas)}</span></div>
-        <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${country.ageProgress}%</span></div>
+        <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${wd().meter(country.ageProgress, 100, { tone: "blue" })} ${country.ageProgress}%</span></div>
         <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
         <div class="drawer-subtitle">${codexTerm("时代使命", "时代使命")}</div>${missions}
-        <div class="drawer-subtitle">导师指引</div><div class="drawer-row"><span>${tutorial?.label || "已完成全部指引"}</span><span>${world.tutorial.step} / 5</span></div>`;
+        <div class="drawer-subtitle">导师指引</div><div class="drawer-row"><span>${tutorial?.label || "已完成全部指引"}</span><span>${wd().pips(world.tutorial.step, 5)}</span></div>`;
     }
 
-    // 科技
-    const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) =>
-      actionButton(
-        "data-technology",
-        key,
-        technology.label,
-        country.technology[key] ? `已采纳 · ${technology.effect}` : `${technology.cost} 思想 · 传播 ${country.technologyAwareness[key]}% · ${technology.effect}`,
-        country.technology[key]
-      )
-    ).join("");
+    // 科技：未采纳的列出三重门槛（年代 / 传播≥25% / 思想点）。
+    const currentYear = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) => {
+      const awareness = country.technologyAwareness[key] || 0;
+      const detail = country.technology[key]
+        ? `已采纳 · ${technology.effect}`
+        : `${wd().checklist([
+            { label: `年代 ${technology.year}`, met: currentYear >= technology.year },
+            { label: `传播 ${awareness}%≥25`, met: awareness >= 25 },
+            { label: `思想 ${technology.cost}`, met: country.ideas >= technology.cost },
+          ])} ${technology.effect}`;
+      return actionButton("data-technology", key, technology.label, detail, country.technology[key]);
+    }).join("");
     return `${bar}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
   }
 
@@ -377,7 +394,7 @@
       const totalSoldiers = armies.reduce((sum, army) => sum + window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army), 0);
       return `${bar}
         <div class="drawer-row">${codexTerm("军事点", "军事点")}<span>${country.actionPoints.military}</span></div>
-        <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${Math.round(country.warfare.warExhaustion)}</span></div>
+        <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${wd().meter(country.warfare.warExhaustion, 100, { tone: "red" })} ${Math.round(country.warfare.warExhaustion)}</span></div>
         <div class="drawer-row">${codexTerm("军团", "军团数")}<span>${armies.length}</span></div>
         <div class="drawer-row">总兵力<span>${totalSoldiers} 人</span></div>
         <div class="drawer-row">${codexTerm("战争", "进行中战争")}<span>${wars.length}</span></div>`;
@@ -393,7 +410,9 @@
         ${country.technology.artillery ? actionButton("data-mobilize", "artillery", "铸造炮队", "1 军事点 · 军需 30 · 300 炮兵", false, false, mobilizePreview("artillery")) : ""}
         ${actionButton("data-hire-mercenary", "company", "雇佣自由佣兵团", "40 金钱 · 约 2000 佣兵 · 8 季合约")}
         <div class="drawer-subtitle">${codexTerm("军团", "现役军团")}</div>
-        ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name, `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人 · 点击整编`)).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
+        ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name,
+          `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人 · 士${wd().meter(army.morale, 100, { tone: "green", mini: true })} 组${wd().meter(army.organization, 100, { tone: "blue", mini: true })} 补${wd().meter(army.supply, 100, { tone: "gold", mini: true })}`
+        )).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
     }
 
     // 战争
@@ -402,7 +421,7 @@
         `<button class="drawer-row political-action" data-peace-war="${war.id}" data-peace-term="${
           war.primaryGoal.claimant === country.name ? "target_territory" : "status_quo"
         }">${war.name}<span>${
-          war.primaryGoal.claimant === country.name ? `索取目标 · 分数 ${war.score} · 点击议和` : "提议停战"
+          war.primaryGoal.claimant === country.name ? `${wd().meter(war.score, 100, { tone: "red" })} 索取目标 · 分数 ${war.score} · 点击议和` : "提议停战"
         }</span></button>`
       ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>'}`;
   }
@@ -418,15 +437,16 @@
     const subject = engine.subjectBetween(world, country.name, target);
     const atWar = window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, target);
     const truce = window.HIFI_WARFARE_ENGINE.underTruce(world, country.name, target);
-    const targetButtons = targets.map(name =>
-      actionButton(
+    const targetButtons = targets.map(name => {
+      const attitude = engine.diplomaticAttitude(world, country.name, name);
+      return actionButton(
         "data-diplomatic-target",
         name,
-        name,
-        attitudeLabels[engine.diplomaticAttitude(world, country.name, name)],
+        `${wd().attitudeDot(attitude)}${name}`,
+        attitudeLabels[attitude],
         name === target
-      )
-    ).join("");
+      );
+    }).join("");
     // 第四个元素是可选的 catalog 行动类型（send_envoy/propose_trade），用于挂成本/预期预览；其余外交动作（私人会晤等）不在 catalog 中，维持原样
     const renderActions = list => list.map(([key, label, detail, catalogType]) => {
       const preview = catalogType ? { world, polity: country.name, type: catalogType, params: { target } } : null;
@@ -448,17 +468,19 @@
         : truce
           ? '<div class="drawer-row">宣战<span>停战协定期</span></div>'
           : actionButton("data-diplomatic-action", "war:declare", "宣战", "开启战争");
+      const capUsed = engine.capacityUsed(world, country.name);
+      const capTotal = engine.capacity(world, country.name);
       return `${bar}
         <div class="drawer-row">${codexTerm("外交点", "外交点")}<span>${country.actionPoints.diplomatic}</span></div>
         <div class="drawer-row">${codexTerm("使节", "使节")}<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
-        <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${engine.capacityUsed(world, country.name)} / ${engine.capacity(world, country.name)}</span></div>
+        <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${wd().meter(capUsed, capTotal, { tone: capUsed >= capTotal ? "red" : "gold" })} ${capUsed} / ${capTotal}</span></div>
         <div class="drawer-subtitle">外交对象</div>
         <input class="diplo-search" type="search" data-diplo-search placeholder="搜索国家…" aria-label="搜索外交对象">
         <div class="drawer-scroll-list" id="diploTargetList">${targetButtons}</div>
         <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
-        <div class="drawer-row">${codexTerm("信任", "信任")}<span>${relation.trust}</span></div>
-        <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${relation.threat}</span></div>
-        <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${relation.strategicInterest}</span></div>
+        <div class="drawer-row">${codexTerm("信任", "信任")}<span>${wd().meter(relation.trust, 100, { tone: "green" })} ${relation.trust}</span></div>
+        <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${wd().meter(relation.threat, 100, { tone: "red" })} ${relation.threat}</span></div>
+        <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${wd().meter(relation.strategicInterest, 100, { tone: "blue" })} ${relation.strategicInterest}</span></div>
         <div class="drawer-subtitle">元首外交</div>${leaderActions}${warAction}`;
     }
 
@@ -482,8 +504,8 @@
     const subjectRows = subject
       ? `<div class="drawer-subtitle">${codexTerm("从属", "权利结构")}</div>
         <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>
-        <div class="drawer-row">自主权<span>${subject.autonomy}</span></div>
-        <div class="drawer-row">忠诚度<span>${subject.loyalty}</span></div>
+        <div class="drawer-row">自主权<span>${wd().meter(subject.autonomy, 100, { tone: "blue" })} ${subject.autonomy}</span></div>
+        <div class="drawer-row">忠诚度<span>${wd().meter(subject.loyalty, 100, { tone: "green" })} ${subject.loyalty}</span></div>
         ${subject.overlord === country.name
           ? `${actionButton("data-subject-control", "tighten", "收紧控制", "1 外交点 · 自主 -10 · 贡赋 +1")}
              ${actionButton("data-subject-control", "loosen", "放宽自治", "1 外交点 · 忠诚 +12 · 贡赋 -1")}`

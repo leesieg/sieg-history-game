@@ -498,6 +498,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   background: rgba(8,19,16,.65);
   overflow: hidden;
 }
+.ui-meter--mini { width: 28px; }
 .ui-meter-fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--gold-2); }
 .ui-meter--green .ui-meter-fill { background: #5a9a55; }
 .ui-meter--red .ui-meter-fill { background: #b34736; }
@@ -530,6 +531,21 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .ui-check { color: #b34736; font-size: 10px; }
 .ui-check.met { color: #6fa84a; }
 .ui-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,.4); }
+.ui-segmented { display: flex; gap: 4px; margin: 2px 0 4px; }
+.ui-segmented .political-action {
+  flex: 1;
+  min-height: 46px;
+  margin: 0;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid rgba(214,174,89,.22);
+  border-radius: 6px;
+}
+.ui-segmented .political-action span { display: block; font-size: 9px; color: var(--muted); }
 /* 图标命令按钮（军团整编等）：悬浮显示说明 */
 .icon-cmd-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
 .icon-cmd {

@@ -10,10 +10,11 @@
   function meter(value, max = 100, opts = {}) {
     const ratio = max ? clamp(value / max, 0, 1) : 0;
     const tone = opts.tone || "gold";
+    const mini = opts.mini ? " ui-meter--mini" : "";
     const mark = opts.threshold != null
       ? `<i class="ui-meter-mark" style="left:${clamp(opts.threshold / max, 0, 1) * 100}%"></i>`
       : "";
-    return `<span class="ui-meter ui-meter--${tone}"><span class="ui-meter-fill" style="width:${(ratio * 100).toFixed(1)}%"></span>${mark}</span>`;
+    return `<span class="ui-meter ui-meter--${tone}${mini}"><span class="ui-meter-fill" style="width:${(ratio * 100).toFixed(1)}%"></span>${mark}</span>`;
   }
 
   // 双向条：±max（满意度类），中线为 0，正绿负红。
