@@ -625,6 +625,28 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .data-row span { color: var(--muted); }
 .data-row b { color: var(--gold-2); font-weight: 400; }
+/* Task C4: 地块面板默认迷你卡——只显地名 + 人口，点 ▾ 展开完整详情，恢复地图主角地位。 */
+.province-toggle {
+  position: absolute;
+  top: 7px;
+  right: 41px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(224, 189, 104, .65);
+  border-radius: 50%;
+  background: rgba(8, 19, 16, .82);
+  color: var(--gold-3);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.province-toggle:hover,
+.province-toggle:focus-visible { background: rgba(224, 189, 104, .22); }
+.province-mini .province-data .data-row { display: none; }
+.province-mini .province-data .data-row:nth-child(2) { display: grid; }
+.province-mini .province-actions { display: none; }
 .province-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; padding: 0 8px 8px; }
 .province-action {
   height: 50px;

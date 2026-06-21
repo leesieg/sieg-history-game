@@ -529,6 +529,14 @@
       provincePanel.classList.add("closed");
       provincePanel.setAttribute("aria-hidden", "true");
     });
+    // Task C4：地块面板默认迷你（province-mini），点 ▾/▴ 展开/收起完整详情。
+    document.getElementById("provinceToggle").addEventListener("click", () => {
+      const mini = provincePanel.classList.toggle("province-mini");
+      const toggle = document.getElementById("provinceToggle");
+      toggle.textContent = mini ? "▾" : "▴";
+      toggle.setAttribute("aria-label", mini ? "展开地块详情" : "收起地块详情");
+      toggle.setAttribute("title", mini ? "展开地块详情" : "收起地块详情");
+    });
     svg.addEventListener("click", event => {
       if (state.dragged) return;
       const armyMarker = event.target.closest("[data-army-marker]");
