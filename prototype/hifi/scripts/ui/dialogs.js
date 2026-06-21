@@ -38,6 +38,16 @@
         && (candidate.mercenaryLoyalty === undefined) === (army.mercenaryLoyalty === undefined)
       );
       const general = army.generalId ? world.warfare.generals[army.generalId] : null;
+      // Phase E：将领花名册——统治者领军 + 已招募的非统治者将领任命 + 招募，让将领系统真正可用。
+      const ownGenerals = Object.values(world.warfare.generals || {})
+        .filter(candidate => candidate.owner === army.owner && !candidate.ruler && candidate.id !== army.generalId);
+      const generalControls = army.mercenaryLoyalty !== undefined
+        ? `<button class="icon-cmd" data-tip="续约两年 · 付军饷 · 忠诚 +5" aria-label="续约两年" data-army-manage="renew-mercenary">↻ 续约</button>
+           <button class="icon-cmd" data-tip="结束契约 · 解散佣兵团" aria-label="结束契约" data-army-manage="release-mercenary">✕ 解约</button>`
+        : `<button class="icon-cmd" data-tip="${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}" aria-label="${general?.ruler ? "撤下统治者" : "统治者领军"}" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "♟ 撤将" : "♛ 领军"}</button>`
+          + (general && !general.ruler ? `<button class="icon-cmd" data-tip="撤下将领" aria-label="撤下将领" data-army-manage="dismiss-general">♟ 撤将</button>` : "")
+          + ownGenerals.map(candidate => `<button class="icon-cmd" data-tip="任命 ${candidate.name} 领军 · 指挥 ${candidate.command}" aria-label="任命 ${candidate.name}" data-assign-general="${candidate.id}">⚑ ${candidate.name}</button>`).join("")
+          + `<button class="icon-cmd" data-tip="招募将领 · 1 军事点 → 新将领候选" aria-label="招募将领" data-recruit-general="1">＋ 招募</button>`;
       document.getElementById("armyDrawerTitle").textContent = army.name;
       body.innerHTML = `<div class="drawer-row">所属<span>${army.owner}</span></div>
         <div class="drawer-row">位置<span>${tile.city || tile.region}</span></div>
@@ -57,10 +67,7 @@
           <button class="icon-cmd" data-tip="补充兵员 · 耗军需补满缺额" aria-label="补充兵员" data-army-manage="reinforce">✚ 补员</button>
           <button class="icon-cmd" data-tip="训练军团 · 1 军事点 + 10 军需 → 经验/组织↑" aria-label="训练军团" data-army-manage="train">⚔ 训练</button>
           <button class="icon-cmd" data-tip="复员征召兵 · 兵员返乡、人口回流" aria-label="复员征召兵" data-army-manage="demobilize">⌂ 复员</button>
-          ${army.mercenaryLoyalty === undefined
-            ? `<button class="icon-cmd" data-tip="${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}" aria-label="${general?.ruler ? "撤下统治者" : "统治者领军"}" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "♟ 撤将" : "♛ 领军"}</button>`
-            : `<button class="icon-cmd" data-tip="续约两年 · 付军饷 · 忠诚 +5" aria-label="续约两年" data-army-manage="renew-mercenary">↻ 续约</button>
-               <button class="icon-cmd" data-tip="结束契约 · 解散佣兵团" aria-label="结束契约" data-army-manage="release-mercenary">✕ 解约</button>`}
+          ${generalControls}
         </div>
         ${mergeTargets.length ? `<div class="drawer-subtitle">合并到同地军团</div><div class="icon-cmd-row">${mergeTargets.map(candidate => `<button class="icon-cmd wide" data-tip="并入本军团" aria-label="合并 ${candidate.name}" data-army-merge="${candidate.id}">⊕ ${candidate.name}</button>`).join("")}</div>` : ""}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
@@ -95,6 +102,18 @@
           if (store.getState().warfare.armies[nextArmyId]) render(nextArmyId);
           else close();
         });
+      });
+      body.querySelectorAll("[data-assign-general]").forEach(button => {
+        button.addEventListener("click", () => {
+          store.update(current => window.HIFI_WARFARE_ENGINE.assignGeneral(current, armyId, button.dataset.assignGeneral));
+          render(armyId);
+        });
+      });
+      body.querySelector("[data-recruit-general]")?.addEventListener("click", () => {
+        try {
+          store.update(current => window.HIFI_WARFARE_ENGINE.recruitGeneral(current, army.owner));
+          render(armyId);
+        } catch (error) { window.hifiGame?.showToast?.(error.message); }
       });
       body.querySelectorAll("[data-army-merge]").forEach(button => {
         button.addEventListener("click", () => {
@@ -134,24 +153,44 @@
       return warnings;
     }
 
+    // 卡牌渲染：御前会议每条信息都是一张可看 / 可用的卡牌（抽卡—用卡手感）。
+    function councilCard(variant, kind, title, body, actions) {
+      return `<article class="council-card council-card--${variant}">
+        <div class="council-card-kind">${kind}</div>
+        ${title ? `<div class="council-card-title">${title}</div>` : ""}
+        ${body ? `<div class="council-card-body">${body}</div>` : ""}
+        ${actions ? `<div class="council-card-actions">${actions}</div>` : ""}
+      </article>`;
+    }
+    function councilSection(icon, title, inner, wide) {
+      if (!inner) return "";
+      return `<section class="council-section">
+        <div class="council-section-head">${icon} ${title}</div>
+        <div class="council-cards${wide ? " council-cards--wide" : ""}">${inner}</div>
+      </section>`;
+    }
+
     function renderProposalCard(item, index) {
       const advisorLabel = advisorNames[item.advisor] || item.advisor;
       const isGoto = item.proposal.type === "goto";
       const label = isGoto
-        ? `当前没有可立即执行的行动，前往${item.proposal.panel}面板查看`
+        ? `前往${item.proposal.panel}面板查看`
         : (window.HIFI_PROPOSALS_ENGINE.actionCatalog[item.proposal.type]?.label || item.proposal.type);
-      const previewRows = item.preview
-        ? `<div class="drawer-row">成本<span>${item.preview.cost}</span></div>
-           <div class="drawer-row">收益<span>${item.preview.gain}</span></div>
-           <div class="drawer-row">风险<span>${item.preview.risk}</span></div>`
-        : "";
-      return `<div class="drawer-subtitle">${advisorLabel}</div>
-        <div class="drawer-row">${label}</div>
-        ${previewRows}
-        <div class="icon-cmd-row">
-          ${isGoto ? "" : `<button class="dialog-command primary" data-proposal-exec="${index}">执行建议</button>`}
-          <button class="dialog-command" data-proposal-goto="${index}">跳转面板</button>
-        </div>`;
+      const meta = item.preview
+        ? `<ul class="council-card-meta">
+             <li><i>成本</i>${item.preview.cost}</li>
+             <li><i>收益</i>${item.preview.gain}</li>
+             <li><i>风险</i>${item.preview.risk}</li>
+           </ul>`
+        : (isGoto ? `<div class="council-card-body">当前没有可立即执行的行动</div>` : "");
+      const actions = `${isGoto ? "" : `<button class="council-card-btn primary" data-proposal-exec="${index}">执行</button>`}
+        <button class="council-card-btn" data-proposal-goto="${index}">${isGoto ? "前往面板" : "跳转"}</button>`;
+      return `<article class="council-card council-card--advice">
+        <div class="council-card-kind">🪶 ${advisorLabel} · 草案</div>
+        <div class="council-card-title">${label}</div>
+        ${meta}
+        <div class="council-card-actions">${actions}</div>
+      </article>`;
     }
 
     function renderCouncil() {
@@ -161,32 +200,60 @@
       const mission = window.HIFI_OBJECTIVES_ENGINE.nationalMission(world, polity);
       const proposals = window.HIFI_OBJECTIVES_ENGINE.advisorProposals(world, polity);
       const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(world, polity);
-      const ledgerRow = (label, e) => {
+      // Phase B：Agent 表达层（规则模板）——宫廷来信 / 阶层诉求 / 季报叙事。
+      const narrative = window.HIFI_NARRATIVE_ENGINE;
+      const letters = narrative?.leaderLetters(world, polity) || [];
+      const demands = narrative?.estateDemands(world, polity) || [];
+      const quarterNote = narrative?.quarterNarrative(world, polity)?.text || "";
+      // 垂帘听政可否启动：有未处理的选举/事件/时代转折时不能（否则 0 推进、看似无响应）。
+      const regencyBlocker = window.HIFI_HISTORY_ENGINE.regencyBlocker(world);
+      const warnings = warningsWithWarStatus(world, polity, summary.warnings);
+
+      const missionSection = councilSection("⚜", "国家使命", councilCard("mission", "本局目标", mission.title, mission.why));
+      const warnSection = councilSection("⚠", "国家预警", warnings.map(text => {
+        const calm = text.startsWith("国家目前没有");
+        return councilCard(calm ? "calm" : "warn", calm ? "✓ 安稳" : "! 警讯", text);
+      }).join(""));
+      const adviceSection = councilSection("🪶", "顾问草案", proposals.map((item, index) => renderProposalCard(item, index)).join(""));
+      const lettersSection = councilSection("✉", "宫廷来信", letters.map(l =>
+        councilCard(`letter council-card--${l.tone}`, `✉ ${l.from}来信`, "", l.text)).join(""));
+      const demandsSection = councilSection("⚑", "阶层诉求", demands.map(d => {
+        const action = `<button class="council-card-btn" data-estate-panel="${d.panel || "国家"}">前往${d.panel || "国家"}面板</button>`;
+        return councilCard("demand", "⚑ 阶层诉求", "", d.text, action);
+      }).join(""));
+      const situationsSection = councilSection("◈", "世界局势", summary.situations.length
+        ? summary.situations.map(text => councilCard("situation", "◈ 局势", text)).join("")
+        : councilCard("calm", "— 局势", "暂无大型局势"));
+      const ledgerLine = (label, e) => {
         const parts = [`产出 +${e.gross}`];
         if (e.maintenance) parts.push(`维护 −${e.maintenance}`);
         if (e.event) parts.push(`事件 −${e.event}`);
-        const cls = e.net < 0 ? " ledger-neg" : "";
-        return `<div class="drawer-row${cls}">${label} <b>${e.net >= 0 ? "+" : ""}${e.net}</b><span>${parts.join(" ")}</span></div>`;
+        return `<div class="ledger-line${e.net < 0 ? " ledger-neg" : ""}"><span>${label}</span><b>${e.net >= 0 ? "+" : ""}${e.net}</b><small>${parts.join(" · ")}</small></div>`;
       };
-      const ledgerHtml = (ledger.money.net || ledger.food.net || ledger.military.net || ledger.money.gross || ledger.food.gross)
-        ? `<div class="drawer-subtitle"><span class="codex-term" data-codex="维护费">本季季报</span></div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
+      const ledgerCard = `<article class="council-card council-card--ledger">
+        <div class="council-card-kind">§ 本季季报</div>
+        ${quarterNote ? `<div class="council-card-note">${quarterNote}</div>` : ""}
+        ${ledgerLine("国库", ledger.money)}${ledgerLine("粮食", ledger.food)}${ledgerLine("军需", ledger.military)}
+      </article>`;
+      const ledgerSection = (ledger.money.net || ledger.food.net || ledger.military.net || ledger.money.gross || ledger.food.gross)
+        ? councilSection("§", `<span class="codex-term" data-codex="维护费">本季季报</span>`, ledgerCard, true)
         : "";
-      const warnings = warningsWithWarStatus(world, polity, summary.warnings);
+
       document.getElementById("councilSubtitle").textContent = `${summary.era} · ${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}`;
       document.getElementById("councilBody").innerHTML = `
-        <div class="drawer-subtitle">国家使命</div>
-        <div class="drawer-row">${mission.title}<span>${mission.why}</span></div>
-        <div class="drawer-subtitle">国家预警</div>${warnings.map(text => `<div class="drawer-row">${text}<span>!</span></div>`).join("")}
-        <div class="drawer-subtitle">顾问建议</div>${proposals.map((item, index) => renderProposalCard(item, index)).join("")}
-        <div class="drawer-subtitle">世界局势</div>${summary.situations.map(text => `<div class="drawer-row">${text}<span>◈</span></div>`).join("") || '<div class="drawer-row">暂无大型局势<span>—</span></div>'}
-        ${ledgerHtml}
-        ${world.pendingTransition ? `<button class="dialog-command primary" data-ack-transition>确认时代转折</button>` : ""}
-        <button class="dialog-command" data-run-regency>垂帘听政 4 季</button>`;
+        ${missionSection}${warnSection}${adviceSection}${lettersSection}${demandsSection}${situationsSection}${ledgerSection}
+        <div class="council-actions">
+          ${world.pendingTransition ? `<button class="dialog-command primary" data-ack-transition>确认时代转折</button>` : ""}
+          <button class="dialog-command${regencyBlocker ? " is-disabled" : ""}" data-run-regency title="${regencyBlocker || "连续自动推进，直到出现需要裁断的事项"}">⏩ 垂帘听政 4 季</button>
+        </div>
+        ${regencyBlocker ? `<div class="council-hint">⚑ 暂不能垂帘听政：${regencyBlocker}（请先在上方处理）</div>` : ""}`;
       document.querySelector("[data-ack-transition]")?.addEventListener("click", () => {
         store.update(current => window.HIFI_HISTORY_ENGINE.acknowledgeTransition(current));
-        document.getElementById("councilModal").classList.remove("open");
+        renderCouncil(); // 确认后就地刷新，让「垂帘听政」从置灰恢复可用，而不是关窗
       });
       document.querySelector("[data-run-regency]").addEventListener("click", () => {
+        const blocker = window.HIFI_HISTORY_ENGINE.regencyBlocker(store.getState());
+        if (blocker) { window.hifiGame?.showToast?.(`暂不能垂帘听政：${blocker}`); return; }
         const advanced = window.HIFI_HISTORY_ENGINE.runRegency(
           store.getState(),
           current => window.HIFI_TURN_ENGINE.advanceQuarter(current),
@@ -194,6 +261,9 @@
         );
         store.update(() => {});
         document.getElementById("councilModal").classList.remove("open");
+        window.hifiGame?.showToast?.(advanced > 0
+          ? `垂帘听政推进了 ${advanced} 季${advanced < 4 ? "（出现新裁断，提前还政）" : ""}`
+          : "本季暂无可自动推进的空间");
         return advanced;
       });
       document.querySelectorAll("[data-proposal-exec]").forEach(button => {
@@ -217,6 +287,12 @@
           const panel = item.proposal.type === "goto" ? item.proposal.panel : advisorPanelFor(item.advisor);
           document.getElementById("councilModal").classList.remove("open");
           window.dispatchEvent(new CustomEvent("hifi:open-system", { detail: { system: panel } }));
+        });
+      });
+      document.querySelectorAll("[data-estate-panel]").forEach(button => {
+        button.addEventListener("click", () => {
+          document.getElementById("councilModal").classList.remove("open");
+          window.dispatchEvent(new CustomEvent("hifi:open-system", { detail: { system: button.dataset.estatePanel } }));
         });
       });
       open("councilModal");

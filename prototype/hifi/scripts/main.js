@@ -123,12 +123,13 @@
     const seasonHint = !count && window.HIFI_OBJECTIVES_ENGINE
       ? window.HIFI_OBJECTIVES_ENGINE.seasonTasks(current, current.playerPolity).length
       : 0;
+    issueHeading.title = "打开御前会议：使命 / 预警 / 顾问草案 / 来信 / 季报";
     if (count) {
-      issueHeading.textContent = `问题与对象 · ${count}`;
+      issueHeading.textContent = `⚖ 御前会议 · ${count}`;
     } else if (seasonHint) {
-      issueHeading.textContent = `本季 ${seasonHint} 件事 ›`;
+      issueHeading.textContent = `⚖ 御前会议 · 本季 ${seasonHint} 件事`;
     } else {
-      issueHeading.textContent = "问题与对象";
+      issueHeading.textContent = "⚖ 御前会议";
     }
     issuePanel.classList.toggle("issue-empty", count === 0);
     seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : (count ? `问题 ${count}` : "结束季度");
