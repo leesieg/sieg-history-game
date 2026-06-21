@@ -84,3 +84,35 @@ for (const key of ["food", "money", "military"]) {
 }
 
 console.log(`hifi longrun passed: ${world.turn} · ${w.HIFI_HISTORY_ENGINE.eras[world.eraIndex].label}`);
+
+// --- Task A7: 持续扩军场景下资源不膨胀回归 ---
+// 复用本文件已加载的引擎（context/w），起一个独立的新世界，避免和上面 1337→1830 的长跑互相影响。
+{
+  const expandWorld = w.HIFI_WORLD_ENGINE.createWorld([
+    tile(0, "法兰西王国", "巴黎", 0),
+    tile(1, "英格兰王国", "伦敦", 20),
+  ]);
+  w.HIFI_POLITICS_ENGINE.initializePolitics(expandWorld);
+  w.HIFI_ECONOMY_ENGINE.initializeEconomy(expandWorld);
+  w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(expandWorld);
+  w.HIFI_WARFARE_ENGINE.initializeWarfare(expandWorld);
+  w.HIFI_HISTORY_ENGINE.initializeHistory(expandWorld);
+  w.HIFI_TRADE_ENGINE.initializeTrade(expandWorld);
+
+  const polity = expandWorld.playerPolity;
+  const playerTileId = expandWorld.tiles.find(t => t.polity === polity && !t.isSea).id;
+  const series = [];
+  for (let i = 0; i < 40; i++) {
+    if (i % 4 === 0) {
+      try {
+        w.HIFI_WARFARE_ENGINE.mobilizeArmy(expandWorld, polity, playerTileId, "infantry");
+      } catch (e) { /* 行动点/人口不足时跳过，不影响回归本身 */ }
+    }
+    w.HIFI_TURN_ENGINE.advanceQuarter(expandWorld);
+    series.push(expandWorld.countries[polity].military);
+  }
+  // 军需不应单调暴涨：维护费应在持续扩军下咬住增长，后期至少出现一次下降或持平
+  const monotonic = series.every((v, i) => i === 0 || v >= series[i - 1]);
+  assert.ok(!monotonic, `持续扩军下军需不应单调上涨（维护费应咬住增长），序列：${series.join(",")}`);
+  console.log("A7 资源不膨胀（持续扩军）OK");
+}

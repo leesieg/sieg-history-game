@@ -56,4 +56,102 @@ assert.match(dialogs, /HIFI_OBJECTIVES_ENGINE\.advisorProposals/, "renderCouncil
 assert.match(dialogs, /HIFI_PROPOSALS_ENGINE\.execute/, "执行建议必须委托 HIFI_PROPOSALS_ENGINE.execute");
 assert.match(main, /hifi:open-system/, "main.js 必须接住御前会议的跳转面板事件");
 
+// --- Task A6: 季报三段渲染 ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts/ui/dialogs.js"), "utf8");
+  assert(/ledger-neg/.test(src), "季报应有净负高亮类 ledger-neg");
+  assert(/maintenance/.test(src) && /\.net/.test(src), "季报渲染应读 maintenance 与 net");
+  console.log("A6 季报渲染 OK");
+}
+
+// --- Task B3: 按钮预览渲染 ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts", "ui", "drawers.js"), "utf8");
+  assert(/action-preview/.test(src), "动作按钮应渲染 action-preview 小字");
+  assert(/action-blocked/.test(src) && /disabled/.test(src), "不可用动作应置灰（disabled + action-blocked）");
+  assert(/actionPreview/.test(src), "应调用 HIFI_PROPOSALS_ENGINE.actionPreview 生成预览");
+  console.log("B3 按钮预览渲染 OK");
+}
+
+// --- Task B4: 执行后 toast ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts/main.js"), "utf8");
+  // 执行动作前后快照资源并 toast 差值
+  assert(/toast/.test(src) && /(before|snapshot)/i.test(src), "动作执行应快照并 toast 差值");
+  console.log("B4 执行 toast OK");
+}
+
+// --- Task C2: 待办并入问题面板 ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts", "main.js"), "utf8");
+  assert.match(src, /问题与对象\s*·|issue-count|issueCount/, "问题标题应带计数");
+  assert.match(src, /issue-empty/, "空状态应有折叠类 issue-empty");
+  assert.doesNotMatch(src, /topPending/, "main.js 不应再引用已删除的 topPending");
+  assert.doesNotMatch(html, /id="topPending"/, "html 不应再有 topPending 节点");
+  console.log("C2 待办并入 OK");
+}
+
+// --- Task C1/C2 回归修复：本季三件事入口不能随 topPending 一并消失 ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts", "main.js"), "utf8");
+  assert.match(src, /HIFI_OBJECTIVES_ENGINE[\s\S]{0,80}seasonTasks/, "main.js 必须保留 seasonTasks 调用作为空态兜底入口");
+  assert.match(src, /本季\s*\$\{?.*?\}?\s*件事/, "无问题时应展示「本季 N 件事」引导文案");
+  assert.doesNotMatch(src, /待办\s*\$\{count\}/, "seasonText 兜底文案不应再使用「待办」措辞");
+  console.log("C1/C2 回归修复：本季三件事 + 去待办措辞 OK");
+}
+
+// --- Task C4: 地块面板默认迷你卡 ---
+{
+  assert.match(html, /province-mini/, "地块面板应默认迷你态 province-mini");
+  assert.match(html, /data-province-toggle/, "地块面板应有展开/收起按钮 data-province-toggle");
+  assert.match(map, /province-mini/, "map.js 应绑定迷你卡展开切换");
+  console.log("C4 地块迷你卡 OK");
+}
+
+// --- Task C5: 地图模式盘 ---
+{
+  assert.match(html, /data-mode-dial/, "地图工具应改为模式盘（data-mode-dial 当前模式按钮）");
+  assert.match(html, /mode-dial/, "应有模式盘容器 mode-dial");
+  assert.match(html, /mode-group/, "模式盘应按分组列出透镜 mode-group");
+  assert.match(html, /class="mini-map collapsed"|mini-map collapsed/, "小地图应默认收起 collapsed");
+  // 现存 10 个透镜不能丢
+  for (const mode of ["political", "terrain", "population", "goods", "trade", "religion", "dynasty", "government", "estates", "military"]) {
+    assert.match(html, new RegExp(`data-mode="${mode}"`), `透镜 ${mode} 应保留`);
+  }
+  assert.match(map, /mode-dial|modeDial/, "map.js 应处理模式盘展开/收起");
+  console.log("C5 模式盘 OK");
+}
+
+// --- Task C6: 军团面板按钮图标+短文字 ---
+{
+  // 军团管理按钮在 dialogs.js（军团抽屉），原为纯图标，现需图标 + 短文字。
+  assert.match(dialogs, /⇄\s*拆分/, "拆分按钮应为图标+文字");
+  assert.match(dialogs, /✚\s*补员/, "补员按钮应为图标+文字");
+  assert.match(dialogs, /⚔\s*训练/, "训练按钮应为图标+文字");
+  assert.match(dialogs, /⌂\s*复员/, "复员按钮应为图标+文字");
+  assert.match(dialogs, /⌖\s*规划/, "规划路线按钮应为图标+文字");
+  console.log("C6 军令文字 OK");
+}
+
+// --- 抽屉数据可视化接线（widgets 全量接入五系统） ---
+{
+  const src = fs.readFileSync(path.join(root, "scripts", "ui", "drawers.js"), "utf8");
+  assert.match(src, /const wd = \(\) => window\.HIFI_WIDGETS/, "drawers 应引用 widgets 基元");
+  // 国家：雷达(统治者) / 点阵(改革) / 双向条(满意) / 量表(合法性、议会、不满)
+  assert.match(src, /wd\(\)\.radar\(\[\s*\{ label: "行政"/, "统治者能力用雷达图");
+  assert.match(src, /wd\(\)\.pips\(value, 5\)/, "改革槽用段位点阵");
+  assert.match(src, /wd\(\)\.diverging\(estate\.satisfaction/, "阶层满意度用双向条");
+  // 经济：分段(政策/关税) / 流量条(路线) / 雷达(压力)
+  assert.match(src, /ui-segmented/, "贸易政策/关税用分段开关");
+  assert.match(src, /wd\(\)\.radar\(Object\.entries\(country\.pressures\)/, "结构压力用雷达图");
+  // 外交：态度色点 + 量表
+  assert.match(src, /wd\(\)\.attitudeDot\(attitude\)/, "外交对象用态度色点");
+  // 军事：军团状态 mini 量表 + 战争分数
+  assert.match(src, /army\.morale.*mini: true/s, "军团用 mini 状态条");
+  // 发展：科技门槛清单 + 时代进度量表 + 导师点阵
+  assert.match(src, /wd\(\)\.checklist\(\[\s*\{ label: `年代/, "科技用门槛清单");
+  assert.match(src, /wd\(\)\.pips\(world\.tutorial\.step, 5\)/, "导师指引用步骤点阵");
+  console.log("抽屉数据可视化接线 OK");
+}
+
 console.log("hifi UI smoke contracts passed");

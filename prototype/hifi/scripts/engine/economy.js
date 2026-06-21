@@ -3,6 +3,14 @@
 
   const rules = window.HIFI_RULES;
 
+  // 维护费系数：让"什么都不做"净增近零，扩军/铺建筑压成负，逼出取舍。
+  // 系数在 longrun 测试反推标定，初值如下。
+  const MAINTENANCE = {
+    food: 0.4,        // 每 1000 兵每季消耗的粮食
+    military: { guard: 0, levy: 0.2, professional: 0.6, standing: 0.8, mercenary: 0.5 }, // 每 1000 兵
+    building: 3,      // 每栋建筑每季消耗的金钱（行政维护）
+  };
+
   function initializeEconomy(world) {
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
@@ -60,6 +68,25 @@
     return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
   }
 
+  function armyMaintenance(world, polity) {
+    const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+    let food = 0, military = 0;
+    for (const army of armies) {
+      for (const unit of army.units) {
+        const k = unit.soldiers / 1000;
+        food += MAINTENANCE.food * k;
+        military += (MAINTENANCE.military[unit.serviceType] || 0) * k;
+      }
+    }
+    return { food: Math.round(food), military: Math.round(military) };
+  }
+
+  function buildingMaintenance(world, polity) {
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
+    const count = tiles.reduce((sum, tile) => sum + (tile.buildings?.length || 0), 0);
+    return Math.round(count * MAINTENANCE.building);
+  }
+
   function settleCountry(world, polity) {
     const country = world.countries[polity];
     const territory = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
@@ -72,11 +99,21 @@
     }, { food: 0, money: 0, military: 0, tiles: territory.length });
     // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
-    country.food += report.food;
+    // 军团/建筑维护费回灌产出流：扩军/铺建筑必须从产出里扣，逼出取舍（核心循环：基底→维护→产出净额）
+    const army = armyMaintenance(world, polity);
+    const maintenance = {
+      food: army.food,
+      military: army.military,
+      money: buildingMaintenance(world, polity),
+    };
+    report.maintenance = maintenance;
+
+    country.food += report.food - maintenance.food;
     // 封闭贸易牺牲对外商路、换取本土产出流加成（与下方 open 的对外收益互为取舍）
     const domesticMoney = country.tradePolicy === "closed" ? report.money * 1.05 : report.money;
-    country.money += Math.round(domesticMoney * central);
-    country.military += Math.round(report.military * central);
+    const moneyProd = Math.round(domesticMoney * central);
+    country.money += moneyProd - maintenance.money;
+    country.military += Math.round(report.military * central) - maintenance.military;
     if (country.tradePolicy === "open") {
       const trade = Math.max(2, Math.round(report.money * .12));
       country.money += trade;
@@ -99,6 +136,23 @@
         report.completedAgenda = agenda.label;
         country.agenda = null;
       }
+    }
+    if (country.food < 0) {
+      const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+      armies.forEach(a => { a.supply = Math.max(0, a.supply - 10); });
+      report.shortage = { ...(report.shortage || {}), food: -country.food };
+      country.food = 0;
+    }
+    if (country.military < 0) {
+      const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
+      armies.forEach(a => { a.organization = Math.max(0, a.organization - 8); });
+      report.shortage = { ...(report.shortage || {}), military: -country.military };
+      country.military = 0;
+    }
+    if (country.money < 0) {
+      country.legitimacy = Math.max(0, country.legitimacy - 3);
+      report.shortage = { ...(report.shortage || {}), money: -country.money };
+      country.money = 0;
     }
     country.lastReport = report;
     country.log.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：粮 +${report.food}，钱 +${report.money}，军需 +${report.military}。`);
@@ -198,11 +252,14 @@
 
   window.HIFI_ECONOMY_ENGINE = {
     adoptTechnology,
+    armyMaintenance,
+    buildingMaintenance,
     constructBuilding,
     developTile,
     enactEdict,
     initializeEconomy,
     integrateTile,
+    MAINTENANCE,
     setAgenda,
     setTradePolicy,
     settleCountry,

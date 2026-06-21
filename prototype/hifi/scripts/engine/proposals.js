@@ -207,10 +207,33 @@
     return entry.apply(world, polity, proposal.params || {});
   }
 
+  // 统一动作预览：合并 cost/preview/available 三件套，供 UI 单次调用获取
+  // 「成本 + 效果 + 是否可行 + 不可行原因」，口径与 validate/execute 同源（同一 actionCatalog 条目）。
+  function actionPreview(world, polity, type, params) {
+    const entry = actionCatalog[type];
+    if (!entry) return { cost: {}, effect: {}, available: { ok: false }, reason: "未知行动类型" };
+    const resolvedParams = params || {};
+    const avail = entry.available(world, polity, resolvedParams);
+    const structurallyOk = avail === true || avail?.ok === true;
+    const resourceReason = insufficientResourceReason(world, polity, type, resolvedParams);
+    const ok = structurallyOk && !resourceReason;
+    let reason = "";
+    if (!ok) {
+      reason = resourceReason || avail?.reason || "条件不满足";
+    }
+    return {
+      cost: entry.cost(world, polity, resolvedParams),
+      effect: entry.preview(world, polity, resolvedParams),
+      available: { ok },
+      reason,
+    };
+  }
+
   window.HIFI_PROPOSALS_ENGINE = {
     actionCatalog,
     execute,
     preview,
     validate,
+    actionPreview,
   };
 })();

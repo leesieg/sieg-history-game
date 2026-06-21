@@ -394,6 +394,42 @@
     return `${Number.isInteger(tenThousands) ? tenThousands : tenThousands.toFixed(1)}万`;
   }
 
+  // Task C3：地块动作按归属区分。己方地块给治理动作，外国地块按和平/交战给外交或战争动作，
+  // 海域（暂无海军机制）只读。纯函数，不触碰 DOM，方便单测。
+  function tileActionsFor(tile, world) {
+    const player = world.playerPolity;
+    if (tile.isSea) return ["view"];
+    if (tile.polity === player) return ["build", "mobilize", "integrate", "garrison"];
+    const atWar = window.HIFI_WARFARE_ENGINE?.areAtWar?.(world, player, tile.polity);
+    return atWar
+      ? ["advance", "siege", "viewWarGoal"]
+      : ["viewCountry", "diplomacy", "declareWar", "markTarget"];
+  }
+
+  const PROVINCE_ACTION_SPECS = {
+    build: { icon: "⚒", label: "建设", attrs: 'data-open-system="经济" data-focus-sel="[data-building]"' },
+    mobilize: { icon: "♞", label: "征兵", attrs: 'data-open-system="军事" data-focus-sel="[data-mobilize=\'infantry\']"' },
+    integrate: { icon: "✜", label: "整合", attrs: 'data-open-system="国家" data-focus-sel="[data-integrate]"' },
+    garrison: { icon: "⚑", label: "派驻", attrs: 'data-open-system="军事" data-focus-sel="[data-army-open]"' },
+    viewCountry: { icon: "⚜", label: "查看国家", attrs: "data-view-country" },
+    diplomacy: { icon: "⚖", label: "外交", attrs: 'data-open-system="外交" data-mark-target' },
+    declareWar: { icon: "⚔", label: "宣战", attrs: 'data-open-system="外交" data-focus-sel="[data-diplomatic-action=\'war:declare\']" data-mark-target' },
+    markTarget: { icon: "◎", label: "标记目标", attrs: "data-mark-target" },
+    advance: { icon: "➤", label: "推进", attrs: 'data-open-system="军事" data-focus-sel="[data-army-open]"' },
+    siege: { icon: "⛓", label: "围攻", attrs: 'data-open-system="军事" data-focus-sel="[data-peace-war]"' },
+    viewWarGoal: { icon: "⚑", label: "战争目标", attrs: 'data-open-system="军事" data-focus-sel="[data-peace-war]"' },
+    view: { icon: "◇", label: "查看", attrs: "disabled" },
+  };
+
+  function renderProvinceActions(tile, world) {
+    const actions = tileActionsFor(tile, world);
+    document.getElementById("provinceActions").innerHTML = actions.map(key => {
+      const spec = PROVINCE_ACTION_SPECS[key];
+      if (!spec) return "";
+      return `<button class="province-action" data-action-key="${key}" data-tile-polity="${tile.polity || ""}" ${spec.attrs}><span>${spec.icon}</span>${spec.label}</button>`;
+    }).join("");
+  }
+
   function updateProvince(tile) {
     const terrain = TERRAIN[tile.terrain];
     const good = GOODS[tile.good];
@@ -409,6 +445,8 @@
     document.getElementById("provinceCulture").textContent = tile.culture;
     document.getElementById("provinceReligion").textContent = tile.religion;
     terrainBanner.style.backgroundImage = `linear-gradient(90deg, rgba(6,14,12,.88), rgba(6,14,12,.1)), url("../../assets/terrain-banners/${tile.terrain}.png")`;
+    const world = window.hifiGame?.store?.getState();
+    if (world) renderProvinceActions(tile, world);
   }
 
   function selectTile(tile) {
@@ -477,6 +515,11 @@
   function setMode(mode) {
     state.mode = mode;
     document.querySelectorAll(".lens").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
+    // Task C5：模式盘当前模式按钮跟随活跃透镜，并在选定后收起盘面。
+    const active = document.querySelector(`.lens[data-mode="${mode}"]`);
+    const current = document.getElementById("modeDialCurrent");
+    if (active && current) current.innerHTML = `${active.innerHTML}<i class="mode-dial-caret">▸</i>`;
+    document.getElementById("modeDial")?.classList.remove("open");
     renderMainMap();
     renderLegend();
   }
@@ -491,6 +534,14 @@
       provincePanel.classList.add("closed");
       provincePanel.setAttribute("aria-hidden", "true");
     });
+    // Task C4：地块面板默认迷你（province-mini），点 ▾/▴ 展开/收起完整详情。
+    document.getElementById("provinceToggle").addEventListener("click", () => {
+      const mini = provincePanel.classList.toggle("province-mini");
+      const toggle = document.getElementById("provinceToggle");
+      toggle.textContent = mini ? "▾" : "▴";
+      toggle.setAttribute("aria-label", mini ? "展开地块详情" : "收起地块详情");
+      toggle.setAttribute("title", mini ? "展开地块详情" : "收起地块详情");
+    });
     svg.addEventListener("click", event => {
       if (state.dragged) return;
       const armyMarker = event.target.closest("[data-army-marker]");
@@ -503,18 +554,19 @@
       selectTile(tiles[Number(polygon.dataset.mapTile)]);
     });
     document.querySelectorAll(".lens").forEach(button => button.addEventListener("click", () => setMode(button.dataset.mode)));
+    // Task C5：点当前模式按钮展开/收起模式盘；点缩略图按钮展开/收起小地图。
+    document.getElementById("modeDialCurrent").addEventListener("click", () => {
+      document.getElementById("modeDial").classList.toggle("open");
+    });
+    document.getElementById("miniMapToggle").addEventListener("click", () => {
+      document.getElementById("miniMap").classList.toggle("collapsed");
+    });
     document.getElementById("legendToggle").addEventListener("click", () => {
       legend.classList.toggle("open");
       document.getElementById("legendToggle").classList.toggle("active", legend.classList.contains("open"));
     });
     document.getElementById("zoomIn").addEventListener("click", () => setZoom(state.zoom + 0.3));
     document.getElementById("zoomOut").addEventListener("click", () => setZoom(state.zoom - 0.3));
-    document.getElementById("zoomReset").addEventListener("click", () => {
-      state.zoom = 1;
-      state.centerX = VIEW.w / 2;
-      state.centerY = VIEW.h / 2;
-      applyViewBox();
-    });
     miniSvg.addEventListener("click", event => {
       const rect = miniSvg.getBoundingClientRect();
       state.centerX = (event.clientX - rect.left) / rect.width * VIEW.w;
@@ -552,5 +604,5 @@
   bindControls();
   const paris = nearestTileForRegion("巴黎盆地");
   selectTile(paris);
-  window.prototypeMap = { tiles, state, focusTile, renderMainMap, refreshSelected, setMode, setZoom, syncSelection };
+  window.prototypeMap = { tiles, state, focusTile, renderMainMap, refreshSelected, setMode, setZoom, syncSelection, tileActionsFor };
 })();

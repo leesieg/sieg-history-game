@@ -47,20 +47,20 @@
         <div class="drawer-subtitle">编制</div>${composition}
         <div class="drawer-subtitle">行军指令</div>
         <div class="icon-cmd-row">
-          <button class="icon-cmd primary" data-tip="规划路线 · 选目标后自动行军" aria-label="规划路线" data-army-plan="${army.id}">⌖</button>
-          <button class="icon-cmd" data-tip="原地防守 · 停止移动并恢复补给" aria-label="原地防守" data-army-order="hold">▣</button>
-          <button class="icon-cmd" data-tip="继续行军 · 沿已定路线前进" aria-label="继续行军" data-army-order="march">➤</button>
+          <button class="icon-cmd primary" data-tip="规划路线 · 选目标后自动行军" aria-label="规划路线" data-army-plan="${army.id}">⌖ 规划</button>
+          <button class="icon-cmd" data-tip="原地防守 · 停止移动并恢复补给" aria-label="原地防守" data-army-order="hold">▣ 防守</button>
+          <button class="icon-cmd" data-tip="继续行军 · 沿已定路线前进" aria-label="继续行军" data-army-order="march">➤ 行军</button>
         </div>
         <div class="drawer-subtitle">军团管理</div>
         <div class="icon-cmd-row">
-          <button class="icon-cmd" data-tip="拆分军团 · 分出半数为新军团" aria-label="拆分军团" data-army-manage="split">⇄</button>
-          <button class="icon-cmd" data-tip="补充兵员 · 耗军需补满缺额" aria-label="补充兵员" data-army-manage="reinforce">✚</button>
-          <button class="icon-cmd" data-tip="训练军团 · 1 军事点 + 10 军需 → 经验/组织↑" aria-label="训练军团" data-army-manage="train">⚔</button>
-          <button class="icon-cmd" data-tip="复员征召兵 · 兵员返乡、人口回流" aria-label="复员征召兵" data-army-manage="demobilize">⌂</button>
+          <button class="icon-cmd" data-tip="拆分军团 · 分出半数为新军团" aria-label="拆分军团" data-army-manage="split">⇄ 拆分</button>
+          <button class="icon-cmd" data-tip="补充兵员 · 耗军需补满缺额" aria-label="补充兵员" data-army-manage="reinforce">✚ 补员</button>
+          <button class="icon-cmd" data-tip="训练军团 · 1 军事点 + 10 军需 → 经验/组织↑" aria-label="训练军团" data-army-manage="train">⚔ 训练</button>
+          <button class="icon-cmd" data-tip="复员征召兵 · 兵员返乡、人口回流" aria-label="复员征召兵" data-army-manage="demobilize">⌂ 复员</button>
           ${army.mercenaryLoyalty === undefined
-            ? `<button class="icon-cmd" data-tip="${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}" aria-label="${general?.ruler ? "撤下统治者" : "统治者领军"}" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "♟" : "♛"}</button>`
-            : `<button class="icon-cmd" data-tip="续约两年 · 付军饷 · 忠诚 +5" aria-label="续约两年" data-army-manage="renew-mercenary">↻</button>
-               <button class="icon-cmd" data-tip="结束契约 · 解散佣兵团" aria-label="结束契约" data-army-manage="release-mercenary">✕</button>`}
+            ? `<button class="icon-cmd" data-tip="${general?.ruler ? "撤下统治者 · 解除指挥加成" : "统治者领军 · 军事能力→指挥加成"}" aria-label="${general?.ruler ? "撤下统治者" : "统治者领军"}" data-army-manage="${general?.ruler ? "dismiss-general" : "assign-ruler"}">${general?.ruler ? "♟ 撤将" : "♛ 领军"}</button>`
+            : `<button class="icon-cmd" data-tip="续约两年 · 付军饷 · 忠诚 +5" aria-label="续约两年" data-army-manage="renew-mercenary">↻ 续约</button>
+               <button class="icon-cmd" data-tip="结束契约 · 解散佣兵团" aria-label="结束契约" data-army-manage="release-mercenary">✕ 解约</button>`}
         </div>
         ${mergeTargets.length ? `<div class="drawer-subtitle">合并到同地军团</div><div class="icon-cmd-row">${mergeTargets.map(candidate => `<button class="icon-cmd wide" data-tip="并入本军团" aria-label="合并 ${candidate.name}" data-army-merge="${candidate.id}">⊕ ${candidate.name}</button>`).join("")}</div>` : ""}`;
       body.querySelector("[data-army-plan]").addEventListener("click", () => {
@@ -161,9 +161,15 @@
       const mission = window.HIFI_OBJECTIVES_ENGINE.nationalMission(world, polity);
       const proposals = window.HIFI_OBJECTIVES_ENGINE.advisorProposals(world, polity);
       const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(world, polity);
-      const ledgerRow = (label, entry) => `<div class="drawer-row">${label} ${entry.delta >= 0 ? "+" : ""}${entry.delta}<span>${entry.sources[0] || "—"}</span></div>`;
-      const ledgerHtml = (ledger.money.delta || ledger.food.delta || ledger.military.delta)
-        ? `<div class="drawer-subtitle">本季季报</div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
+      const ledgerRow = (label, e) => {
+        const parts = [`产出 +${e.gross}`];
+        if (e.maintenance) parts.push(`维护 −${e.maintenance}`);
+        if (e.event) parts.push(`事件 −${e.event}`);
+        const cls = e.net < 0 ? " ledger-neg" : "";
+        return `<div class="drawer-row${cls}">${label} <b>${e.net >= 0 ? "+" : ""}${e.net}</b><span>${parts.join(" ")}</span></div>`;
+      };
+      const ledgerHtml = (ledger.money.net || ledger.food.net || ledger.military.net || ledger.money.gross || ledger.food.gross)
+        ? `<div class="drawer-subtitle"><span class="codex-term" data-codex="维护费">本季季报</span></div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
         : "";
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);
       document.getElementById("councilSubtitle").textContent = `${summary.era} · ${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}`;

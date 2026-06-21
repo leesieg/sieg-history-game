@@ -32,6 +32,52 @@ history.processHistory(world);
 assert.ok(world.situations.some(item => item.key === "black_death"));
 assert.ok(world.worldEvents.some(event => event.kind === "situation"));
 
+// --- Task A4: 事件爆发期消耗 ---
+{
+  const polity = world.playerPolity;
+  const c = world.countries[polity];
+  c.food = 1000; c.money = 1000;
+  c.lastReport = {};
+  world.situations = [{ key: "black_death", label: "黑死病", phase: "爆发", progress: 60, lastEffectTurn: null, eventGenerated: true }];
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "黑死病爆发应记录救济粮消耗");
+  assert.ok(c.food < 1000, "黑死病爆发应扣粮");
+  console.log("A4 事件消耗 OK");
+}
+
+// --- Task A7: 救济成本与人口损耗同步，每 4 季才结算一次（节奏标定，非逐季） ---
+{
+  const polity = world.playerPolity;
+  const c = world.countries[polity];
+  c.food = 1000; c.money = 1000;
+  c.lastReport = {};
+  const situation = { key: "black_death", label: "黑死病", phase: "爆发", progress: 60, lastEffectTurn: null, eventGenerated: true };
+  world.situations = [situation];
+  world.turn = 100;
+
+  // 首次脉冲：lastEffectTurn 为 null，应当立即结算救济成本
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "首次爆发脉冲应结算救济成本");
+  const firstReliefFood = c.lastReport.event.food;
+  assert.equal(situation.lastEffectTurn, 100, "首次脉冲后应记录 lastEffectTurn");
+
+  // 未满 4 季：再次调用不应重复结算救济成本
+  world.turn = 102;
+  c.lastReport = {};
+  history.processSituations(world);
+  assert.ok(!c.lastReport.event || c.lastReport.event.food === 0, "未满 4 季不应再次结算救济成本");
+  assert.equal(situation.lastEffectTurn, 100, "未满 4 季 lastEffectTurn 不应推进");
+
+  // 满 4 季：应再次结算救济成本
+  world.turn = 104;
+  c.lastReport = {};
+  history.processSituations(world);
+  assert.ok(c.lastReport.event && c.lastReport.event.food > 0, "满 4 季应再次结算救济成本");
+  assert.equal(c.lastReport.event.food, firstReliefFood, "节流后的救济成本结构应与首次脉冲一致");
+  assert.equal(situation.lastEffectTurn, 104, "满 4 季后应更新 lastEffectTurn");
+  console.log("A7 救济成本 4 季节流 OK");
+}
+
 const chain = history.applyCausalChain(world, "constantinople_falls");
 assert.equal(chain.length, 7, "历史因果链必须有七跳");
 assert.equal(world.flags.constantinopleFallen, true);
@@ -115,5 +161,21 @@ assert.ok(ledger2.money.delta > 0, "季报国库变化必须为正数值");
 assert.ok(Array.isArray(ledger2.money.sources) && ledger2.money.sources.length > 0, "季报国库必须有来源构成");
 assert.ok(ledger2.money.sources.some(s => s.includes("贸易")), "开放贸易时季报应含贸易来源");
 assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food");
+
+// --- Task A5: 季报净额三段 ---
+{
+  const polity = world.playerPolity;
+  world.countries[polity].lastReport = {
+    food: 100, money: 200, military: 50, tiles: 5,
+    maintenance: { food: 30, money: 40, military: 10 },
+    event: { food: 12, money: 8 },
+  };
+  const ledger = history.quarterLedger(world, polity);
+  assert(ledger.food.gross === 100 && ledger.food.maintenance === 30 && ledger.food.event === 12,
+    "粮食三段应分列");
+  assert(ledger.food.net === 100 - 30 - 12, "粮食净额 = 产出-维护-事件");
+  assert(ledger.food.delta === ledger.food.net, "delta 应等于 net（兼容旧渲染）");
+  console.log("A5 季报净额 OK");
+}
 
 console.log("hifi history engine passed");

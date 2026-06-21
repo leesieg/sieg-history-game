@@ -156,4 +156,53 @@ const objectivesIndex = html.indexOf("scripts/engine/objectives.js");
 const proposalsIndex = html.indexOf("scripts/engine/proposals.js");
 assert.ok(objectivesIndex >= 0 && proposalsIndex > objectivesIndex, "proposals.js 必须在 objectives.js 之后加载");
 
+// --- Task B1: actionPreview ---
+{
+  country.money = 100;
+  country.actionPoints.administrative = 3;
+  const tile = tiles.find(t => t.polity === polity && !t.isSea && !t.buildings.includes("market"));
+  const p = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  assert.ok(p.cost && typeof p.cost === "object", "应返回成本对象");
+  assert.ok(p.effect && typeof p.effect === "object", "应返回效果预览");
+  assert.equal(typeof p.available.ok, "boolean", "应返回可用性布尔");
+  console.log("B1 actionPreview OK");
+}
+
+// --- Task B2: 预览口径一致 ---
+{
+  country.money = 100;
+  country.actionPoints.administrative = 3;
+  const tile = tiles.find(t => t.polity === polity && !t.isSea && !t.buildings.includes("market"));
+  const preview = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  const moneyBefore = country.money;
+  proposals.execute(world, polity, { type: "build_market", params: { tileId: tile.id } });
+  const spent = moneyBefore - country.money;
+  assert.equal(spent, preview.cost.money || 0, `成本预览(${preview.cost.money})应等于实际花费(${spent})`);
+  console.log("B2 口径一致 OK");
+}
+
+// --- Task B3 修复：actionPreview 必须纳入可负担性校验（structurallyOk && !resourceReason）---
+{
+  // 前面 B1/B2 已在两块己方地块上建过市场，这里重置其中一块以恢复"结构上可行"的前提
+  const tile = tiles.find(t => t.polity === polity && !t.isSea);
+  tile.buildings = tile.buildings.filter(b => b !== "market");
+
+  // 结构上合法，但负担不起：money=0、行政点=0
+  country.money = 0;
+  country.actionPoints.administrative = 0;
+  const unaffordable = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  assert.equal(unaffordable.available.ok, false, "负担不起时 actionPreview.available.ok 必须为 false");
+  assert.ok(
+    unaffordable.reason && /[一-龥]/.test(unaffordable.reason),
+    "负担不起时必须给出非空中文原因"
+  );
+
+  // 同一动作，完全负担得起时，必须为 true（防止门闩永远 false）
+  country.money = 100;
+  country.actionPoints.administrative = 3;
+  const affordable = proposals.actionPreview(world, polity, "build_market", { tileId: tile.id });
+  assert.equal(affordable.available.ok, true, "负担得起且结构合法时 actionPreview.available.ok 必须为 true");
+  console.log("B3 修复 actionPreview 可负担性校验 OK");
+}
+
 console.log("hifi proposals engine passed");

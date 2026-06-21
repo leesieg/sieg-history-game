@@ -7,7 +7,9 @@ const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/rules.js",
   "engine/world.js",
+  "engine/economy.js",
   "engine/diplomacy.js",
   "engine/warfare.js",
 ]) {
@@ -15,6 +17,7 @@ for (const file of [
 }
 
 const worldEngine = context.window.HIFI_WORLD_ENGINE;
+const economy = context.window.HIFI_ECONOMY_ENGINE;
 const diplomacy = context.window.HIFI_DIPLOMACY_ENGINE;
 const warfare = context.window.HIFI_WARFARE_ENGINE;
 const tiles = [
@@ -225,5 +228,24 @@ assert.ok(drawerSource.includes("data-peace-term"));
 assert.ok(drawerSource.includes("war:declare"), "外交抽屉必须提供宣战入口");
 const mainSource = fs.readFileSync(path.join(root, "main.js"), "utf8");
 assert.ok(mainSource.includes("declareWarOn"), "入口必须接通宣战操作");
+
+// --- Task A3: 欠费惩罚 ---
+{
+  const shortageWorld = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
+  ]);
+  economy.initializeEconomy(shortageWorld);
+  warfare.initializeWarfare(shortageWorld);
+  const polity = shortageWorld.playerPolity;
+  shortageWorld.countries[polity].food = 0; // 逼成粮食赤字
+  shortageWorld.warfare.armies["starve"] = {
+    id: "starve", owner: polity, supply: 100, organization: 100,
+    units: [{ combatType: "infantry", serviceType: "standing", soldiers: 50000 }],
+  };
+  economy.settleCountry(shortageWorld, polity);
+  assert.ok(shortageWorld.warfare.armies["starve"].supply < 100, "粮食赤字应降低军团补给");
+  assert.ok(shortageWorld.countries[polity].food >= 0, "资源应 clamp 回非负");
+  console.log("A3 欠费惩罚 OK");
+}
 
 console.log("hifi warfare engine passed");

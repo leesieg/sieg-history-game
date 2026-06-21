@@ -6,8 +6,10 @@ tags:
   - gameplay
   - ui-ux
   - economy
-status: spec
+status: done
 ---
+
+> **落地状态（2026-06-21，分支 `feat/hifi-experience-loop-phase2`）**：本方案 Phase A/B/C 全部实现，按 [`docs/plans/2026-06-19-hifi-experience-loop-phase2.md`](../plans/2026-06-19-hifi-experience-loop-phase2.md) 逐任务 TDD 落地，全套测试通过。长期项（AI 主动外交、因果链扩展、发展度真实值）按约定未纳入。
 
 # 23 - hifi 体验闭环二期实现方案
 

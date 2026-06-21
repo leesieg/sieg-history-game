@@ -185,13 +185,28 @@
           ],
         });
       }
-      if (
-        situation.key === "black_death"
-        && situation.phase === "爆发"
-        && (situation.lastEffectTurn === null || world.turn - situation.lastEffectTurn >= 4)
-      ) {
+      // 爆发期效果节流闸：人口损耗（黑死病专属）与救济成本（所有情势通用）
+      // 是同一次"爆发脉冲"的两面，共用同一个 lastEffectTurn 字段、同一次判定。
+      // 节奏标定（平衡性决策，非 bug 修复）：救济成本原为爆发期逐季结算，
+      // 改为与人口损耗同步、每 4 季才结算一次——逐季全量会与人口损耗叠加，
+      // 对爆发期惩罚过重，详见 Task A7 节奏标定。
+      const eruptionPulseDue = situation.phase === "爆发"
+        && (situation.lastEffectTurn === null || world.turn - situation.lastEffectTurn >= 4);
+      if (situation.key === "black_death" && eruptionPulseDue) {
         for (const tile of world.tiles.filter(item => !item.isSea)) {
           tile.population = Math.max(1, tile.population - 1);
+        }
+      }
+      if (eruptionPulseDue) {
+        // 救济成本：爆发期消耗粮/钱（事件脉冲，写进季报事件段）
+        for (const key of Object.keys(world.countries)) {
+          const country = world.countries[key];
+          country.lastReport = country.lastReport || {};
+          const ev = country.lastReport.event || { food: 0, money: 0 };
+          const foodCost = Math.min(country.food, 12);
+          const moneyCost = Math.min(country.money, 8);
+          country.food -= foodCost; country.money -= moneyCost;
+          country.lastReport.event = { food: ev.food + foodCost, money: ev.money + moneyCost };
         }
         situation.lastEffectTurn = world.turn;
       }
@@ -345,12 +360,20 @@
     if (moneyTrade) moneySources.push(`贸易 +${moneyTrade}`);
     if (moneyColonial) moneySources.push(`殖民 +${moneyColonial}`);
     const militaryDelta = Math.round((report.military || 0) * central);
+    const maint = report.maintenance || { food: 0, money: 0, military: 0 };
+    const event = report.event || { food: 0, money: 0 };
+    const seg = (gross, m, e, sources) => {
+      const net = gross - m - e;
+      return { gross, maintenance: m, event: e, net, delta: net, sources };
+    };
     return {
       turn: world.turn,
       tiles: report.tiles || 0,
-      food: { delta: report.food || 0, sources: report.food ? [`地块产出 +${report.food}`] : [] },
-      money: { delta: moneyProd + moneyTrade + moneyColonial, sources: moneySources },
-      military: { delta: militaryDelta, sources: militaryDelta ? [`地块产出 +${militaryDelta}`] : [] },
+      food: seg(report.food || 0, maint.food || 0, event.food || 0,
+        report.food ? [`地块产出 +${report.food}`] : []),
+      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, moneySources),
+      military: seg(militaryDelta, maint.military || 0, 0,
+        militaryDelta ? [`地块产出 +${militaryDelta}`] : []),
       completedAgenda: report.completedAgenda || null,
     };
   }

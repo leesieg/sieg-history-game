@@ -21,16 +21,16 @@
     </button>
 
     <header class="top-command-bar">
-      <div class="brand-block">
-        <div class="shield" id="countryShield" aria-label="法兰西王国盾徽"><span>⚜</span><span>⚜</span><span>⚜</span><span>⚜</span></div>
-        <div class="game-title">帝国的代价</div>
-      </div>
       <div class="chronicle">
+        <div class="shield" id="countryShield" aria-label="法兰西王国盾徽"><span>⚜</span><span>⚜</span><span>⚜</span><span>⚜</span></div>
         <div class="date-plaque">
           <div class="date-main" id="dateMain">1337年 · 春</div>
           <div class="date-era" id="dateEra">封建纪元 · 瓦卢瓦王朝</div>
         </div>
-        <button class="top-pending" id="topPending">待办 3 ›</button>
+        <button class="season-control" id="seasonControl" type="button" title="结束季度">
+          <span class="season-icon" id="seasonIcon">▶</span>
+          <span class="season-text" id="seasonText">结束季度</span>
+        </button>
       </div>
       <div class="resource-strip" aria-label="国家资源">
         <div class="resource-token" data-resource="food"><span class="resource-icon">⌂</span><span class="resource-total">120</span><span class="resource-trend">粮食</span></div>
@@ -57,7 +57,7 @@
     </aside>
 
     <aside class="issue-panel metal-frame" id="issuePanel">
-      <div class="issue-heading">问题与对象</div>
+      <div class="issue-heading" id="issueHeading">问题与对象</div>
       <div id="issueList"></div>
     </aside>
     <aside class="army-drawer metal-frame" id="armyDrawer" aria-hidden="true">
@@ -65,9 +65,10 @@
       <div id="armyDrawerBody"></div>
     </aside>
 
-    <aside class="province-panel metal-frame" id="provincePanel" aria-hidden="false">
+    <aside class="province-panel metal-frame province-mini" id="provincePanel" aria-hidden="false">
       <div class="province-banner" id="provinceBanner">
         <button class="province-close" id="provinceClose" type="button" aria-label="关闭地块详情" title="关闭地块详情">×</button>
+        <button class="province-toggle" id="provinceToggle" type="button" data-province-toggle aria-label="展开地块详情" title="展开地块详情">▾</button>
         <div class="province-name" id="provinceName">巴黎</div>
         <div class="province-region" id="provinceRegion">法兰西王国 · 巴黎盆地</div>
       </div>
@@ -80,52 +81,47 @@
         <div class="data-row"><span>文化</span><b id="provinceCulture">法兰西</b><i></i></div>
         <div class="data-row"><span>宗教</span><b id="provinceReligion">天主教</b><i></i></div>
       </div>
-      <div class="province-actions">
-        <button class="province-action" data-open-system="经济" data-focus-sel="[data-building]"><span>⚒</span>建设</button>
-        <button class="province-action" data-open-system="军事" data-focus-sel="[data-mobilize='infantry']"><span>♞</span>征兵</button>
-        <button class="province-action" data-open-system="国家" data-focus-sel="[data-integrate]"><span>✜</span>整合</button>
-        <button class="province-action" data-open-system="军事" data-focus-sel="[data-army-open]"><span>⚑</span>派驻</button>
-      </div>
+      <div class="province-actions" id="provinceActions"></div>
     </aside>
 
-    <div class="command-dock metal-frame" aria-label="高频命令">
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='war:declare']"><span>⚔</span>宣战</button>
-      <button class="command" data-open-system="军事" data-focus-sel="[data-peace-war]"><span>✦</span>议和</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:trade']"><span>⚖</span>贸易</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:alliance']"><span>◇</span>结盟</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:marriage']"><span>♛</span>联姻</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:access']"><span>▤</span>通行权</button>
-    </div>
-
     <aside class="map-tools metal-frame">
-      <div class="lens-row">
-        <button class="lens active" data-mode="political"><span>⚜</span>政治</button>
-        <button class="lens" data-mode="terrain"><span>▲</span>地形</button>
-        <button class="lens" data-mode="population"><span>人</span>人口</button>
-        <button class="lens" data-mode="goods"><span>●</span>产出</button>
-        <button class="lens" data-mode="trade"><span>⇄</span>贸易</button>
-        <button class="lens" data-mode="religion"><span>✝</span>宗教</button>
-        <button class="lens" data-mode="dynasty"><span>♛</span>家族</button>
-        <button class="lens" data-mode="government"><span>◆</span>政体</button>
-        <button class="lens" data-mode="estates"><span>♟</span>阶层</button>
-        <button class="lens" data-mode="military"><span>⚔</span>军事</button>
+      <button class="mode-dial-current" id="modeDialCurrent" type="button" data-mode-dial title="切换地图模式"><span>⚜</span>政治<i class="mode-dial-caret">▸</i></button>
+      <div class="mode-dial" id="modeDial">
+        <div class="mode-group">
+          <div class="mode-group-title">政治</div>
+          <button class="lens active" data-mode="political"><span>⚜</span>政治</button>
+          <button class="lens" data-mode="government"><span>◆</span>政体</button>
+          <button class="lens" data-mode="dynasty"><span>♛</span>家族</button>
+          <button class="lens" data-mode="estates"><span>♟</span>阶层</button>
+          <button class="lens" data-mode="religion"><span>✝</span>宗教</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">地理</div>
+          <button class="lens" data-mode="terrain"><span>▲</span>地形</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">经济</div>
+          <button class="lens" data-mode="population"><span>人</span>人口</button>
+          <button class="lens" data-mode="goods"><span>●</span>产出</button>
+          <button class="lens" data-mode="trade"><span>⇄</span>贸易</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">军事</div>
+          <button class="lens" data-mode="military"><span>⚔</span>军事</button>
+        </div>
       </div>
-      <div class="mini-map"><svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg></div>
+      <div class="mini-map collapsed" id="miniMap">
+        <svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg>
+      </div>
       <div class="map-tool-footer">
         <button id="legendToggle" title="展开图例">图</button>
-        <button id="zoomReset" title="复位地图">◎</button>
+        <button id="miniMapToggle" title="展开/收起缩略图">▣</button>
         <span class="zoom-readout" id="zoomReadout">100%</span>
         <button id="zoomOut" title="缩小">−</button>
         <button id="zoomIn" title="放大">+</button>
       </div>
       <div class="map-legend" id="mapLegend"></div>
     </aside>
-
-    <button class="season-control" id="seasonControl">
-      <span class="season-seal"><span>✧</span></span>
-      <span class="season-text" id="seasonText">处理待办 3</span>
-      <span class="season-end">◇</span>
-    </button>
 
     <div class="toast metal-frame" id="toast" role="status"></div>
   </main>
@@ -177,25 +173,26 @@
 
   <script src="scripts/data/geography.js?v=4"></script>
   <script src="scripts/data/countries.js?v=4"></script>
-  <script src="scripts/data/codex.js?v=5"></script>
+  <script src="scripts/data/codex.js?v=6"></script>
   <script src="scripts/data/rules.js?v=4"></script>
   <script src="scripts/data/trade.js?v=1"></script>
   <script src="scripts/engine/world.js?v=5"></script>
   <script src="scripts/engine/turn.js?v=5"></script>
   <script src="scripts/engine/politics.js?v=10"></script>
   <script src="scripts/engine/economy.js?v=11"></script>
-  <script src="scripts/engine/diplomacy.js?v=7"></script>
+  <script src="scripts/engine/diplomacy.js?v=8"></script>
   <script src="scripts/engine/warfare.js?v=10"></script>
   <script src="scripts/engine/trade.js?v=4"></script>
-  <script src="scripts/engine/history.js?v=12"></script>
+  <script src="scripts/engine/history.js?v=14"></script>
   <script src="scripts/engine/objectives.js?v=2"></script>
-  <script src="scripts/engine/proposals.js?v=1"></script>
+  <script src="scripts/engine/proposals.js?v=3"></script>
   <script src="scripts/engine/strategy.js?v=2"></script>
   <script src="scripts/ui/store.js?v=4"></script>
-  <script src="scripts/ui/map.js?v=6"></script>
-  <script src="scripts/ui/drawers.js?v=22"></script>
+  <script src="scripts/ui/map.js?v=10"></script>
+  <script src="scripts/ui/widgets.js?v=2"></script>
+  <script src="scripts/ui/drawers.js?v=25"></script>
   <script src="scripts/ui/codex.js?v=2"></script>
-  <script src="scripts/ui/dialogs.js?v=13"></script>
-  <script src="scripts/main.js?v=13"></script>
+  <script src="scripts/ui/dialogs.js?v=16"></script>
+  <script src="scripts/main.js?v=19"></script>
 </body>
 </html>

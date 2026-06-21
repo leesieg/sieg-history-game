@@ -22,6 +22,7 @@ const requiredFiles = [
   "scripts/data/codex.js",
   "scripts/ui/store.js",
   "scripts/ui/map.js",
+  "scripts/ui/widgets.js",
   "scripts/ui/drawers.js",
   "scripts/ui/codex.js",
   "scripts/ui/dialogs.js",
@@ -68,7 +69,8 @@ const mainSource = fs.readFileSync(path.join(root, "scripts", "main.js"), "utf8"
 assert.ok(!mainSource.includes("待接入"));
 assert.ok(!mainSource.includes("将在对应系统迁移时启用"));
 assert.ok(mainSource.includes("HIFI_HISTORY_ENGINE.eras[current.eraIndex].label"), "顶部必须显示当前时代");
-assert.ok(html.includes("data-open-system"), "高频命令必须接入现有系统");
+const mapSourceStruct = fs.readFileSync(path.join(root, "scripts", "ui", "map.js"), "utf8");
+assert.ok(mapSourceStruct.includes("data-open-system"), "地块动作（按归属生成）必须接入现有系统");
 assert.ok(mainSource.includes('classList.add("system-open")'));
 assert.ok(mainSource.includes('classList.remove("system-open")'));
 assert.ok(mainSource.includes('setAttribute("aria-label", `查看${country.name}`)'));
