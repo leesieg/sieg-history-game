@@ -200,7 +200,8 @@ assert.ok(mainSource.includes("constructBuilding"), "入口必须接通建筑操
 assert.ok(drawerSource.includes("data-integrate"), "国家抽屉必须提供领土整合入口");
 assert.ok(mainSource.includes("integrateTile"), "入口必须接通整合操作");
 assert.ok(mainSource.includes("investRoute"), "入口必须接通商路投资操作");
-assert.ok(mainSource.includes("data-focus-sel") || html.includes("data-focus-sel"), "命令坞/省份按钮必须带聚焦定位");
+const mapSourceEcon = fs.readFileSync(path.join(root, "ui", "map.js"), "utf8");
+assert.ok(mapSourceEcon.includes("data-focus-sel") || mainSource.includes("data-focus-sel"), "地块动作按钮必须带聚焦定位");
 
 // --- Task A1: 维护费纯函数 ---
 {

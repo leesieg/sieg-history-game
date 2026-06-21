@@ -6,6 +6,7 @@
   const drawerBody = document.getElementById("drawerBody");
   const seasonControl = document.getElementById("seasonControl");
   const seasonText = document.getElementById("seasonText");
+  const seasonIcon = document.getElementById("seasonIcon");
   const issuePanel = document.getElementById("issuePanel");
   const issueHeading = document.getElementById("issueHeading");
   const toast = document.getElementById("toast");
@@ -131,6 +132,8 @@
     }
     issuePanel.classList.toggle("issue-empty", count === 0);
     seasonText.textContent = blocking.length ? `处理裁断 ${blocking.length}` : (count ? `问题 ${count}` : "结束季度");
+    // 播放/暂停样式：可推进显 ▶（绿），有阻塞裁断显 ‖（红）。
+    seasonIcon.textContent = blocking.length ? "‖" : "▶";
     seasonControl.classList.toggle("ready", blocking.length === 0);
     document.getElementById("issueList").innerHTML = issues.map(issue =>
       `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}">

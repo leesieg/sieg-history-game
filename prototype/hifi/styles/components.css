@@ -108,21 +108,20 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   box-shadow: 0 1px 2px #000;
 }
 
+/* 顶栏改为透明容器：左右各一个独立 HUD 牌，中间留白透出地图、不再遮挡。 */
 .top-command-bar {
   position: absolute;
   z-index: 20;
   top: 0;
   left: 102px;
   right: 0;
-  height: var(--top-h);
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 3px solid var(--gold-0);
-  background:
-    linear-gradient(180deg, rgba(23, 39, 34, .99), rgba(7, 17, 14, .99)),
-    repeating-linear-gradient(90deg, transparent 0 90px, rgba(255,255,255,.02) 91px);
-  box-shadow: inset 0 -1px rgba(230, 190, 100, .38), 0 5px 16px rgba(0,0,0,.46);
+  pointer-events: none;
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
 .shield {
   position: relative;
@@ -149,41 +148,45 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   background: linear-gradient(145deg, #174b87, #092c58);
 }
 
+/* 左侧 HUD 牌：盾徽 + 日期 + 结束季度按钮，用 gap 排布避免重合。 */
 .chronicle {
   display: flex;
   align-items: center;
+  gap: 12px;
   flex: 0 0 auto;
   min-width: 0;
-  padding: 0 14px 0 31px;
+  height: var(--top-h);
+  padding: 0 14px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, rgba(23, 39, 34, .99), rgba(7, 17, 14, .99));
   border-right: 1px solid rgba(214, 174, 89, .34);
+  border-bottom: 3px solid var(--gold-0);
+  border-bottom-right-radius: 10px;
+  box-shadow: inset 0 -1px rgba(230, 190, 100, .38), 0 5px 16px rgba(0,0,0,.46);
 }
 .date-plaque {
-  position: relative;
   display: grid;
   place-content: center;
-  margin-left: 13px;
-  text-align: center;
-}
-.date-plaque::before {
-  content: "✧";
-  position: absolute;
-  left: -22px;
-  top: 50%;
-  color: var(--gold-2);
-  font-size: 30px;
-  transform: translateY(-50%);
+  text-align: left;
 }
 .date-main { color: var(--gold-3); font-size: 17px; letter-spacing: .08em; }
 .date-era { margin-top: 4px; color: var(--muted); font-size: 11px; }
 
+/* 右侧 HUD 牌：资源单行不换行，内容宽度靠右，中间透出地图。 */
 .resource-strip {
   display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: flex-end;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  flex: 0 0 auto;
   min-width: 0;
-  max-width: 520px;
+  height: var(--top-h);
   padding-right: 5px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, rgba(23, 39, 34, .99), rgba(7, 17, 14, .99));
+  border-left: 1px solid rgba(214, 174, 89, .34);
+  border-bottom: 3px solid var(--gold-0);
+  border-bottom-left-radius: 10px;
+  box-shadow: inset 0 -1px rgba(230, 190, 100, .38), 0 5px 16px rgba(0,0,0,.46);
 }
 .resource-token {
   position: relative;
@@ -671,33 +674,11 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .province-action span { display: block; color: var(--gold-2); font-size: 23px; line-height: 26px; }
 
-.command-dock {
-  position: absolute;
-  z-index: 14;
-  left: 50%;
-  bottom: 8px;
-  display: flex;
-  height: 58px;
-  padding: 5px;
-  transform: translateX(-50%);
-}
-.command {
-  width: 60px;
-  border: 0;
-  border-right: 1px solid rgba(214,174,89,.25);
-  background: transparent;
-  cursor: pointer;
-  color: #d8cfb6;
-  font-size: 11px;
-}
-.command span { display: block; color: var(--gold-2); font-size: 22px; line-height: 25px; }
-.command:hover { background: rgba(173,123,50,.14); color: var(--gold-3); }
-
 .map-tools {
   position: absolute;
   z-index: 14;
   right: 14px;
-  bottom: 74px;
+  bottom: 12px;
   width: 222px;
   padding: 7px;
 }
@@ -739,7 +720,18 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .mode-group:last-child { border-bottom: 0; }
 .mode-group-title { grid-column: 1 / -1; padding: 3px 2px 0; color: var(--muted); font-size: 10px; letter-spacing: 1px; }
-.mode-dial .lens { height: 42px; border: 1px solid rgba(214, 174, 89, .16); }
+.mode-dial .lens {
+  min-height: 54px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border: 1px solid rgba(214, 174, 89, .16);
+}
+.mode-dial .lens span { display: block; font-size: 18px; line-height: 1; }
 .mini-map {
   position: relative;
   height: 92px;
@@ -747,23 +739,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   border: 1px solid var(--gold-0);
   background: #173c45;
 }
-.mini-map.collapsed { height: 26px; background: rgba(8, 19, 16, .55); }
-.mini-map.collapsed .mini-map-svg { display: none; }
-.mini-map-toggle {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 2;
-  width: 24px;
-  height: 22px;
-  border: 1px solid var(--gold-1);
-  background: rgba(8, 19, 16, .7);
-  color: var(--gold-3);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-}
-.mini-map.collapsed .mini-map-toggle { position: static; width: 100%; height: 100%; }
+.mini-map.collapsed { display: none; }
 .mini-map-svg { width: 100%; height: 100%; display: block; cursor: crosshair; }
 .mini-sea { fill: #285d69; }
 .mini-land polygon { fill: #927f55; stroke: #c4a65f; stroke-width: 1; }
@@ -800,22 +776,18 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .map-legend span { display: flex; align-items: center; min-width: 0; color: var(--muted); }
 .map-legend i { width: 10px; height: 10px; flex: 0 0 10px; margin-right: 4px; border: 1px solid rgba(255,255,255,.18); }
 
+/* 结束季度改为顶栏紧凑「播放/暂停」按钮：就绪绿、待裁断红。 */
 .season-control {
-  position: absolute;
-  z-index: 19;
-  right: 14px;
-  bottom: 8px;
-  width: 332px;
-  height: 58px;
-  display: grid;
-  grid-template-columns: 54px 1fr 38px;
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
   border: 2px solid transparent;
-  clip-path: polygon(8% 0, 94% 0, 100% 50%, 94% 100%, 8% 100%, 0 50%);
+  border-radius: 8px;
   background:
     linear-gradient(180deg, #96382e, #5c1919) padding-box,
     var(--frame) border-box;
-  box-shadow: inset 0 0 0 2px rgba(255,220,145,.15), var(--shadow);
   cursor: pointer;
   color: #f6d782;
   text-shadow: 0 2px 3px #2b0907;
@@ -828,21 +800,8 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
     linear-gradient(180deg, #426e49, #24442e) padding-box,
     var(--frame) border-box;
 }
-.season-seal {
-  justify-self: end;
-  width: 39px;
-  height: 39px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--gold-2);
-  transform: rotate(45deg);
-  background: #242016;
-  color: var(--gold-3);
-  font-size: 23px;
-}
-.season-seal span { transform: rotate(-45deg); }
-.season-text { text-align: center; font-size: 21px; font-weight: 700; letter-spacing: .08em; }
-.season-end { color: var(--gold-2); font-size: 20px; text-align: center; }
+.season-icon { font-size: 16px; line-height: 1; }
+.season-text { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
 
 .toast {
   position: absolute;
@@ -992,10 +951,8 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   :root { --rail-w: 110px; }
   .top-command-bar { left: 104px; }
   .ruler-plaque { width: 118px; height: 124px; }
-  .chronicle { padding-left: 26px; }
   .shield { width: 43px; height: 50px; flex-basis: 43px; }
   .date-main { font-size: 16px; }
-  .resource-strip { max-width: 420px; }
   .resource-token { flex-basis: 64px; grid-template-columns: 19px auto; }
   .resource-icon { font-size: 17px; }
   .resource-total { font-size: 12px; }
@@ -1005,9 +962,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   .system-label { font-size: 15px; }
   .system-glyph { font-size: 22px; }
   .province-panel { width: 340px; }
-  .command { width: 58px; }
   .map-tools { width: 228px; }
-  .season-control { width: 340px; }
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
@@ -1015,12 +970,9 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   .top-command-bar { left: 86px; }
   .ruler-plaque { width: 96px; height: 105px; }
   .ruler-level { width: 29px; height: 29px; font-size: 11px; }
-  .chronicle { padding-left: 16px; }
   .shield { width: 36px; height: 44px; flex-basis: 36px; font-size: 12px; }
-  .date-plaque::before { display: none; }
   .date-main { font-size: 13px; }
   .date-era { font-size: 8px; }
-  .resource-strip { max-width: 300px; }
   .resource-token { flex-basis: 48px; grid-template-columns: 14px auto; grid-template-rows: 21px 14px; column-gap: 2px; }
   .resource-icon { font-size: 13px; }
   .resource-total { font-size: 10px; }
@@ -1043,24 +995,15 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   .province-actions { padding: 5px; gap: 3px; }
   .province-action { height: 40px; font-size: 9px; }
   .province-action span { font-size: 15px; line-height: 17px; }
-  .command-dock { left: 342px; bottom: 8px; height: 50px; padding: 4px; transform: none; }
-  .command { width: 28px; font-size: 0; }
-  .command span { font-size: 15px; line-height: 17px; }
-  .map-tools { right: 8px; bottom: 64px; width: 190px; padding: 4px; }
+  .map-tools { right: 8px; bottom: 8px; width: 190px; padding: 4px; }
   .lens { height: 34px; font-size: 9px; }
   .lens span { display: inline; margin-right: 2px; font-size: 13px; }
   .mini-map { display: none; }
   .map-tool-footer { margin-top: 3px; }
   .map-tool-footer button, .zoom-readout { min-height: 26px; }
   .map-legend { max-height: 82px; overflow: auto; }
-  .season-control { right: 8px; bottom: 8px; width: 244px; height: 50px; grid-template-columns: 42px 1fr 30px; }
-  .season-seal { width: 31px; height: 31px; font-size: 15px; }
-  .season-text { font-size: 17px; }
-  .season-end { font-size: 15px; }
-}
-
-@media (max-width: 760px) and (orientation: landscape) {
-  .command-dock { display: none; }
+  .season-control { height: 32px; padding: 0 8px; }
+  .season-text { font-size: 11px; }
 }
 
 @media (orientation: portrait) {

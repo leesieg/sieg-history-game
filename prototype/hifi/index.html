@@ -27,6 +27,10 @@
           <div class="date-main" id="dateMain">1337年 · 春</div>
           <div class="date-era" id="dateEra">封建纪元 · 瓦卢瓦王朝</div>
         </div>
+        <button class="season-control" id="seasonControl" type="button" title="结束季度">
+          <span class="season-icon" id="seasonIcon">▶</span>
+          <span class="season-text" id="seasonText">结束季度</span>
+        </button>
       </div>
       <div class="resource-strip" aria-label="国家资源">
         <div class="resource-token" data-resource="food"><span class="resource-icon">⌂</span><span class="resource-total">120</span><span class="resource-trend">粮食</span></div>
@@ -80,15 +84,6 @@
       <div class="province-actions" id="provinceActions"></div>
     </aside>
 
-    <div class="command-dock metal-frame" aria-label="高频命令">
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='war:declare']"><span>⚔</span>宣战</button>
-      <button class="command" data-open-system="军事" data-focus-sel="[data-peace-war]"><span>✦</span>议和</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:trade']"><span>⚖</span>贸易</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:alliance']"><span>◇</span>结盟</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:marriage']"><span>♛</span>联姻</button>
-      <button class="command" data-open-system="外交" data-focus-sel="[data-diplomatic-action='treaty:access']"><span>▤</span>通行权</button>
-    </div>
-
     <aside class="map-tools metal-frame">
       <button class="mode-dial-current" id="modeDialCurrent" type="button" data-mode-dial title="切换地图模式"><span>⚜</span>政治<i class="mode-dial-caret">▸</i></button>
       <div class="mode-dial" id="modeDial">
@@ -116,11 +111,11 @@
         </div>
       </div>
       <div class="mini-map collapsed" id="miniMap">
-        <button class="mini-map-toggle" id="miniMapToggle" type="button" title="展开/收起缩略图">▣</button>
         <svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg>
       </div>
       <div class="map-tool-footer">
         <button id="legendToggle" title="展开图例">图</button>
+        <button id="miniMapToggle" title="展开/收起缩略图">▣</button>
         <button id="zoomReset" title="复位地图">◎</button>
         <span class="zoom-readout" id="zoomReadout">100%</span>
         <button id="zoomOut" title="缩小">−</button>
@@ -128,12 +123,6 @@
       </div>
       <div class="map-legend" id="mapLegend"></div>
     </aside>
-
-    <button class="season-control" id="seasonControl">
-      <span class="season-seal"><span>✧</span></span>
-      <span class="season-text" id="seasonText">处理待办 3</span>
-      <span class="season-end">◇</span>
-    </button>
 
     <div class="toast metal-frame" id="toast" role="status"></div>
   </main>
@@ -204,6 +193,6 @@
   <script src="scripts/ui/drawers.js?v=24"></script>
   <script src="scripts/ui/codex.js?v=2"></script>
   <script src="scripts/ui/dialogs.js?v=16"></script>
-  <script src="scripts/main.js?v=18"></script>
+  <script src="scripts/main.js?v=19"></script>
 </body>
 </html>
