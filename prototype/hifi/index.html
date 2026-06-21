@@ -90,19 +90,35 @@
     </div>
 
     <aside class="map-tools metal-frame">
-      <div class="lens-row">
-        <button class="lens active" data-mode="political"><span>⚜</span>政治</button>
-        <button class="lens" data-mode="terrain"><span>▲</span>地形</button>
-        <button class="lens" data-mode="population"><span>人</span>人口</button>
-        <button class="lens" data-mode="goods"><span>●</span>产出</button>
-        <button class="lens" data-mode="trade"><span>⇄</span>贸易</button>
-        <button class="lens" data-mode="religion"><span>✝</span>宗教</button>
-        <button class="lens" data-mode="dynasty"><span>♛</span>家族</button>
-        <button class="lens" data-mode="government"><span>◆</span>政体</button>
-        <button class="lens" data-mode="estates"><span>♟</span>阶层</button>
-        <button class="lens" data-mode="military"><span>⚔</span>军事</button>
+      <button class="mode-dial-current" id="modeDialCurrent" type="button" data-mode-dial title="切换地图模式"><span>⚜</span>政治<i class="mode-dial-caret">▸</i></button>
+      <div class="mode-dial" id="modeDial">
+        <div class="mode-group">
+          <div class="mode-group-title">政治</div>
+          <button class="lens active" data-mode="political"><span>⚜</span>政治</button>
+          <button class="lens" data-mode="government"><span>◆</span>政体</button>
+          <button class="lens" data-mode="dynasty"><span>♛</span>家族</button>
+          <button class="lens" data-mode="estates"><span>♟</span>阶层</button>
+          <button class="lens" data-mode="religion"><span>✝</span>宗教</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">地理</div>
+          <button class="lens" data-mode="terrain"><span>▲</span>地形</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">经济</div>
+          <button class="lens" data-mode="population"><span>人</span>人口</button>
+          <button class="lens" data-mode="goods"><span>●</span>产出</button>
+          <button class="lens" data-mode="trade"><span>⇄</span>贸易</button>
+        </div>
+        <div class="mode-group">
+          <div class="mode-group-title">军事</div>
+          <button class="lens" data-mode="military"><span>⚔</span>军事</button>
+        </div>
       </div>
-      <div class="mini-map"><svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg></div>
+      <div class="mini-map collapsed" id="miniMap">
+        <button class="mini-map-toggle" id="miniMapToggle" type="button" title="展开/收起缩略图">▣</button>
+        <svg class="mini-map-svg" id="miniMapSvg" viewBox="0 0 1050 720" aria-label="地图缩略图"></svg>
+      </div>
       <div class="map-tool-footer">
         <button id="legendToggle" title="展开图例">图</button>
         <button id="zoomReset" title="复位地图">◎</button>
@@ -184,7 +200,7 @@
   <script src="scripts/engine/proposals.js?v=3"></script>
   <script src="scripts/engine/strategy.js?v=2"></script>
   <script src="scripts/ui/store.js?v=4"></script>
-  <script src="scripts/ui/map.js?v=8"></script>
+  <script src="scripts/ui/map.js?v=9"></script>
   <script src="scripts/ui/drawers.js?v=23"></script>
   <script src="scripts/ui/codex.js?v=2"></script>
   <script src="scripts/ui/dialogs.js?v=14"></script>

@@ -515,6 +515,11 @@
   function setMode(mode) {
     state.mode = mode;
     document.querySelectorAll(".lens").forEach(button => button.classList.toggle("active", button.dataset.mode === mode));
+    // Task C5：模式盘当前模式按钮跟随活跃透镜，并在选定后收起盘面。
+    const active = document.querySelector(`.lens[data-mode="${mode}"]`);
+    const current = document.getElementById("modeDialCurrent");
+    if (active && current) current.innerHTML = `${active.innerHTML}<i class="mode-dial-caret">▸</i>`;
+    document.getElementById("modeDial")?.classList.remove("open");
     renderMainMap();
     renderLegend();
   }
@@ -549,6 +554,13 @@
       selectTile(tiles[Number(polygon.dataset.mapTile)]);
     });
     document.querySelectorAll(".lens").forEach(button => button.addEventListener("click", () => setMode(button.dataset.mode)));
+    // Task C5：点当前模式按钮展开/收起模式盘；点缩略图按钮展开/收起小地图。
+    document.getElementById("modeDialCurrent").addEventListener("click", () => {
+      document.getElementById("modeDial").classList.toggle("open");
+    });
+    document.getElementById("miniMapToggle").addEventListener("click", () => {
+      document.getElementById("miniMap").classList.toggle("collapsed");
+    });
     document.getElementById("legendToggle").addEventListener("click", () => {
       legend.classList.toggle("open");
       document.getElementById("legendToggle").classList.toggle("active", legend.classList.contains("open"));

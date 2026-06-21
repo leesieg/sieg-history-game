@@ -700,6 +700,34 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .lens span { display: block; color: var(--gold-2); font-size: 21px; }
 .lens.active { background: rgba(173,123,50,.18); color: var(--gold-3); }
+/* Task C5: 地图模式盘——默认只显当前模式按钮，点开按政治/地理/经济/军事四组列出透镜。 */
+.mode-dial-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--gold-1);
+  background: rgba(8, 19, 16, .55);
+  color: var(--gold-3);
+  cursor: pointer;
+  font-size: 13px;
+}
+.mode-dial-current span { color: var(--gold-2); font-size: 18px; }
+.mode-dial-current .mode-dial-caret { margin-left: auto; font-style: normal; color: var(--gold-1); }
+.mode-dial { display: none; margin-top: 5px; }
+.mode-dial.open { display: block; }
+.mode-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  padding: 2px 0 5px;
+  border-bottom: 1px solid rgba(214, 174, 89, .14);
+}
+.mode-group:last-child { border-bottom: 0; }
+.mode-group-title { grid-column: 1 / -1; padding: 3px 2px 0; color: var(--muted); font-size: 10px; letter-spacing: 1px; }
+.mode-dial .lens { height: 42px; border: 1px solid rgba(214, 174, 89, .16); }
 .mini-map {
   position: relative;
   height: 92px;
@@ -707,6 +735,23 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   border: 1px solid var(--gold-0);
   background: #173c45;
 }
+.mini-map.collapsed { height: 26px; background: rgba(8, 19, 16, .55); }
+.mini-map.collapsed .mini-map-svg { display: none; }
+.mini-map-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 24px;
+  height: 22px;
+  border: 1px solid var(--gold-1);
+  background: rgba(8, 19, 16, .7);
+  color: var(--gold-3);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.mini-map.collapsed .mini-map-toggle { position: static; width: 100%; height: 100%; }
 .mini-map-svg { width: 100%; height: 100%; display: block; cursor: crosshair; }
 .mini-sea { fill: #285d69; }
 .mini-land polygon { fill: #927f55; stroke: #c4a65f; stroke-width: 1; }
