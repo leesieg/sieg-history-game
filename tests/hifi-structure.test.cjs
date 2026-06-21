@@ -19,6 +19,7 @@ const requiredFiles = [
   "scripts/engine/diplomacy.js",
   "scripts/engine/warfare.js",
   "scripts/engine/history.js",
+  "scripts/engine/narrative.js",
   "scripts/data/codex.js",
   "scripts/ui/store.js",
   "scripts/ui/map.js",

@@ -388,10 +388,35 @@
     applyViewBox();
   }
 
+  // 展示缩放系数（万人 / 人口点）——纯展示用、非引擎真实人口。命名常量以诚实标注口径（Phase D）。
+  const POP_DISPLAY_SCALE = 3.15;
+
   function formatPopulation(tile) {
     if (tile.isSea) return "无常住人口";
-    const tenThousands = tile.population * 3.15;
+    const tenThousands = tile.population * POP_DISPLAY_SCALE;
     return `${Number.isInteger(tenThousands) ? tenThousands : tenThousands.toFixed(1)}万`;
+  }
+
+  // Phase D：省份面板数值接经济引擎真实值。控制度反映战争占领/破坏，发展度由真实产出 + 建筑派生分级。
+  // 纯函数、不触碰 DOM，方便单测（复用 HIFI_ECONOMY_ENGINE.tileOutput）。
+  function provinceStats(world, tile) {
+    if (tile.isSea) {
+      return { isSea: true, popDisplay: "无常住人口", effectiveControl: null, controlLabel: "—", developmentTier: "航道", developmentValue: 0, output: null };
+    }
+    const country = world?.countries?.[tile.polity];
+    const output = (country && window.HIFI_ECONOMY_ENGINE)
+      ? window.HIFI_ECONOMY_ENGINE.tileOutput(tile, country)
+      : { food: 0, money: 0, military: 0 };
+    const effectiveControl = Math.round((tile.control || 0)
+      * (1 - (tile.occupation || 0) / 100)
+      * (1 - (tile.devastation || 0) / 100));
+    const occupied = tile.occupier && (tile.occupation || 0) > 0;
+    const controlLabel = occupied ? `被占领 ${tile.occupation}%` : `${effectiveControl}%`;
+    const developmentValue = output.food + output.money + output.military + (tile.buildings?.length || 0) * 2;
+    const developmentTier = developmentValue >= 22 ? "繁荣"
+      : developmentValue >= 13 ? "兴盛"
+        : developmentValue >= 6 ? "稳定" : "凋敝";
+    return { isSea: false, output, effectiveControl, controlLabel, developmentValue, developmentTier, popDisplay: formatPopulation(tile) };
   }
 
   // Task C3：地块动作按归属区分。己方地块给治理动作，外国地块按和平/交战给外交或战争动作，
@@ -433,19 +458,18 @@
   function updateProvince(tile) {
     const terrain = TERRAIN[tile.terrain];
     const good = GOODS[tile.good];
+    const world = window.hifiGame?.store?.getState();
+    const stats = provinceStats(world || { countries: {} }, tile);
     document.getElementById("provinceName").textContent = tile.city || tile.region;
     document.getElementById("provinceRegion").textContent = tile.isSea ? tile.region : `${tile.polity} · ${tile.region}`;
     document.getElementById("provinceClimate").textContent = CLIMATE[tile.climate];
-    document.getElementById("provincePopulation").textContent = formatPopulation(tile);
+    document.getElementById("provincePopulation").textContent = stats.popDisplay;
     document.getElementById("provinceOutput").textContent = good[0];
-    const occupied = !tile.isSea && tile.occupier && (tile.occupation || 0) > 0;
-    document.getElementById("provinceControl").textContent = tile.isSea ? "—"
-      : occupied ? `被占领 ${tile.occupation}%` : `${tile.control}%`;
-    document.getElementById("provinceDevelopment").textContent = tile.isSea ? "航道" : String(tile.population * 3 + tile.buildings.length * 8);
+    document.getElementById("provinceControl").textContent = stats.controlLabel;
+    document.getElementById("provinceDevelopment").textContent = stats.developmentTier;
     document.getElementById("provinceCulture").textContent = tile.culture;
     document.getElementById("provinceReligion").textContent = tile.religion;
     terrainBanner.style.backgroundImage = `linear-gradient(90deg, rgba(6,14,12,.88), rgba(6,14,12,.1)), url("../../assets/terrain-banners/${tile.terrain}.png")`;
-    const world = window.hifiGame?.store?.getState();
     if (world) renderProvinceActions(tile, world);
   }
 
@@ -604,5 +628,5 @@
   bindControls();
   const paris = nearestTileForRegion("巴黎盆地");
   selectTile(paris);
-  window.prototypeMap = { tiles, state, focusTile, renderMainMap, refreshSelected, setMode, setZoom, syncSelection, tileActionsFor };
+  window.prototypeMap = { tiles, state, focusTile, renderMainMap, refreshSelected, setMode, setZoom, syncSelection, tileActionsFor, provinceStats };
 })();

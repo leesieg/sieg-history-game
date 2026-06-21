@@ -248,4 +248,30 @@ assert.ok(mainSource.includes("declareWarOn"), "入口必须接通宣战操作")
   console.log("A3 欠费惩罚 OK");
 }
 
+
+// --- Phase E2: 招募非统治者将领并任命（将领系统不止"统治者领军"）---
+{
+  const gw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
+  ]);
+  diplomacy.initializeDiplomacy(gw);
+  warfare.initializeWarfare(gw);
+  const army = warfare.createArmy(gw, { owner: "法兰西王国", tileId: 0, name: "王军", units: [{ combatType: "infantry", serviceType: "levy", soldiers: 1000 }] });
+
+  const pointsBefore = gw.countries["法兰西王国"].actionPoints.military;
+  const general = warfare.recruitGeneral(gw, "法兰西王国");
+  assert.equal(general.ruler, false, "招募的应是非统治者将领");
+  assert.equal(general.owner, "法兰西王国");
+  assert.ok(general.command >= 2, "将领应有指挥力");
+  assert.equal(gw.countries["法兰西王国"].actionPoints.military, pointsBefore - 1, "招募应消耗 1 军事点");
+  assert.ok(gw.warfare.generals[general.id], "将领应进入将领池");
+
+  warfare.assignGeneral(gw, army.id, general.id);
+  assert.equal(gw.warfare.armies[army.id].generalId, general.id, "应能任命非统治者将领领军");
+
+  gw.countries["法兰西王国"].actionPoints.military = 0;
+  assert.throws(() => warfare.recruitGeneral(gw, "法兰西王国"), /军事点不足/, "军事点不足不能招募");
+  console.log("Phase E2 将领招募/任命 OK");
+}
+
 console.log("hifi warfare engine passed");

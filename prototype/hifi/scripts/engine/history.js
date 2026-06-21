@@ -10,6 +10,71 @@
     { key: "industrial", label: "工业纪元", year: 1815 },
   ];
 
+  // Phase C：历史因果链数据化。每条链 = 文案步骤 + 置位 flags + 机制后果 effect（回灌核心循环的压力/物价/组织/产出流）。
+  // 既有 constantinople_falls 平移入表，行为不变；新增链由纪元跨越或资源流阈值触发。
+  const CAUSAL_CHAINS = {
+    constantinople_falls: {
+      steps: ["君士坦丁堡陷落", "东方商路受到冲击", "传统航路成本上升", "西欧探索压力增加", "远洋技术投资加速", "新航线逐步形成", "贸易流入推动物价变化"],
+      flags: { constantinopleFallen: true, discoveryImpulse: true },
+      transition: { title: "旧都易主", sub: "地中海秩序开始转向" },
+      effect(world) {
+        for (const country of Object.values(world.countries)) {
+          country.pressures.exploration += 12;
+          country.priceIndex = Math.round((country.priceIndex + .04) * 100) / 100;
+        }
+      },
+    },
+    reformation_split: {
+      steps: ["宗教改革撕裂信仰统一", "新旧两派各执经文", "正统阶层与改革派对立", "信仰压力席卷宫廷"],
+      flags: { reformationSplit: true },
+      transition: { title: "信仰分裂", sub: "一个基督教世界开始裂成两半" },
+      effect(world) {
+        for (const country of Object.values(world.countries)) {
+          country.pressures.faith = (country.pressures.faith || 0) + 14;        // 信仰压力上行 → applyPressureEffects 喂正统阶层张力
+          for (const key of ["church", "clergy", "imperial_church"]) {
+            if (country.estates?.[key]) country.estates[key].satisfaction = Math.max(-100, country.estates[key].satisfaction - 8);
+          }
+        }
+      },
+    },
+    price_revolution: {
+      steps: ["新大陆白银涌入", "货币贬值物价飞涨", "固定税收实际缩水", "财政承压寻求新财源"],
+      flags: { priceRevolution: true },
+      transition: { title: "价格革命", sub: "白银洪流冲垮了旧的物价秩序" },
+      effect(world) {
+        for (const country of Object.values(world.countries)) {
+          country.priceIndex = Math.round((country.priceIndex + .05) * 100) / 100; // 物价上行 → economy.tileOutput 名义金钱产出抬升
+          country.pressures.fiscal = (country.pressures.fiscal || 0) + 10;
+        }
+      },
+    },
+    gunpowder_revolution: {
+      steps: ["火炮与棱堡重塑战场", "旧式征召军难以为继", "常备职业军成为主流", "封建动员的时代落幕"],
+      flags: { gunpowderRevolution: true },
+      transition: { title: "火药革命", sub: "城墙与封建骑士的时代正在落幕" },
+      effect(world) {
+        for (const army of Object.values(world.warfare?.armies || {})) {          // 旧式征召/卫队军团组织度下挫 → 逼出常备军转型
+          if (army.units?.some(unit => ["levy", "guard"].includes(unit.serviceType))) {
+            army.organization = Math.max(0, army.organization - 20);
+          }
+        }
+      },
+    },
+    industrial_takeoff: {
+      steps: ["蒸汽机轰鸣作响", "工厂与铁路改写生产", "产出与思想加速积累", "旧的农业秩序被重塑"],
+      flags: { industrialTakeoff: true, industrialization: true },
+      transition: { title: "工业起飞", sub: "机器的轰鸣盖过了田野的钟声" },
+      effect(world) {
+        for (const country of Object.values(world.countries)) {
+          country.ideas = (country.ideas || 0) + 15;                              // 产出/思想流加速
+          country.money += 30;
+        }
+      },
+    },
+  };
+  // 纪元跨越时绑定触发的因果链（封建/发现/革命纪元无绑定链，保留通用转折）。
+  const CHAIN_BY_ERA = { faith: "reformation_split", absolutism: "gunpowder_revolution", industrial: "industrial_takeoff" };
+
   const missionDefinitions = [
     { key: "secure_capital", label: "稳固首都", check: (world, country) => window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).some(tile => tile.city && tile.control >= 80), reward: { legitimacy: 3 } },
     { key: "open_market", label: "接入洲际市场", check: (world, country) => (world.trade?.lastIncome?.[country.name] || 0) >= 10, reward: { money: 20 } },
@@ -214,25 +279,21 @@
   }
 
   function applyCausalChain(world, key) {
-    if (key !== "constantinople_falls") throw new Error("未知历史因果链");
-    const chain = [
-      "君士坦丁堡陷落",
-      "东方商路受到冲击",
-      "传统航路成本上升",
-      "西欧探索压力增加",
-      "远洋技术投资加速",
-      "新航线逐步形成",
-      "贸易流入推动物价变化",
-    ];
-    world.flags.constantinopleFallen = true;
-    world.flags.discoveryImpulse = true;
-    for (const country of Object.values(world.countries)) {
-      country.pressures.exploration += 12;
-      country.priceIndex = Math.round((country.priceIndex + .04) * 100) / 100;
+    const chain = CAUSAL_CHAINS[key];
+    if (!chain) throw new Error("未知历史因果链");
+    Object.assign(world.flags, chain.flags || {});
+    if (chain.effect) chain.effect(world);
+    (world.firedChains ||= new Set()).add(key);
+    world.pendingTransition = { title: chain.transition.title, sub: chain.transition.sub, chain: chain.steps };
+    pushWorldEvent(world, chain.steps[0], "causality", chain.steps);
+    return chain.steps;
+  }
+
+  // 资源流阈值触发的因果链（非纪元绑定）：新大陆白银航路开通 → 价格革命。
+  function triggerFlowChains(world) {
+    if (world.trade?.routes?.newWorld?.active && !world.firedChains?.has("price_revolution")) {
+      applyCausalChain(world, "price_revolution");
     }
-    world.pendingTransition = { title: "旧都易主", sub: "地中海秩序开始转向", chain };
-    pushWorldEvent(world, chain[0], "causality", chain);
-    return chain;
   }
 
   function checkEra(world) {
@@ -242,12 +303,17 @@
     if (nextIndex <= world.eraIndex) return false;
     world.eraIndex = nextIndex;
     const era = eras[nextIndex];
-    world.pendingTransition = {
-      title: era.label,
-      sub: `${era.year} 年后，旧规则开始松动`,
-      chain: [`进入${era.label}`, "国家目标与可用机制发生变化"],
-    };
-    pushWorldEvent(world, `世界进入${era.label}`, "era", world.pendingTransition.chain);
+    const chainKey = CHAIN_BY_ERA[era.key];
+    if (chainKey && !world.firedChains?.has(chainKey)) {
+      applyCausalChain(world, chainKey); // 纪元转折升级为「文案 + 机制后果」
+    } else {
+      world.pendingTransition = {
+        title: era.label,
+        sub: `${era.year} 年后，旧规则开始松动`,
+        chain: [`进入${era.label}`, "国家目标与可用机制发生变化"],
+      };
+      pushWorldEvent(world, `世界进入${era.label}`, "era", world.pendingTransition.chain);
+    }
     return true;
   }
 
@@ -331,6 +397,19 @@
       || world.diplomacy?.wars.some(war => war.startedTurn > world.regency.startedTurn);
   }
 
+  // 垂帘听政能否启动：有待选举/玩家事件/时代转折未处理时不能（否则 runRegency 会 0 推进、看似无响应）。
+  // 不依赖 world.regency（startRegency 之前调用安全），供 UI 预判并给出反馈/置灰。
+  function regencyBlocker(world) {
+    if (world.pendingElection) return "需先选立新领导人";
+    if (world.playerEvents && world.playerEvents.length) return "需先裁断当前事件";
+    if (world.pendingTransition) return "需先确认时代转折";
+    return null;
+  }
+
+  function canRunRegency(world) {
+    return regencyBlocker(world) === null;
+  }
+
   function runRegency(world, advanceQuarter, maximumQuarters = 8) {
     startRegency(world);
     let advanced = 0;
@@ -384,6 +463,7 @@
     spreadTechnology(world);
     processMilestones(world);
     applyMissions(world);
+    triggerFlowChains(world);
     checkEra(world);
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
     country.report = {
@@ -419,6 +499,8 @@
     pushChronicle,
     pushWorldEvent,
     resolvePlayerEvent,
+    canRunRegency,
+    regencyBlocker,
     runRegency,
     completeTutorial,
     forecast,

@@ -244,8 +244,12 @@
       ["制度冲突", -Math.round(relation.institutionalConflict * .25)],
     ];
     if (subjectTypes[type]) {
-      parts.push(["实力差距", Math.round((countryStrength(world, actor) - countryStrength(world, target)) / 2)]);
+      // 实力差距封顶：避免"碾压即附庸"——大国对极弱邻不再因悬殊实力一键吞并（Phase E 平衡补正）
+      parts.push(["实力差距", Math.min(30, Math.round((countryStrength(world, actor) - countryStrength(world, target)) / 2))]);
       parts.push(["主权损失", type === "tributary" ? -10 : type === "vassal" ? -24 : -42]);
+      // 独立意志：目标本身越是有实力的国家，越不愿屈从（弱小城邦惩罚轻，强国几乎拒绝）
+      const targetPower = countryStrength(world, target);
+      if (targetPower >= 40) parts.push(["独立意志", -Math.round((targetPower - 40) / 4) - 6]);
       if (leader.kinship) parts.push(["王朝纽带", 15]); // 联姻为和平继承式整合铺路
     }
     const score = parts.reduce((sum, [, value]) => sum + value, 0);

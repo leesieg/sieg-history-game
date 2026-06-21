@@ -100,3 +100,64 @@ console.log("hifi map integration passed");
 
   console.log("C3 地块归属动作 OK");
 }
+
+// --- Phase D: 省份数值真实化 provinceStats ---
+// map.js 顶层依赖 DOM，无法整体跑；抠出 POP_DISPLAY_SCALE + formatPopulation + provinceStats 单独求值，
+// 复用真实 economy 引擎计算 tileOutput。
+{
+  const engineRoot = path.join(root, "scripts");
+  const engineContext = { window: {} };
+  for (const file of ["data/rules.js", "engine/world.js", "engine/economy.js"]) {
+    vm.runInNewContext(fs.readFileSync(path.join(engineRoot, file), "utf8"), engineContext);
+  }
+  const worldEngine = engineContext.window.HIFI_WORLD_ENGINE;
+
+  const tiles = [
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, good: "grain", buildings: ["farm", "market"], city: "巴黎", terrain: "plains", control: 80, devastation: 0, occupation: 0 },
+    { id: 1, isSea: true, polity: "海域", population: 0, good: "fish", buildings: [], city: "", terrain: "sea", control: 0 },
+  ];
+  const world = worldEngine.createWorld(tiles);
+
+  const match = mapSource.match(/const POP_DISPLAY_SCALE[\s\S]*?function provinceStats[\s\S]*?\n  \}/);
+  assert.ok(match, "map.js 必须定义 provinceStats（含 POP_DISPLAY_SCALE 常量）");
+  const ctx = { window: engineContext.window };
+  vm.runInNewContext(`${match[0]}\nthis.provinceStats = provinceStats;\nthis.POP_DISPLAY_SCALE = POP_DISPLAY_SCALE;`, ctx);
+  const provinceStats = ctx.provinceStats;
+
+  assert.equal(ctx.POP_DISPLAY_SCALE, 3.15, "POP 缩放系数必须命名为常量并诚实标注口径");
+
+  const owned = world.tiles[0];
+  const sea = world.tiles[1];
+
+  // 和平己方地块：有效控制度≈静态控制度，发展度由真实产出派生（非"航道"）
+  const peaceful = provinceStats(world, owned);
+  assert.equal(peaceful.effectiveControl, 80, "无占领无破坏时有效控制度=静态控制度");
+  assert.equal(peaceful.controlLabel, "80%", "和平地块控制度直接显示百分比");
+  assert.notEqual(peaceful.developmentTier, "航道", "陆地发展度不应是航道");
+  assert.ok(peaceful.popDisplay.endsWith("万"), "人口展示用万为单位");
+  assert.ok(peaceful.output && peaceful.output.food > 0, "发展度应基于真实 tileOutput");
+
+  // 战争占领：控制度反映占领，标注"被占领"
+  owned.occupier = "英格兰王国";
+  owned.occupation = 60;
+  const occupiedStats = provinceStats(world, owned);
+  assert.ok(occupiedStats.effectiveControl < 80, "占领必须压低有效控制度");
+  assert.ok(occupiedStats.controlLabel.includes("被占领"), "被占领地块必须标注被占领");
+
+  // 破坏度也压低有效控制度
+  owned.occupier = null;
+  owned.occupation = 0;
+  owned.devastation = 50;
+  const devastated = provinceStats(world, owned);
+  assert.ok(devastated.effectiveControl < 80, "破坏度必须压低有效控制度");
+
+  // 海域：航道 + 无常住人口
+  const seaStats = provinceStats(world, sea);
+  assert.equal(seaStats.developmentTier, "航道", "海域发展度为航道");
+  assert.equal(seaStats.popDisplay, "无常住人口", "海域无常住人口");
+
+  assert.ok(mapSource.includes("window.prototypeMap = {") && mapSource.includes("provinceStats"),
+    "provinceStats 必须导出到 window.prototypeMap");
+
+  console.log("Phase D 省份数值真实化 OK");
+}
