@@ -169,7 +169,7 @@
         return `<div class="drawer-row${cls}">${label} <b>${e.net >= 0 ? "+" : ""}${e.net}</b><span>${parts.join(" ")}</span></div>`;
       };
       const ledgerHtml = (ledger.money.net || ledger.food.net || ledger.military.net || ledger.money.gross || ledger.food.gross)
-        ? `<div class="drawer-subtitle">本季季报</div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
+        ? `<div class="drawer-subtitle"><span class="codex-term" data-codex="维护费">本季季报</span></div>${ledgerRow("国库", ledger.money)}${ledgerRow("粮食", ledger.food)}${ledgerRow("军需", ledger.military)}`
         : "";
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);
       document.getElementById("councilSubtitle").textContent = `${summary.era} · ${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}`;
