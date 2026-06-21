@@ -142,4 +142,21 @@ assert.ok(drawerSource.includes("data-diplomatic-target"));
 assert.ok(drawerSource.includes("data-diplomatic-action"));
 assert.ok(mainSource.includes("initializeDiplomacy"));
 
+// --- Task C7: 外交对象排序（敌国 > 邻国/接触 > 可缔约 > 其余）+ 搜索 ---
+{
+  diplomacy.relationView(world, "法兰西王国", "英格兰王国").trust = 0;
+  diplomacy.relationView(world, "法兰西王国", "英格兰王国").threat = 100;
+  diplomacy.relationView(world, "法兰西王国", "英格兰王国").territorialConflict = 60;
+  diplomacy.relationView(world, "法兰西王国", "布列塔尼公国").trust = 60;
+  diplomacy.relationView(world, "法兰西王国", "布列塔尼公国").threat = 0;
+  diplomacy.relationView(world, "法兰西王国", "布列塔尼公国").strategicInterest = 0;
+  diplomacy.relationView(world, "法兰西王国", "布列塔尼公国").territorialConflict = 0;
+  const sorted = diplomacy.sortDiplomacyTargets(world, "法兰西王国");
+  assert.equal(sorted.length, 2, "应返回除己方外的全部外交对象");
+  assert.equal(sorted[0], "英格兰王国", "敌国/敌意对象应排在最前");
+  assert.ok(drawerSource.includes("sortDiplomacyTargets"), "外交抽屉应按 sortDiplomacyTargets 排序对象");
+  assert.ok(drawerSource.includes("data-diplo-search"), "外交抽屉应提供搜索框 data-diplo-search");
+  console.log("C7 外交排序 OK");
+}
+
 console.log("hifi diplomacy engine passed");

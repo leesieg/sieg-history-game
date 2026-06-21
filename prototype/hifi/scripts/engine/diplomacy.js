@@ -115,6 +115,26 @@
     return "hostile";
   }
 
+  // Task C7：外交对象排序——敌国 > 邻国/接触 > 可缔约 > 其余，让玩家先看到最该处理的对象。
+  // 纯函数；warfare 引擎可能未加载时退化为只看态度/战略利益（防御式可选链）。
+  function diplomacyTargetRank(world, polity, target) {
+    const atWar = window.HIFI_WARFARE_ENGINE?.areAtWar?.(world, polity, target);
+    const attitude = diplomaticAttitude(world, polity, target);
+    if (atWar || attitude === "hostile" || attitude === "rival") return 0; // 敌国
+    const relation = relationView(world, polity, target);
+    if ((relation.strategicInterest || 0) > 0 || (relation.threat || 0) >= 40) return 1; // 邻国/接触
+    if (attitude === "close" || attitude === "cooperative") return 2; // 可缔约
+    return 3;
+  }
+
+  function sortDiplomacyTargets(world, polity) {
+    return Object.keys(world.countries)
+      .filter(name => name !== polity)
+      .map((name, index) => ({ name, index, rank: diplomacyTargetRank(world, polity, name) }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map(entry => entry.name);
+  }
+
   function capacity(world, polity) {
     const country = world.countries[polity];
     return 3
@@ -388,6 +408,7 @@
     proposeSubject,
     proposeTreaty,
     relationView,
+    sortDiplomacyTargets,
     startMission,
     subjectBetween,
     treatyBetween,

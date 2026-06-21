@@ -402,6 +402,17 @@
     }
   });
 
+  // Task C7：外交对象搜索——纯 DOM 过滤，不触发重渲染，输入框不丢焦点。
+  document.addEventListener("input", event => {
+    const search = event.target.closest("[data-diplo-search]");
+    if (!search) return;
+    const query = search.value.trim().toLowerCase();
+    document.querySelectorAll("[data-diplomatic-target]").forEach(button => {
+      const name = (button.dataset.diplomaticTarget || button.textContent || "").toLowerCase();
+      button.style.display = name.includes(query) ? "" : "none";
+    });
+  });
+
   window.addEventListener("hifi:open-system", event => {
     const target = document.querySelector(`.system-button[data-system="${event.detail.system}"]`);
     if (!target) return;

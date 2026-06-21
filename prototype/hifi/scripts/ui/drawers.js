@@ -409,7 +409,8 @@
 
   function renderDiplomacy(country, world) {
     const engine = window.HIFI_DIPLOMACY_ENGINE;
-    const targets = Object.keys(world.countries).filter(name => name !== country.name);
+    // Task C7：外交对象按敌国 > 邻国/接触 > 可缔约 > 其余排序，默认选中最该处理的对象。
+    const targets = engine.sortDiplomacyTargets(world, country.name);
     if (!targets.includes(world.diplomacy.selectedTarget)) world.diplomacy.selectedTarget = targets[0];
     const target = world.diplomacy.selectedTarget;
     const relation = engine.relationView(world, target, country.name);
@@ -451,7 +452,9 @@
         <div class="drawer-row">${codexTerm("外交点", "外交点")}<span>${country.actionPoints.diplomatic}</span></div>
         <div class="drawer-row">${codexTerm("使节", "使节")}<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
         <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${engine.capacityUsed(world, country.name)} / ${engine.capacity(world, country.name)}</span></div>
-        <div class="drawer-subtitle">外交对象</div><div class="drawer-scroll-list">${targetButtons}</div>
+        <div class="drawer-subtitle">外交对象</div>
+        <input class="diplo-search" type="search" data-diplo-search placeholder="搜索国家…" aria-label="搜索外交对象">
+        <div class="drawer-scroll-list" id="diploTargetList">${targetButtons}</div>
         <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
         <div class="drawer-row">${codexTerm("信任", "信任")}<span>${relation.trust}</span></div>
         <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${relation.threat}</span></div>

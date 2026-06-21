@@ -461,6 +461,18 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .codex-pop ul { margin: 3px 0 0; padding-left: 16px; }
 .codex-pop li { margin: 1px 0; }
 .drawer-scroll-list { max-height: 150px; overflow: auto; }
+/* Task C7: 外交对象搜索框。 */
+.diplo-search {
+  width: 100%;
+  margin: 2px 0 5px;
+  padding: 5px 8px;
+  border: 1px solid rgba(214, 174, 89, .35);
+  border-radius: 6px;
+  background: rgba(8, 19, 16, .55);
+  color: var(--cream);
+  font-size: 12px;
+}
+.diplo-search::placeholder { color: var(--muted); }
 .estate-pie { display: block; margin: 8px auto 6px; }
 .estate-pie path { stroke: #1a140c; stroke-width: 1; }
 .estate-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: middle; }
