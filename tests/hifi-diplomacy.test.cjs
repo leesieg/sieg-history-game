@@ -159,4 +159,38 @@ assert.ok(mainSource.includes("initializeDiplomacy"));
   console.log("C7 外交排序 OK");
 }
 
+
+// --- Phase E1: 附属傀儡化平衡（实力差距封顶 + 独立意志惩罚）---
+{
+  const ew = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "大帝国", population: 40, buildings: [], city: "京城", x: 10, y: 10 },
+    { id: 1, isSea: false, polity: "大帝国", population: 40, buildings: [], city: "陪都", x: 12, y: 10 },
+    { id: 2, isSea: false, polity: "大帝国", population: 40, buildings: [], city: "边镇", x: 14, y: 10 },
+    { id: 3, isSea: false, polity: "强邻", population: 30, buildings: [], city: "强都", x: 30, y: 10 },
+    { id: 4, isSea: false, polity: "强邻", population: 28, buildings: [], city: "强港", x: 32, y: 10 },
+    { id: 5, isSea: false, polity: "小邦", population: 2, buildings: [], city: "小城", x: 50, y: 10 },
+  ]);
+  diplomacy.initializeDiplomacy(ew);
+
+  // 实力差距封顶：大帝国对小邦的"实力差距"加分不超过 30（避免碾压即附庸）
+  const evalSmall = diplomacy.evaluateProposal(ew, "大帝国", "小邦", "tributary");
+  const gapPart = evalSmall.parts.find(([label]) => label === "实力差距");
+  assert.ok(gapPart && gapPart[1] <= 30, `实力差距必须封顶 30，实际 ${gapPart && gapPart[1]}`);
+
+  // 独立意志：对有实力的独立强邻出现负权重；对极弱小邦不出现
+  const evalStrong = diplomacy.evaluateProposal(ew, "大帝国", "强邻", "puppet");
+  assert.ok(evalStrong.parts.some(([label]) => label === "独立意志"), "强邻应触发独立意志惩罚");
+  assert.ok(!evalSmall.parts.some(([label]) => label === "独立意志"), "极弱小邦不应有独立意志惩罚");
+
+  // 即使关系不错，强邻仍难被一键傀儡化
+  Object.assign(diplomacy.relationView(ew, "强邻", "大帝国"), { trust: 70, threat: 10, territorialConflict: 0, institutionalConflict: 0, strategicInterest: 20 });
+  assert.equal(diplomacy.evaluateProposal(ew, "大帝国", "强邻", "puppet").accepted, false, "有实力的独立强邻不应被轻易傀儡化");
+
+  // 弱小邦在良好关系下仍可成为朝贡国（封顶不影响正常臣服）
+  Object.assign(diplomacy.relationView(ew, "小邦", "大帝国"), { trust: 100, threat: 0, territorialConflict: 0, institutionalConflict: 0, strategicInterest: 60 });
+  assert.equal(diplomacy.evaluateProposal(ew, "大帝国", "小邦", "tributary").accepted, true, "良好关系下弱邦仍可朝贡");
+
+  console.log("Phase E1 附属平衡 OK");
+}
+
 console.log("hifi diplomacy engine passed");

@@ -182,6 +182,20 @@
     };
   }
 
+  // 招募非统治者将领：消耗 1 军事点，指挥力由军事改革 + 常备军科技决定。让将领系统不止"统治者领军"。
+  function recruitGeneral(world, polity) {
+    const country = world.countries[polity];
+    if (!country) throw new Error("国家不存在");
+    if ((country.actionPoints?.military || 0) < 1) throw new Error("军事点不足");
+    country.actionPoints.military -= 1;
+    const seq = (world.warfare.nextGeneralId = (world.warfare.nextGeneralId || 0) + 1);
+    const id = `general:${polity}:${seq}`;
+    const command = Math.min(6, 2 + (country.government?.reforms?.military || 0) + (country.technology?.standingArmy ? 1 : 0));
+    const general = { id, owner: polity, name: `${polity}名将${seq}`, command, siege: Math.max(1, Math.floor(command / 2)), ruler: false };
+    world.warfare.generals[id] = general;
+    return general;
+  }
+
   function assignGeneral(world, armyId, generalId) {
     const army = world.warfare.armies[armyId];
     const general = world.warfare.generals[generalId];
@@ -569,7 +583,9 @@
     initializeWarfare,
     mergeArmies,
     mobilizeArmy,
+    neighbors,
     planArmyRoute,
+    recruitGeneral,
     processWarfare,
     reinforceArmy,
     releaseMercenary,

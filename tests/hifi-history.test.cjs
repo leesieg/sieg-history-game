@@ -178,4 +178,107 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   console.log("A5 季报净额 OK");
 }
 
+// --- Phase C：历史因果链扩展（数据驱动 + 机制后果 + 纪元/流触发）---
+{
+  const cw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 },
+    { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", control: 70 },
+  ]);
+  history.initializeHistory(cw);
+
+  // 未知链仍报错（防呆保留）
+  assert.throws(() => history.applyCausalChain(cw, "no_such_chain"), /未知历史因果链/);
+
+  // 君堡链行为不变（回归）：七跳 + flag + 探索压力 + 物价上行
+  const priceBefore = cw.countries["法兰西王国"].priceIndex;
+  const chain = history.applyCausalChain(cw, "constantinople_falls");
+  assert.equal(chain.length, 7, "君堡链必须仍是七跳");
+  assert.equal(cw.flags.constantinopleFallen, true);
+  assert.ok(cw.countries["法兰西王国"].pressures.exploration > 0, "君堡链必须抬升探索压力");
+  assert.ok(cw.countries["法兰西王国"].priceIndex > priceBefore, "君堡链必须推升物价");
+
+  // 价格革命：物价上行 + 财政压力上行 + 置位
+  const cw2 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  history.initializeHistory(cw2);
+  const pr = cw2.countries["法兰西王国"];
+  pr.pressures.fiscal = 0;
+  const priceBefore2 = pr.priceIndex;
+  history.applyCausalChain(cw2, "price_revolution");
+  assert.equal(cw2.flags.priceRevolution, true);
+  assert.ok(pr.priceIndex > priceBefore2, "价格革命必须推升物价");
+  assert.ok(pr.pressures.fiscal > 0, "价格革命必须抬升财政压力");
+
+  // 火药革命：旧式（征召/卫队）军团组织度下挫，职业军不受影响
+  const cw3 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  history.initializeHistory(cw3);
+  cw3.warfare = { armies: {
+    levyArmy: { owner: "法兰西王国", units: [{ serviceType: "levy", soldiers: 1000 }], organization: 100 },
+    proArmy: { owner: "法兰西王国", units: [{ serviceType: "professional", soldiers: 1000 }], organization: 100 },
+  } };
+  history.applyCausalChain(cw3, "gunpowder_revolution");
+  assert.equal(cw3.flags.gunpowderRevolution, true);
+  assert.ok(cw3.warfare.armies.levyArmy.organization < 100, "旧式征召军组织度必须下挫");
+  assert.equal(cw3.warfare.armies.proArmy.organization, 100, "职业军不受火药革命冲击");
+
+  // 工业起飞：思想/金钱加速
+  const cw4 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  history.initializeHistory(cw4);
+  const it = cw4.countries["法兰西王国"];
+  it.ideas = 0;
+  const moneyBefore = it.money;
+  history.applyCausalChain(cw4, "industrial_takeoff");
+  assert.equal(cw4.flags.industrialTakeoff, true);
+  assert.ok(it.ideas >= 15 && it.money > moneyBefore, "工业起飞必须加速思想与金钱");
+
+  // 纪元跨越自动触发绑定链：跨入信仰分裂纪元（1517）→ 触发 reformation_split
+  const cw5 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  history.initializeHistory(cw5);
+  cw5.turn = (1517 - 1337) * 4 + 1; // year 1517
+  const fired = history.checkEra(cw5);
+  assert.equal(fired, true, "跨年应推进纪元");
+  assert.equal(cw5.flags.reformationSplit, true, "跨入信仰分裂纪元应自动触发宗教改革因果链");
+  assert.ok(cw5.pendingTransition && cw5.pendingTransition.title === "信仰分裂", "纪元转折应使用因果链文案");
+
+  // 流触发：新大陆白银航路开通 → processHistory 触发价格革命（仅一次）
+  const cw6 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  history.initializeHistory(cw6);
+  cw6.trade = { routes: { newWorld: { active: true } } };
+  cw6.turn = 50;
+  history.processHistory(cw6);
+  assert.equal(cw6.flags.priceRevolution, true, "白银航路开通应触发价格革命");
+  assert.ok(cw6.firedChains.has("price_revolution"), "价格革命应记入已触发集合，避免重复");
+  console.log("Phase C 因果链扩展 OK");
+}
+
+// --- 垂帘听政启动守卫（修「点击无响应」：有待裁断事项时应明确受阻而非静默 0 推进）---
+{
+  const rw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 },
+  ]);
+  history.initializeHistory(rw);
+
+  assert.equal(history.canRunRegency(rw), true, "无待裁断事项时应可垂帘听政");
+  assert.equal(history.regencyBlocker(rw), null, "无阻碍时 blocker 为 null");
+
+  rw.pendingTransition = { title: "信仰分裂", sub: "", chain: [] };
+  assert.equal(history.canRunRegency(rw), false, "时代转折未确认时不能垂帘听政");
+  assert.ok(history.regencyBlocker(rw).includes("时代转折"), "应说明需先确认时代转折");
+
+  rw.pendingTransition = null;
+  rw.playerEvents = [{ id: "e1", title: "危机", choices: [] }];
+  assert.equal(history.canRunRegency(rw), false, "有待裁断事件时不能垂帘听政");
+  assert.ok(history.regencyBlocker(rw).includes("裁断"), "应说明需先裁断事件");
+
+  rw.playerEvents = [];
+  rw.pendingElection = { polity: "法兰西王国" };
+  assert.equal(history.canRunRegency(rw), false, "待选举时不能垂帘听政");
+  assert.ok(history.regencyBlocker(rw).includes("选立"), "应说明需先选立领导人");
+
+  // 清空阻碍后，runRegency 真正推进（回归：守卫与 runRegency 口径一致）
+  rw.pendingElection = null;
+  const advanced = history.runRegency(rw, current => { current.turn += 1; }, 4);
+  assert.equal(advanced, 4, "无阻碍时垂帘听政应推进满 4 季");
+  console.log("垂帘听政启动守卫 OK");
+}
+
 console.log("hifi history engine passed");

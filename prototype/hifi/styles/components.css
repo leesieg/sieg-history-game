@@ -611,7 +611,7 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   cursor: pointer;
 }
 .issue-panel.issue-empty {
-  width: 132px;
+  width: 150px;
   padding: 4px 9px;
   max-height: none;
   overflow: visible;
@@ -964,6 +964,141 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   cursor: pointer;
 }
 .dialog-command.primary { background: var(--enamel); color: var(--gold-3); }
+.dialog-command.is-disabled { opacity: .45; cursor: not-allowed; }
+/* 御前会议：入口 hover、头部纹章、分区层次、操作条与置灰/提示（入口与交互优化） */
+.issue-heading:hover { background: rgba(173,123,50,.16); color: var(--cream); }
+.council-head {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 2px 46px 14px 2px;
+  border-bottom: 1px solid rgba(214,174,89,.32);
+}
+.council-emblem {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--gold-1);
+  background: var(--enamel);
+  color: var(--gold-3);
+  font-size: 26px;
+}
+.council-head-text h2 { margin: 0; color: var(--gold-3); }
+.council-head-text p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+#councilBody .drawer-subtitle {
+  margin-top: 6px;
+  padding-left: 9px;
+  border-left: 3px solid var(--gold-1);
+}
+.drawer-row.council-warn { color: #e8d9b6; }
+.drawer-row.council-warn > span:last-child { color: var(--danger-hi, #d9685b); font-weight: 700; }
+.drawer-row.narrative-note { color: var(--gold-2); font-style: italic; }
+.council-actions {
+  position: sticky;
+  bottom: -14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 0 2px;
+  background: linear-gradient(180deg, transparent, var(--iron-1) 42%);
+  border-top: 1px solid rgba(214,174,89,.24);
+}
+.council-hint {
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(217,104,91,.4);
+  background: rgba(217,104,91,.08);
+  color: var(--danger-hi, #d9685b);
+  font-size: 12px;
+}
+/* 御前会议卡牌：每条信息一张可看 / 可用的卡牌，分区成手牌网格（抽卡—用卡手感） */
+.council-section { margin-top: 16px; }
+.council-section:first-child { margin-top: 4px; }
+.council-section-head {
+  margin: 0 0 8px;
+  padding-left: 9px;
+  border-left: 3px solid var(--gold-1);
+  color: var(--gold-2);
+  font-size: 12px;
+  letter-spacing: .06em;
+}
+.council-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(208px, 1fr));
+  gap: 10px;
+}
+.council-cards--wide { grid-template-columns: 1fr; }
+@keyframes councilDeal { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+.council-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid var(--gold-1);
+  border-radius: 9px;
+  background: linear-gradient(165deg, rgba(28,42,37,.94), rgba(15,24,21,.94));
+  box-shadow: 0 2px 0 rgba(0,0,0,.32), inset 0 1px 0 rgba(214,174,89,.12);
+  animation: councilDeal 200ms ease both;
+  transition: transform 130ms ease, box-shadow 130ms ease, border-color 130ms ease;
+}
+.council-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--gold-3);
+  box-shadow: 0 8px 16px rgba(0,0,0,.42), inset 0 1px 0 rgba(214,174,89,.22);
+}
+.council-card-kind {
+  color: var(--gold-3);
+  font-size: 10.5px;
+  letter-spacing: .07em;
+  opacity: .82;
+}
+.council-card-title { color: var(--cream); font-size: 14px; font-weight: 700; line-height: 1.3; }
+.council-card-body { color: #cdbf9c; font-size: 12px; line-height: 1.45; }
+.council-card-meta { margin: 2px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.council-card-meta li { display: grid; grid-template-columns: 34px 1fr; gap: 6px; color: #c7b88f; font-size: 11px; line-height: 1.35; }
+.council-card-meta li i { color: var(--gold-2); font-style: normal; }
+.council-card-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+.council-card-btn {
+  flex: 1;
+  min-height: 32px;
+  border: 1px solid var(--gold-1);
+  border-radius: 6px;
+  background: #152722;
+  color: #e7d9b4;
+  font-size: 12px;
+  cursor: pointer;
+}
+.council-card-btn:hover { border-color: var(--gold-3); color: var(--gold-3); }
+.council-card-btn.primary { background: var(--enamel); color: var(--gold-3); border-color: var(--gold-2); }
+.council-card--mission { border-left: 3px solid var(--gold-3); }
+.council-card--warn { border-left: 3px solid var(--danger-hi, #d9685b); }
+.council-card--warn .council-card-title { color: #f0dcc0; }
+.council-card--calm { border-left: 3px solid rgba(120,170,120,.55); opacity: .92; }
+.council-card--advice { border-left: 3px solid var(--gold-2); }
+.council-card--letter { border-left: 3px solid #8aa0c0; }
+.council-card--hostile { border-left-color: var(--danger-hi, #d9685b); }
+.council-card--threat { border-left-color: #d6a14a; }
+.council-card--warm { border-left-color: #7faf7f; }
+.council-card--demand { border-left: 3px solid #c08a3a; }
+.council-card--situation { border-left: 3px solid #6fa0b0; }
+.council-card--ledger { border-left: 3px solid var(--gold-2); }
+.council-card-note { color: var(--gold-2); font-style: italic; font-size: 12px; }
+.ledger-line {
+  display: grid;
+  grid-template-columns: 56px 58px 1fr;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(214,174,89,.12);
+  font-size: 12px;
+  color: #dcd1b4;
+}
+.ledger-line b { color: var(--gold-3); text-align: right; }
+.ledger-line.ledger-neg b { color: var(--danger-hi, #d9685b); }
+.ledger-line small { color: var(--gold-2); }
 .country-search {
   width: 100%;
   height: 40px;
