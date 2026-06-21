@@ -567,12 +567,6 @@
     });
     document.getElementById("zoomIn").addEventListener("click", () => setZoom(state.zoom + 0.3));
     document.getElementById("zoomOut").addEventListener("click", () => setZoom(state.zoom - 0.3));
-    document.getElementById("zoomReset").addEventListener("click", () => {
-      state.zoom = 1;
-      state.centerX = VIEW.w / 2;
-      state.centerY = VIEW.h / 2;
-      applyViewBox();
-    });
     miniSvg.addEventListener("click", event => {
       const rect = miniSvg.getBoundingClientRect();
       state.centerX = (event.clientX - rect.left) / rect.width * VIEW.w;

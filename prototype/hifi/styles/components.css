@@ -346,6 +346,11 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   transition: opacity 160ms ease, transform 220ms var(--ease);
 }
 .system-drawer.open { opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(0); }
+/* 隐藏原生滚动条（与金属 UI 不搭），保留滚动功能。 */
+.system-drawer, .army-drawer, .drawer-scroll-list { scrollbar-width: none; -ms-overflow-style: none; }
+.system-drawer::-webkit-scrollbar,
+.army-drawer::-webkit-scrollbar,
+.drawer-scroll-list::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .drawer-title {
   display: flex;
   align-items: center;
@@ -409,10 +414,11 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   gap: 4px;
   position: sticky;
   top: 0;
-  z-index: 2;
-  margin-bottom: 4px;
-  padding: 4px 0 8px;
-  background: inherit;
+  z-index: 3;
+  /* 满宽不透明条：盖住滚动到下方的内容，避免 tab 与正文重叠 */
+  margin: 0 -12px 4px;
+  padding: 6px 12px 8px;
+  background: var(--iron-1);
   border-bottom: 1px solid rgba(214,174,89,.18);
 }
 .drawer-tab {
