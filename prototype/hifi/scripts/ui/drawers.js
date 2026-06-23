@@ -415,15 +415,70 @@
         )).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
     }
 
-    // 战争
-    return `${bar}<div class="drawer-subtitle">${codexTerm("战争", "战争")}</div>
-      ${wars.length ? wars.map(war =>
-        `<button class="drawer-row political-action" data-peace-war="${war.id}" data-peace-term="${
-          war.primaryGoal.claimant === country.name ? "target_territory" : "status_quo"
-        }">${war.name}<span>${
-          war.primaryGoal.claimant === country.name ? `${wd().meter(war.score, 100, { tone: "red" })} 索取目标 · 分数 ${war.score} · 点击议和` : "提议停战"
-        }</span></button>`
-      ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>'}`;
+    // 战争 / 局势作战室
+    const peaceList = wars.length ? wars.map(war =>
+      `<button class="drawer-row political-action" data-peace-war="${war.id}" data-peace-term="${
+        war.primaryGoal.claimant === country.name ? "target_territory" : "status_quo"
+      }">${war.name}<span>${
+        war.primaryGoal.claimant === country.name ? `${wd().meter(war.score, 100, { tone: "red" })} 索取目标 · 分数 ${war.score} · 点击议和` : "提议停战"
+      }</span></button>`
+    ).join("") : '<div class="drawer-row">当前和平<span>—</span></div>';
+
+    const summary = window.HIFI_STRUGGLE_ENGINE
+      ? window.HIFI_STRUGGLE_ENGINE.struggleSummary(world, country.name)
+      : null;
+    if (!summary) {
+      return `${bar}<div class="drawer-subtitle">${codexTerm("战争", "战争")}</div>${peaceList}`;
+    }
+    return `${bar}${renderWarRoom(summary)}
+      <div class="drawer-subtitle">议和</div>${peaceList}`;
+  }
+
+  // 局势作战室：消费 struggleSummary，把阶段 / 战况 / 双方主力 / 阶段操作 / 推荐 / 终局摊给玩家。
+  function renderWarRoom(summary) {
+    const widget = wd();
+    const engine = window.HIFI_STRUGGLE_ENGINE;
+    const meterRows = engine.CYCLE_PHASES.map(phase => {
+      const value = summary.meters[phase] || 0;
+      const label = engine.phaseLabel({ key: summary.key }, phase);
+      const cur = phase === summary.phase ? " war-room-phase--active" : "";
+      return `<div class="drawer-row${cur}">${label}<span>${widget.meter(value, summary.flipThreshold, { tone: "gold", mini: true })} ${value}/${summary.flipThreshold}</span></div>`;
+    }).join("");
+
+    const warRow = summary.war
+      ? `<div class="drawer-row">${codexTerm("战争", "战争分数")}<span>${widget.meter(summary.war.score, 100, { tone: "red", mini: true })} ${summary.war.score}</span></div>
+         <div class="drawer-row">战争目标<span>${summary.war.goalTile || "—"}</span></div>`
+      : '<div class="drawer-row">直接交战<span>暂无</span></div>';
+
+    const ours = summary.ourArmy ? `${summary.ourArmy.location || "—"} · 战力 ${summary.ourArmy.strength}` : "无主力军";
+    const enemy = summary.enemyThreat ? `${summary.enemyThreat.location || "—"} · 战力 ${summary.enemyThreat.strength}` : "暂无威胁";
+
+    const actions = summary.actions.length
+      ? summary.actions.map(action =>
+          `<button class="drawer-row political-action" data-struggle-action="${action.id}">${action.label}<span>${summary.phaseLabel}阶段</span></button>`
+        ).join("")
+      : '<div class="drawer-row">本阶段无专属操作<span>—</span></div>';
+
+    const recs = summary.recommendations.length
+      ? summary.recommendations.map(text => `<div class="drawer-row war-room-rec"><span>▸ ${text}</span></div>`).join("")
+      : '<div class="drawer-row war-room-rec"><span>态势稳定，按使命推进即可</span></div>';
+
+    const endings = summary.endings
+      .map(ending => `<div class="drawer-row"><span>${ending.label}</span><small>${ending.hint}</small></div>`)
+      .join("");
+
+    return `<div class="war-room">
+      <div class="drawer-subtitle">${codexTerm("局势", "百年战争作战室")}：${summary.phaseLabel}</div>
+      <div class="drawer-row war-room-parties"><span>我方 ${summary.principals.filter(name => !summary.opponents.includes(name)).join("、") || "—"}</span><span>对手 ${summary.opponents.join("、") || "—"}</span></div>
+      <div class="drawer-subtitle">阶段计量</div>${meterRows}
+      <div class="drawer-subtitle">战况</div>${warRow}
+      <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${widget.meter(summary.warExhaustion, 100, { tone: "red", mini: true })} ${summary.warExhaustion}</span></div>
+      <div class="drawer-row">我方主力<span>${ours}</span></div>
+      <div class="drawer-row">敌方威胁<span>${enemy}</span></div>
+      <div class="drawer-subtitle">本阶段可用操作</div>${actions}
+      <div class="drawer-subtitle">推荐下一步</div>${recs}
+      <div class="drawer-subtitle">终局预览</div>${endings}
+    </div>`;
   }
 
   function renderDiplomacy(country, world) {

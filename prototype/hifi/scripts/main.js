@@ -318,6 +318,41 @@
         )
       , button));
     });
+    drawerBody.querySelectorAll("[data-struggle-action]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        executeStruggleAction(current, current.playerPolity, button.dataset.struggleAction)
+      , button));
+    });
+  }
+
+  // 局势阶段限定操作：先过 struggle 引擎的阶段 gate（非当前阶段 → 中文报错 → toast），
+  // 通过后委托现有 warfare/diplomacy 引擎，不另造战斗规则。
+  function executeStruggleAction(world, polity, actionId) {
+    const struggle = window.HIFI_STRUGGLE_ENGINE.phaseActionGate(world, polity, actionId);
+    if (actionId === "press_claim") {
+      const opponent = Object.keys(struggle.parties)
+        .find(name => struggle.parties[name].role === "principal" && name !== polity);
+      if (!opponent) throw new Error("没有可提出主张的对手");
+      if (window.HIFI_WARFARE_ENGINE.areAtWar(world, polity, opponent)) throw new Error(`与${opponent}已经交战，无需再提主张`);
+      return window.HIFI_WARFARE_ENGINE.declareWarOn(world, polity, opponent, `${struggle.label}·王位主张`);
+    }
+    if (actionId === "muster_battle") {
+      const capital = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).find(tile => tile.city);
+      if (!capital) throw new Error("没有可供集结的城市");
+      return window.HIFI_WARFARE_ENGINE.mobilizeArmy(world, polity, capital.id, "infantry");
+    }
+    if (actionId === "favorable_truce") {
+      const principals = Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+      const war = (world.diplomacy?.wars || []).find(item =>
+        principals.every(name => item.attackers.includes(name) || item.defenders.includes(name)));
+      if (!war) throw new Error("目前没有与对手的战争可议和");
+      const term = war.primaryGoal.claimant === polity && war.score >= 25 ? "target_territory" : "status_quo";
+      return window.HIFI_WARFARE_ENGINE.concludePeace(world, war.id, polity, [{ type: term }]);
+    }
+    if (actionId === "pick_side") {
+      return window.HIFI_STRUGGLE_ENGINE.pickSide(world, polity, -1);
+    }
+    throw new Error("该局势操作尚未开放");
   }
 
   function openSystem(button) {

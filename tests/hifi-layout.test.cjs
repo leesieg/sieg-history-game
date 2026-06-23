@@ -54,4 +54,12 @@ assert.ok(html.includes('aria-hidden="true"'));
   console.log("顶栏微调（季节按钮/去命令坞/缩略图开关）OK");
 }
 
+// --- Task 4.2: 局势作战室不另起浮层（内嵌系统抽屉，沿用抽屉布局，不遮挡资源栏/地块详情）---
+{
+  assert.ok(css.includes(".war-room"), "作战室必须有样式规则 .war-room");
+  assert.ok(!/\.war-room\s*\{[^}]*position:\s*fixed/.test(css), "作战室不能用 fixed 浮层遮挡 HUD");
+  assert.ok(!/id="warRoomModal"|class="war-room-modal"/.test(html), "作战室必须内嵌系统抽屉，不另起 modal");
+  console.log("Task 4.2 作战室内嵌布局 OK");
+}
+
 console.log("hifi layout contract passed");

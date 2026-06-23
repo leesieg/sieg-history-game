@@ -285,6 +285,35 @@
     };
   }
 
+  // 阶段限定操作 gate（设计 §7）：纯校验，不调别的引擎。校验通过返回对应局势对象，
+  // 不通过抛中文错误（UI 层 runAction 捕获后 toast）。真实引擎调用由 UI 层在 gate 之后执行。
+  function phaseActionGate(world, polity, actionId) {
+    const action = PHASE_ACTIONS[actionId];
+    if (!action) throw new Error("未知的局势操作");
+    const struggle = struggleForPolity(world, polity);
+    if (!struggle) throw new Error("当前没有可操作的局势");
+    const role = involvement(world, polity, struggle);
+    if (action.involvement !== role) {
+      throw new Error(action.involvement === "interloper" ? "该操作仅供干涉者使用" : "只有当事国可执行该操作");
+    }
+    if (action.phase !== null && action.phase !== struggle.phase) {
+      throw new Error(`「${action.label}」只能在「${phaseLabel(struggle, action.phase)}」阶段执行，当前为「${phaseLabel(struggle)}」`);
+    }
+    return struggle;
+  }
+
+  // 干涉者选边：改 lean 并注入对应阶段诱因（偏法→对峙、偏英→鏖战）。
+  function pickSide(world, polity, lean = -1) {
+    const struggle = struggleForPolity(world, polity);
+    if (!struggle) throw new Error("当前没有可操作的局势");
+    const party = struggle.parties[polity];
+    if (party?.role !== "interloper") throw new Error("只有干涉者可以选边");
+    party.lean = lean;
+    addCatalyst(struggle, lean >= 0 ? "open_war" : "standoff", 2);
+    logStruggleEvent(world, `${polity}在${struggle.label}中选边支持${lean >= 0 ? "英格兰" : "法兰西"}`);
+    return struggle;
+  }
+
   window.HIFI_STRUGGLE_ENGINE = {
     STRUGGLE_DEFINITIONS,
     CYCLE_PHASES,
@@ -300,5 +329,7 @@
     addCatalyst,
     phaseLabel,
     struggleSummary,
+    phaseActionGate,
+    pickSide,
   };
 })();

@@ -10,7 +10,7 @@ for (const file of [
   "data/rules.js", "data/trade.js", "data/countries.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
   "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
-  "engine/history.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
+  "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
   "data/codex.js", "ui/widgets.js", "ui/drawers.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
@@ -29,6 +29,7 @@ w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
 w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
 w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
 w.HIFI_HISTORY_ENGINE.initializeHistory(world);
+w.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 world.selectedTile = 0; // 选中己方地块，触发建设/整合等分支
 w.hifiGame = { store: { getState: () => world }, showToast() {} }; // 浏览器里由 main.js 注入，渲染态需要
@@ -66,5 +67,15 @@ drawers.setDrawerTab("外交:邦交");
 assert.match(drawers.renderSystem("外交", world), /ui-dot/, "外交对象应渲染态度色点");
 drawers.setDrawerTab("发展:科技");
 assert.match(drawers.renderSystem("发展", world), /ui-checklist/, "科技应渲染门槛清单");
+
+// 军事·战争：法兰西当事国应渲染百年战争作战室（阶段操作 + 推荐 + 终局预览），并保留议和入口
+drawers.setDrawerTab("军事:战争");
+const warTab = drawers.renderSystem("军事", world);
+assert.match(warTab, /war-room/, "法兰西战争页应渲染局势作战室");
+assert.match(warTab, /data-struggle-action/, "作战室应提供阶段限定操作按钮");
+assert.match(warTab, /推荐下一步/, "作战室应展示推荐下一步");
+assert.match(warTab, /终局预览/, "作战室应展示终局预览");
+assert.match(warTab, /data-peace-war/, "作战室应保留议和入口");
+console.log("军事·百年战争作战室渲染 OK");
 
 console.log("hifi drawers render passed");

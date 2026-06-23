@@ -438,6 +438,14 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   color: var(--gold-3);
 }
 .drawer-subtitle { padding: 12px 0 5px; color: var(--gold-2); font-size: 11px; }
+
+/* 局势作战室（Task 4.2）：阶段计量 / 战况 / 阶段操作 / 推荐 / 终局。内嵌在系统抽屉内，沿用抽屉布局，不新增浮层、不遮挡资源栏与地块详情。 */
+.war-room { display: block; }
+.war-room .war-room-parties { font-size: 11px; color: var(--gold-2); }
+.war-room .war-room-phase--active { background: rgba(224,189,104,.12); border-radius: 4px; }
+.war-room .war-room-phase--active > span:first-child { color: var(--gold-1); font-weight: 600; }
+.war-room .war-room-rec { color: #e8d9b6; font-size: 12px; }
+.war-room small { color: var(--gold-2); font-size: 10px; justify-self: end; }
 .codex-term {
   justify-self: start;
   width: fit-content;
