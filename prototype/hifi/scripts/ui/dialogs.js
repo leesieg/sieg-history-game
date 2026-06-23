@@ -388,7 +388,31 @@
       });
       open("historyEventModal");
     }
-    return { renderCouncil, renderEvent, renderSeasonSummary, captureSeasonSnapshot: world => ({
+    // 局势终局结算弹窗（Task 6.1）：到样板局第 12 季触发，复用季度总结弹窗外壳，
+    // 展示终局名称 + 三段使命快照，告诉玩家这局百年战争打成了什么结果。结算后沙盒可继续。
+    function renderStruggleEnding() {
+      const world = store.getState();
+      const ending = world.pendingStruggleEnding;
+      if (!ending) return false;
+      const stageList = (ending.stages || []).length
+        ? `<div class="season-section"><h4>◈ 三段使命快照</h4>${ending.stages.map(stage =>
+            `<p>${stage.status === "已完成" ? "✓" : "✗"} ${stage.name}（${stage.status}）</p>`).join("")}</div>`
+        : "";
+      const verdict = {
+        france_hegemony: "三段使命达成，百年战争向法兰西霸权倾斜。核心永久强化。",
+        england_claim: "英格兰主张得逞，法兰西核心崩坏。",
+        negotiated_peace: "议和阶段双方妥协，争议地分割、战争疲惫解除。",
+        stalemate: "12 季内未分胜负，局势转入长期僵局，双方背上疲惫。",
+      }[ending.ending] || "局势落幕。";
+      document.getElementById("seasonSummarySubtitle").textContent = `${ending.label} · 终局`;
+      document.getElementById("seasonSummaryBody").innerHTML =
+        `<div class="season-section"><h4>⚜ 终局：${ending.endingLabel}</h4><p>${verdict}</p></div>${stageList}`;
+      open("seasonSummaryModal");
+      store.update(next => { next.pendingStruggleEnding = null; return next; }); // 展示后清除，沙盒继续
+      return true;
+    }
+
+    return { renderCouncil, renderEvent, renderSeasonSummary, renderStruggleEnding, captureSeasonSnapshot: world => ({
       turn: world.turn,
       population: playerPopulation(world, world.playerPolity),
       wars: playerWarNames(world, world.playerPolity),

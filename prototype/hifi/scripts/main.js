@@ -400,7 +400,10 @@
     store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
     window.HIFI_HISTORY_ENGINE.completeTutorial(current, "advance_turn");
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
-    narrativeDialogs.renderSeasonSummary(snapshot); // toast 之外的可展开本季总结，说明这季到底变了什么
+    // 局势终局优先：第 12 季触发结算弹窗（复用季度总结弹窗外壳）；否则展开本季总结
+    if (!narrativeDialogs.renderStruggleEnding()) {
+      narrativeDialogs.renderSeasonSummary(snapshot); // toast 之外的可展开本季总结，说明这季到底变了什么
+    }
   });
 
   function focusInDrawer(selector) {

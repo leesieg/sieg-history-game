@@ -329,4 +329,28 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   console.log("Task 3.2 鏖战战争压力回灌 OK");
 }
 
+// --- Task 6.1：processHistory 第 12 季触发局势终局结算（沙盒可继续）---
+{
+  const struggleEngine = context.window.HIFI_STRUGGLE_ENGINE;
+  const sw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 },
+    { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", control: 70 },
+  ]);
+  history.initializeHistory(sw);
+  struggleEngine.initializeStruggles(sw);
+  const hyw = struggleEngine.struggleFor(sw, "hundred_years_war");
+  assert.ok(hyw, "百年战争局势应成立");
+
+  sw.turn = 12;
+  history.processHistory(sw);
+  assert.equal(hyw.resolved, true, "第 12 季 processHistory 应触发终局结算");
+  assert.ok(sw.pendingStruggleEnding, "结算应设 pendingStruggleEnding 供 UI");
+
+  // 沙盒继续：再推进一季不崩、局势保持已结束
+  sw.turn = 13;
+  assert.doesNotThrow(() => history.processHistory(sw), "结算后季度推进不应报错");
+  assert.equal(hyw.resolved, true, "结算后局势保持已结束");
+  console.log("Task 6.1 processHistory 终局结算 OK");
+}
+
 console.log("hifi history engine passed");

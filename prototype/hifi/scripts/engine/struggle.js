@@ -19,6 +19,8 @@
     ending_decision: { label: "终局决议", phase: "resolution", involvement: "principal" },
   };
 
+  const SAMPLE_END_SEASONS = 12; // 样板局终点：开局起第 12 季对三段使命拍快照触发终局结算
+
   // 四终局预览（设计 §8）：摘要里静态展示，真实可达性由 Phase 6 终局结算判定。
   const ENDINGS = [
     { key: "france_hegemony", label: "法兰西霸权", hint: "三段使命全完成且进入定局阶段" },
@@ -314,11 +316,78 @@
     return struggle;
   }
 
+  // --- Task 6.1：12 季样板局终局结算（设计 §8）---------------------------------
+  // 到样板局终点对三段使命状态拍快照，判定四终局之一，写永久区域修正，set world.pendingStruggleEnding 供 UI 展示。
+  // 终局只作为样板局结果，resolved 后局势退出推进，但不阻断沙盒继续游玩。
+
+  // 三段使命全完成（复用 objectives.missionStages 作同一真相源；未加载该引擎时视为未完成）。
+  function franceMissionsAllDone(world) {
+    const engine = window.HIFI_OBJECTIVES_ENGINE;
+    if (!engine) return false;
+    const stages = engine.missionStages(world, "法兰西王国");
+    return stages.length > 0 && stages.every(stage => stage.status === "已完成");
+  }
+
+  // 英格兰占据法兰西核心争议地（巴黎/鲁昂/奥尔良任一落入英手）。
+  function englandHoldsFrenchCore(world) {
+    const core = new Set(["巴黎", "鲁昂", "奥尔良"]);
+    const coreTiles = (world.tiles || []).filter(tile => !tile.isSea && core.has(tile.city));
+    return coreTiles.some(tile => tile.polity === "英格兰王国");
+  }
+
+  function decideEnding(world, struggle) {
+    if (franceMissionsAllDone(world)) return "france_hegemony";    // 法兰西霸权：三段全完成
+    if (englandHoldsFrenchCore(world)) return "england_claim";     // 英格兰主张得逞：占据核心
+    if (struggle.phase === "truce" && !principalWar(world, struggle)) return "negotiated_peace"; // 议和阶段双方妥协
+    return "stalemate";                                            // 长期僵局：均未达成
+  }
+
+  function applyEnding(world, struggle, ending) {
+    struggle.resolved = true;
+    struggle.ending = ending;
+    struggle.phase = "resolution";
+    struggle.phaseSinceTurn = world.turn;
+    const france = world.countries["法兰西王国"];
+    const clamp = value => Math.max(0, Math.min(100, value));
+    if (ending === "france_hegemony" && france) {
+      france.legitimacy = clamp((france.legitimacy || 0) + 10);              // 永久合法性加成
+      france.struggleLegacy = { key: ending, outputBonus: 0.1 };             // 核心永久产出加成标记（供 economy 后续接入）
+    } else if (ending === "england_claim" && france) {
+      france.legitimacy = clamp((france.legitimacy || 0) - 10);              // 核心崩坏
+      france.struggleLegacy = { key: ending, coreDebuff: true };
+    } else if (ending === "negotiated_peace") {
+      for (const name of Object.keys(struggle.parties)) {                    // 双方解除战争疲惫
+        const country = world.countries[name];
+        if (country?.warfare) country.warfare.warExhaustion = 0;
+      }
+    } else if (ending === "stalemate") {
+      for (const name of Object.keys(struggle.parties)) {                    // 双方背疲惫 debt
+        const country = world.countries[name];
+        if (country?.warfare) country.warfare.warExhaustion = (country.warfare.warExhaustion || 0) + 5;
+      }
+    }
+    const endingLabel = ENDINGS.find(item => item.key === ending)?.label || ending;
+    logStruggleEvent(world, `${struggle.label}迎来终局：${endingLabel}`);
+    const stages = window.HIFI_OBJECTIVES_ENGINE
+      ? window.HIFI_OBJECTIVES_ENGINE.missionStages(world, "法兰西王国")
+      : [];
+    world.pendingStruggleEnding = { key: struggle.key, label: struggle.label, ending, endingLabel, stages };
+    return ending;
+  }
+
+  function settleStruggles(world) {
+    for (const struggle of activeStruggles(world)) {
+      if (world.turn < struggle.startedTurn + SAMPLE_END_SEASONS - 1) continue; // 未到第 12 季不结算
+      applyEnding(world, struggle, decideEnding(world, struggle));
+    }
+  }
+
   window.HIFI_STRUGGLE_ENGINE = {
     STRUGGLE_DEFINITIONS,
     CYCLE_PHASES,
     PHASE_ACTIONS,
     ENDINGS,
+    SAMPLE_END_SEASONS,
     initializeStruggles,
     startStruggle,
     processStruggles,
@@ -331,5 +400,7 @@
     struggleSummary,
     phaseActionGate,
     pickSide,
+    settleStruggles,
+    decideEnding,
   };
 })();

@@ -490,7 +490,10 @@
   function processHistory(world) {
     applyPressureEffects(world);
     processSituations(world);
-    if (window.HIFI_STRUGGLE_ENGINE) window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
+    if (window.HIFI_STRUGGLE_ENGINE) {
+      window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
+      window.HIFI_STRUGGLE_ENGINE.settleStruggles(world);  // 样板局第 12 季终局结算（不阻断沙盒继续）
+    }
     applyStruggleWarPressure(world); // 鏖战阶段战争压力回灌产出流（在 settleCountry 写完 lastReport 之后追加 war 段）
     spreadTechnology(world);
     processMilestones(world);

@@ -165,4 +165,71 @@ assert.notEqual(gs.parties["勃艮第公国"].lean, leanBefore);
 assert.throws(() => struggle.pickSide(gateWorld, "法兰西王国"), /干涉者/, "当事国不能选边");
 console.log("Task 4.2 阶段限定操作 gate OK");
 
+// --- Task 6.1：12 季样板局终局结算 ---
+function freshStruggleWorld() {
+  const w = worldEngine.createWorld(tiles.map(tile => ({ ...tile })), {}, "法兰西王国"); // 克隆地块隔离各世界
+  struggle.initializeStruggles(w);
+  return w;
+}
+const stubMissions = stages => { context.window.HIFI_OBJECTIVES_ENGINE = { missionStages: () => stages }; };
+const allDone = [{ name: "稳住核心", status: "已完成" }, { name: "收复争议", status: "已完成" }, { name: "有利和平", status: "已完成" }];
+const notDone = [{ name: "稳住核心", status: "进行中" }, { name: "收复争议", status: "未开始" }, { name: "有利和平", status: "未开始" }];
+
+// 未到第 12 季不结算
+const earlyWorld = freshStruggleWorld();
+stubMissions(allDone);
+earlyWorld.turn = 11;
+struggle.settleStruggles(earlyWorld);
+assert.equal(struggle.struggleFor(earlyWorld, "hundred_years_war").resolved, false, "第 11 季不应结算");
+
+// 法兰西霸权：三段全完成
+const hegWorld = freshStruggleWorld();
+stubMissions(allDone);
+hegWorld.turn = 12;
+hegWorld.countries["法兰西王国"].legitimacy = 70;
+struggle.settleStruggles(hegWorld);
+const hegStruggle = struggle.struggleFor(hegWorld, "hundred_years_war");
+assert.equal(hegStruggle.resolved, true, "第 12 季应结算");
+assert.equal(hegStruggle.ending, "france_hegemony", "三段全完成应判法兰西霸权");
+assert.equal(hegStruggle.phase, "resolution", "结算后进入定局阶段");
+assert.ok(hegWorld.countries["法兰西王国"].legitimacy > 70, "霸权应给法兰西合法性加成");
+assert.ok(hegWorld.pendingStruggleEnding && hegWorld.pendingStruggleEnding.ending === "france_hegemony", "应设 pendingStruggleEnding 供 UI");
+
+// 英格兰主张得逞：占据核心
+const engWorld = freshStruggleWorld();
+stubMissions(notDone);
+engWorld.turn = 12;
+engWorld.tiles.find(tile => tile.city === "巴黎").polity = "英格兰王国";
+struggle.settleStruggles(engWorld);
+assert.equal(struggle.struggleFor(engWorld, "hundred_years_war").ending, "england_claim", "英占核心应判英格兰主张得逞");
+assert.ok(engWorld.countries["法兰西王国"].legitimacy < 70 || engWorld.countries["法兰西王国"].struggleLegacy?.coreDebuff, "核心崩坏应有 debuff");
+
+// 谈判和平：议和阶段且无当事国战争
+const peaceWorld2 = freshStruggleWorld();
+stubMissions(notDone);
+peaceWorld2.turn = 12;
+struggle.struggleFor(peaceWorld2, "hundred_years_war").phase = "truce";
+peaceWorld2.diplomacy = { wars: [] };
+peaceWorld2.countries["法兰西王国"].warfare = { warExhaustion: 30 };
+struggle.settleStruggles(peaceWorld2);
+assert.equal(struggle.struggleFor(peaceWorld2, "hundred_years_war").ending, "negotiated_peace", "议和阶段无战争应判谈判和平");
+assert.equal(peaceWorld2.countries["法兰西王国"].warfare.warExhaustion, 0, "谈判和平应解除战争疲惫");
+
+// 长期僵局：均未达成
+const staleWorld = freshStruggleWorld();
+stubMissions(notDone);
+staleWorld.turn = 12;
+struggle.struggleFor(staleWorld, "hundred_years_war").phase = "standoff";
+struggle.settleStruggles(staleWorld);
+const staleStruggle = struggle.struggleFor(staleWorld, "hundred_years_war");
+assert.equal(staleStruggle.ending, "stalemate", "未达成任一应判长期僵局");
+
+// 结算后沙盒可继续：再推进不崩、保持已结束
+assert.doesNotThrow(() => { struggle.processStruggles(staleWorld); struggle.settleStruggles(staleWorld); }, "结算后继续推进不应报错");
+assert.equal(staleStruggle.resolved, true, "结算后局势保持已结束");
+assert.equal(staleStruggle.phase, "resolution", "已结束局势阶段保持定局");
+
+delete context.window.HIFI_OBJECTIVES_ENGINE;
+console.log("Task 6.1 终局结算 OK");
+
 console.log("hifi struggle engine passed");
