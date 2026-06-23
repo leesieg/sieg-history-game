@@ -65,4 +65,28 @@ const phaseAfter = w.phase;
 struggle.processStruggles(fresh);
 assert.equal(w.phase, phaseAfter, "已结束局势不再翻阶段");
 
+// --- Task 3.1：战况诱因推动阶段翻转 ---
+// 战况：war.score 上升（占领/会战）应额外注入鏖战诱因，超过单纯时间漂移(+1)
+const cw = worldEngine.createWorld(tiles, {}, "法兰西王国");
+struggle.initializeStruggles(cw);
+const cs = struggle.struggleFor(cw, "hundred_years_war");
+cw.diplomacy = { wars: [{ id: "w1", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 25, primaryGoal: {} }] };
+const owBefore = cs.meters.open_war;
+struggle.processStruggles(cw);
+assert.ok(cs.meters.open_war - owBefore > 1, "war.score 上升应额外注入鏖战诱因（超过时间漂移）");
+
+// 议和：上季在战、这季战争消失 → 疲惫议和诱因（足以翻到 truce）
+cw.diplomacy.wars = [];
+struggle.processStruggles(cw);
+assert.ok(cs.meters.truce > 0 || cs.phase === "truce", "议和达成应注入疲惫议和诱因");
+
+// 财政崩溃：当事国 money<0 → 疲惫议和诱因
+const fw = worldEngine.createWorld(tiles, {}, "法兰西王国");
+struggle.initializeStruggles(fw);
+const fs2 = struggle.struggleFor(fw, "hundred_years_war");
+fw.countries["法兰西王国"].money = -5;
+const trBefore = fs2.meters.truce;
+struggle.processStruggles(fw);
+assert.ok(fs2.meters.truce > trBefore, "当事国财政崩溃应注入疲惫议和诱因");
+
 console.log("hifi struggle engine passed");

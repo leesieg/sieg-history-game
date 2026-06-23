@@ -74,6 +74,8 @@
       phaseSinceTurn: world.turn,
       resolved: false,
       ending: null,
+      // 诱因扫描的上季快照：战争分数 / 是否在战 / 各方统治者，用于折算战况增量
+      signal: { score: 0, warActive: false, leaders: {} },
     };
     world.struggles.push(struggle);
     logStruggleEvent(world, `${def.label}成为左右欧洲的局势`);
@@ -133,9 +135,46 @@
     return true;
   }
 
+  // 当事国之间的主战争（百年战争=法兰西 vs 英格兰），从现有 world.diplomacy.wars 里查。
+  function principalWar(world, struggle) {
+    const principals = Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+    if (principals.length < 2) return null;
+    return (world.diplomacy?.wars || []).find(war =>
+      principals.every(name => war.attackers.includes(name) || war.defenders.includes(name))
+    ) || null;
+  }
+
+  // 诱因：把已发生的战况折算成阶段计量（读现有引擎产出，不新造事件）。
+  function applyCatalysts(world, struggle) {
+    const signal = struggle.signal || (struggle.signal = { score: 0, warActive: false, leaders: {} });
+    const war = principalWar(world, struggle);
+    if (war) {
+      // 占领/会战推高 war.score（advanceOccupation +25）→ 鏖战诱因
+      const delta = (war.score || 0) - (signal.score || 0);
+      if (delta > 0) addCatalyst(struggle, "open_war", Math.max(1, Math.ceil(delta / 5)));
+      signal.score = war.score || 0;
+      signal.warActive = true;
+    } else {
+      // 上季还在打、这季战争消失 = 议和达成（concludePeace 移除了 war）→ 疲惫议和诱因
+      if (signal.warActive) addCatalyst(struggle, "truce", definition(struggle.key).flipThreshold);
+      signal.warActive = false;
+      signal.score = 0;
+    }
+    // 统治者更替 / 当事国财政崩溃 → 疲惫议和诱因
+    for (const polity of Object.keys(struggle.parties)) {
+      const country = world.countries[polity];
+      if (!country) continue;
+      const leaderName = country.leader?.name;
+      if (signal.leaders[polity] && signal.leaders[polity] !== leaderName) addCatalyst(struggle, "truce", 2);
+      signal.leaders[polity] = leaderName;
+      if (struggle.parties[polity].role === "principal" && (country.money ?? 0) < 0) addCatalyst(struggle, "truce", 2);
+    }
+  }
+
   function processStruggles(world) {
     for (const struggle of activeStruggles(world)) {
       if (struggle.phase === "resolution") continue;
+      applyCatalysts(world, struggle); // 战况诱因
       const next = definition(struggle.key).phases[struggle.phase]?.next;
       if (next && CYCLE_PHASES.includes(next)) {
         addCatalyst(struggle, next, 1); // 时间默认诱因：每季向默认下一阶段 +1
