@@ -425,6 +425,33 @@
     world.pendingTransition = null;
   }
 
+  // 局势鏖战压力回灌核心循环：当事国在 open_war 阶段每季被前线消耗军需与粮食，
+  // 让资源停止无脑增长（核心循环：转折层→反作用回基底）。consumption 写进 lastReport.war，
+  // 与黑死病救济(lastReport.event)、战争疲惫(warExhaustion 体感信号)三者互不叠加、各自可解释。
+  function applyStruggleWarPressure(world) {
+    const engine = window.HIFI_STRUGGLE_ENGINE;
+    if (!engine) return;
+    for (const struggle of engine.activeStruggles(world)) {
+      if (struggle.phase !== "open_war") continue;
+      for (const [polity, party] of Object.entries(struggle.parties)) {
+        if (party.role !== "principal") continue;
+        const country = world.countries[polity];
+        if (!country) continue;
+        const foodCost = Math.min(country.food ?? 0, 8);
+        const militaryCost = Math.min(country.military ?? 0, 6);
+        country.food = (country.food ?? 0) - foodCost;
+        country.military = (country.military ?? 0) - militaryCost;
+        country.lastReport = country.lastReport || {};
+        country.lastReport.war = {
+          label: struggle.label,
+          phase: engine.phaseLabel(struggle),
+          food: foodCost,
+          military: militaryCost,
+        };
+      }
+    }
+  }
+
   // 季度账本：把本季 settleCountry 写入的 lastReport 重述成可读的资源变化与来源构成（修 22 号 #12）
   function quarterLedger(world, polity = world.playerPolity) {
     const country = world.countries[polity];
@@ -441,18 +468,21 @@
     const militaryDelta = Math.round((report.military || 0) * central);
     const maint = report.maintenance || { food: 0, money: 0, military: 0 };
     const event = report.event || { food: 0, money: 0 };
-    const seg = (gross, m, e, sources) => {
-      const net = gross - m - e;
-      return { gross, maintenance: m, event: e, net, delta: net, sources };
+    const war = report.war || { food: 0, military: 0 };
+    const seg = (gross, m, e, w, sources) => {
+      const net = gross - m - e - w;
+      return { gross, maintenance: m, event: e, war: w, net, delta: net, sources };
     };
+    const warSrc = (cost) => (war.label && cost ? [`${war.label}·${war.phase} -${cost}`] : []);
     return {
       turn: world.turn,
       tiles: report.tiles || 0,
-      food: seg(report.food || 0, maint.food || 0, event.food || 0,
-        report.food ? [`地块产出 +${report.food}`] : []),
-      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, moneySources),
-      military: seg(militaryDelta, maint.military || 0, 0,
-        militaryDelta ? [`地块产出 +${militaryDelta}`] : []),
+      food: seg(report.food || 0, maint.food || 0, event.food || 0, war.food || 0,
+        [...(report.food ? [`地块产出 +${report.food}`] : []), ...warSrc(war.food || 0)]),
+      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, 0, moneySources),
+      military: seg(militaryDelta, maint.military || 0, 0, war.military || 0,
+        [...(militaryDelta ? [`地块产出 +${militaryDelta}`] : []), ...warSrc(war.military || 0)]),
+      war: report.war || null,
       completedAgenda: report.completedAgenda || null,
     };
   }
@@ -461,6 +491,7 @@
     applyPressureEffects(world);
     processSituations(world);
     if (window.HIFI_STRUGGLE_ENGINE) window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
+    applyStruggleWarPressure(world); // 鏖战阶段战争压力回灌产出流（在 settleCountry 写完 lastReport 之后追加 war 段）
     spreadTechnology(world);
     processMilestones(world);
     applyMissions(world);

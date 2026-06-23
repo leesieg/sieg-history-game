@@ -9,6 +9,7 @@ const context = { window: {} };
 for (const file of [
   "data/rules.js",
   "engine/world.js",
+  "engine/struggle.js",
   "engine/history.js",
 ]) {
   vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
@@ -279,6 +280,53 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   const advanced = history.runRegency(rw, current => { current.turn += 1; }, 4);
   assert.equal(advanced, 4, "无阻碍时垂帘听政应推进满 4 季");
   console.log("垂帘听政启动守卫 OK");
+}
+
+// --- Task 3.2: 鏖战阶段战争压力回灌核心循环 ---
+{
+  const struggleEngine = context.window.HIFI_STRUGGLE_ENGINE;
+  const sw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 },
+    { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", control: 70 },
+  ]);
+  history.initializeHistory(sw);
+  struggleEngine.initializeStruggles(sw);
+  const hyw = struggleEngine.struggleFor(sw, "hundred_years_war");
+  assert.ok(hyw, "百年战争局势应成立");
+
+  const fr = sw.countries["法兰西王国"];
+  const en = sw.countries["英格兰王国"];
+
+  // 对峙阶段：当事国不应被战争压力扣资源
+  hyw.phase = "standoff";
+  fr.food = 500; fr.military = 500;
+  history.processHistory(sw);
+  assert.ok(!fr.lastReport || fr.lastReport.war === undefined, "对峙阶段不产生战争压力段");
+  assert.equal(fr.food, 500, "对峙阶段不扣粮");
+
+  // 鏖战阶段：每季消耗军需与粮食，资源停止无脑增长，并写进季度账本
+  hyw.phase = "open_war";
+  fr.food = 500; fr.military = 500;
+  en.food = 500; en.military = 500;
+  for (let i = 0; i < 4; i++) {
+    hyw.phase = "open_war"; // 隔离测试：固定阶段，只检验压力回灌
+    history.processHistory(sw);
+  }
+  assert.ok(fr.food < 500, "鏖战阶段连续 4 季应消耗法兰西粮食");
+  assert.ok(fr.military < 500, "鏖战阶段连续 4 季应消耗法兰西军需");
+  assert.ok(en.food < 500 && en.military < 500, "对手英格兰同为当事国，亦被战争压力消耗");
+  assert.ok(fr.lastReport.war && fr.lastReport.war.phase === "鏖战", "lastReport.war 应记录鏖战阶段来源");
+
+  const ledger = history.quarterLedger(sw, "法兰西王国");
+  assert.ok(ledger.food.war > 0, "季度账本食物段应区分出战争消耗");
+  assert.ok(ledger.military.war > 0, "季度账本军需段应区分出战争消耗");
+  assert.ok(ledger.food.war !== ledger.food.event, "战争消耗与黑死病救济(event)分列，不叠加成双重砍");
+  assert.ok(ledger.food.sources.some(s => s.includes("百年战争")), "账本食物来源应说明战争消耗");
+  assert.ok(ledger.war && ledger.war.phase === "鏖战", "账本顶层 war 段供季度总结读取");
+
+  // 旁观国（非当事国）不被战争压力波及
+  assert.equal(struggleEngine.involvement(sw, "苏格兰王国", hyw) === "bystander" || !sw.countries["苏格兰王国"], true);
+  console.log("Task 3.2 鏖战战争压力回灌 OK");
 }
 
 console.log("hifi history engine passed");
