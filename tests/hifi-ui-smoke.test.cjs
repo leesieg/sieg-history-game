@@ -64,6 +64,8 @@ assert.match(drawers, /tile\.buildings\.includes\(key\)/, "建筑按钮的已建
 assert.match(dialogs, /data-proposal-exec/, "御前会议草案卡必须提供「执行建议」接线");
 assert.match(dialogs, /data-proposal-goto/, "御前会议草案卡必须提供「跳转面板」接线");
 assert.match(dialogs, /HIFI_OBJECTIVES_ENGINE\.advisorProposals/, "renderCouncil 必须调用 advisorProposals 生成草案卡");
+assert.match(dialogs, /HIFI_OBJECTIVES_ENGINE\.missionStages/, "御前会议必须展示战役阶段使命");
+assert.match(dialogs, /struggleForPolity/, "御前会议必须展示当前局势阶段");
 assert.match(dialogs, /HIFI_PROPOSALS_ENGINE\.execute/, "执行建议必须委托 HIFI_PROPOSALS_ENGINE.execute");
 assert.match(main, /hifi:open-system/, "main.js 必须接住御前会议的跳转面板事件");
 

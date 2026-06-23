@@ -209,7 +209,19 @@
       const regencyBlocker = window.HIFI_HISTORY_ENGINE.regencyBlocker(world);
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);
 
-      const missionSection = councilSection("⚜", "国家使命", councilCard("mission", "本局目标", mission.title, mission.why));
+      // 战役阶段使命（数据驱动 missionStages）+ 当前局势阶段；非法兰西国家 stages 为空，退回单条本局目标
+      const stages = window.HIFI_OBJECTIVES_ENGINE.missionStages(world, polity);
+      const struggle = window.HIFI_STRUGGLE_ENGINE?.struggleForPolity?.(world, polity);
+      const phaseName = struggle ? window.HIFI_STRUGGLE_ENGINE.phaseLabel(struggle) : "";
+      const stageCards = stages.map(stage => {
+        const icon = stage.status === "已完成" ? "✓" : stage.status === "进行中" ? "▶" : "•";
+        const variant = stage.status === "已完成" ? "stage-done" : stage.status === "进行中" ? "stage-active" : "stage-todo";
+        const body = `${stage.detail}<div class="council-card-foot">达成：${stage.reward}</div>`;
+        return councilCard(variant, `${icon} ${stage.status}`, stage.name, body);
+      }).join("");
+      const missionTitle = struggle ? `国家使命 · ${struggle.label}「${phaseName}」` : "国家使命";
+      const missionSection = councilSection("⚜", missionTitle,
+        councilCard("mission", "本局目标", mission.title, mission.why) + stageCards);
       const warnSection = councilSection("⚠", "国家预警", warnings.map(text => {
         const calm = text.startsWith("国家目前没有");
         return councilCard(calm ? "calm" : "warn", calm ? "✓ 安稳" : "! 警讯", text);
