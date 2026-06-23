@@ -439,13 +439,104 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .drawer-subtitle { padding: 12px 0 5px; color: var(--gold-2); font-size: 11px; }
 
-/* 局势作战室（Task 4.2）：阶段计量 / 战况 / 阶段操作 / 推荐 / 终局。内嵌在系统抽屉内，沿用抽屉布局，不新增浮层、不遮挡资源栏与地块详情。 */
-.war-room { display: block; }
-.war-room .war-room-parties { font-size: 11px; color: var(--gold-2); }
-.war-room .war-room-phase--active { background: rgba(224,189,104,.12); border-radius: 4px; }
-.war-room .war-room-phase--active > span:first-child { color: var(--gold-1); font-weight: 600; }
-.war-room .war-room-rec { color: #e8d9b6; font-size: 12px; }
-.war-room small { color: var(--gold-2); font-size: 10px; justify-self: end; }
+/* 局势浮窗入口：右下角地图工具左侧的悬浮组件，一张卡=一个局势（统一入口，反馈 #1）。 */
+.struggle-dock {
+  position: absolute;
+  z-index: 14;
+  right: 248px;          /* 地图工具宽 222 + 14 + 间距 */
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;  /* 空时不挡地图；有卡时卡自身恢复命中 */
+}
+.struggle-dock-card {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 132px;
+  padding: 8px 11px;
+  border: 1px solid rgba(214,174,89,.5);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(46,32,20,.94), rgba(28,20,14,.94));
+  color: var(--gold-2);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  text-align: left;
+}
+.struggle-dock-card:hover { border-color: var(--gold-1); }
+.struggle-dock-name { color: var(--gold-1); font-weight: 600; font-size: 13px; }
+.struggle-dock-phase { font-size: 11px; }
+
+/* 统一局势界面：顶部纹章横幅（CSS 绘制，预留背景图槽位 --struggle-bg）+ 左右两阵营 + 中间诱因/结局/使命/决议。 */
+.struggle-window { max-width: 880px; width: min(92vw, 880px); }
+.struggle-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 8px 8px 0 0;
+  color: #f3e6c4;
+  background:
+    var(--struggle-bg, none),
+    radial-gradient(circle at 12% 30%, rgba(214,174,89,.28), transparent 42%),
+    repeating-linear-gradient(45deg, rgba(120,30,30,.30) 0 14px, rgba(60,16,16,.30) 14px 28px),
+    linear-gradient(120deg, #3a1414, #241018 60%, #14202c);
+  background-size: cover;
+}
+.struggle-banner-crest {
+  font-size: 30px;
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  border: 1px solid rgba(214,174,89,.6);
+  border-radius: 50%;
+  background: rgba(0,0,0,.3);
+}
+.struggle-banner-text h2 { margin: 0; color: var(--gold-1); }
+.struggle-banner-text p { margin: 3px 0 0; font-size: 12px; color: #d8c79a; }
+.struggle-body { padding: 14px 4px 4px; }
+.struggle-arena { display: grid; grid-template-columns: 1fr 1.7fr 1fr; gap: 12px; align-items: start; }
+.struggle-camp {
+  border: 1px solid rgba(214,174,89,.25);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(0,0,0,.18);
+}
+.struggle-camp--ours { border-color: rgba(120,190,140,.55); background: rgba(40,70,50,.22); }
+.struggle-camp-anchor { color: var(--gold-1); font-weight: 600; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid rgba(214,174,89,.2); margin-bottom: 6px; }
+.struggle-camp-member { font-size: 12px; color: var(--gold-2); padding: 3px 0; }
+.struggle-camp-member.dim { color: var(--muted); }
+.struggle-center { display: flex; flex-direction: column; gap: 3px; }
+.struggle-section-title { color: var(--gold-2); font-size: 11px; letter-spacing: .04em; padding: 8px 0 3px; }
+.struggle-meter { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: 6px; font-size: 12px; color: var(--gold-2); }
+.struggle-meter.is-current { color: var(--gold-1); font-weight: 600; }
+.struggle-meter i { display: block; height: 6px; border-radius: 3px; background: rgba(214,174,89,.16); overflow: hidden; }
+.struggle-meter i b { display: block; height: 100%; background: linear-gradient(90deg, #b8893a, #e0bd68); }
+.struggle-meter small { text-align: right; color: var(--muted); }
+.struggle-endings { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.struggle-ending { border: 1px solid rgba(214,174,89,.22); border-radius: 6px; padding: 6px 8px; }
+.struggle-ending b { display: block; color: var(--gold-1); font-size: 12px; }
+.struggle-ending small { color: var(--muted); font-size: 11px; }
+.struggle-stage { display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 3px 4px; border-radius: 4px; }
+.struggle-stage--done { color: #8fce9d; }
+.struggle-stage--active { color: var(--gold-1); background: rgba(224,189,104,.1); }
+.struggle-stage--todo { color: var(--muted); }
+.struggle-stage small { font-size: 10px; }
+.struggle-decisions { display: flex; flex-wrap: wrap; gap: 6px; }
+.struggle-decision {
+  display: flex; flex-direction: column; gap: 1px;
+  min-width: 120px; padding: 7px 10px;
+  border: 1px solid rgba(214,174,89,.5); border-radius: 6px;
+  background: rgba(46,32,20,.6); color: var(--gold-1);
+  cursor: pointer; text-align: left; font-size: 13px;
+}
+.struggle-decision:hover:not(:disabled) { border-color: var(--gold-1); }
+.struggle-decision small { color: var(--gold-2); font-size: 10px; }
+.struggle-decision:disabled, .struggle-decision.dim { opacity: .45; cursor: not-allowed; filter: grayscale(.5); }
+.struggle-neutral { padding: 10px 4px 2px; font-size: 11px; color: var(--muted); text-align: center; }
+@media (max-width: 1180px) { .struggle-dock { right: 254px; } }
+@media (max-width: 900px) and (orientation: landscape) { .struggle-dock { right: 208px; } }
 .codex-term {
   justify-self: start;
   width: fit-content;

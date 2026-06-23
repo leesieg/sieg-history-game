@@ -355,6 +355,44 @@
     throw new Error("该局势操作尚未开放");
   }
 
+  // 右下角局势浮窗（统一入口，反馈 #1）：当前国家卷入的每个未定局局势渲染一张卡，点开统一局势界面。
+  function renderStruggleDock(current) {
+    const dock = document.getElementById("struggleDock");
+    const engine = window.HIFI_STRUGGLE_ENGINE;
+    if (!dock || !engine) return;
+    const active = engine.activeStruggles(current)
+      .filter(item => engine.involvement(current, current.playerPolity, item) !== "bystander");
+    dock.innerHTML = active.map(item => {
+      const summary = engine.struggleSummary(current, current.playerPolity, item.key);
+      return `<button class="struggle-dock-card" data-struggle-open="${item.key}">
+        <span class="struggle-dock-name">⚔ ${summary.label}</span>
+        <span class="struggle-dock-phase">${summary.phaseLabel} · ${summary.year ?? summary.startYear}年</span>
+      </button>`;
+    }).join("");
+    dock.querySelectorAll("[data-struggle-open]").forEach(button =>
+      button.addEventListener("click", () => openStrugglePanel(button.dataset.struggleOpen)));
+  }
+
+  // 打开统一局势界面并绑定决议按钮：执行经 executeStruggleAction（含阶段 gate），失败中文 toast，成功后刷新面板与浮窗。
+  function openStrugglePanel(key) {
+    if (!narrativeDialogs.renderStrugglePanel(key)) return;
+    document.querySelectorAll("#struggleBody [data-struggle-action]").forEach(button => {
+      if (button.disabled) return;
+      button.addEventListener("click", () => {
+        const before = snapshotResources(store.getState());
+        try {
+          store.update(current => executeStruggleAction(current, current.playerPolity, button.dataset.struggleAction));
+          const diff = diffResources(before, snapshotResources(store.getState()));
+          showToast(diff ? `局势决议 —— ${diff}` : "局势决议已执行");
+          renderStruggleDock(store.getState());
+          openStrugglePanel(key); // 重渲染面板，刷新阶段/决议可用性
+        } catch (error) {
+          showToast(error.message);
+        }
+      });
+    });
+  }
+
   function openSystem(button) {
     window.dispatchEvent(new CustomEvent("hifi:army-close"));
     const same = button.classList.contains("active");
@@ -496,11 +534,13 @@
 
   store.subscribe(current => {
     renderHud(current);
+    renderStruggleDock(current);
     window.prototypeMap.syncSelection(current.selectedTile);
     window.prototypeMap.refreshSelected();
     window.prototypeMap.renderMainMap();
   });
   renderHud(store.getState());
+  renderStruggleDock(store.getState());
   window.hifiGame = { store, showToast };
   window.prototypeMap.renderMainMap();
   window.prototypeMap.refreshSelected();

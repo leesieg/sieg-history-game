@@ -273,19 +273,12 @@
       const regencyBlocker = window.HIFI_HISTORY_ENGINE.regencyBlocker(world);
       const warnings = warningsWithWarStatus(world, polity, summary.warnings);
 
-      // 战役阶段使命（数据驱动 missionStages）+ 当前局势阶段；非法兰西国家 stages 为空，退回单条本局目标
-      const stages = window.HIFI_OBJECTIVES_ENGINE.missionStages(world, polity);
-      const struggle = window.HIFI_STRUGGLE_ENGINE?.struggleForPolity?.(world, polity);
-      const phaseName = struggle ? window.HIFI_STRUGGLE_ENGINE.phaseLabel(struggle) : "";
-      const stageCards = stages.map(stage => {
-        const icon = stage.status === "已完成" ? "✓" : stage.status === "进行中" ? "▶" : "•";
-        const variant = stage.status === "已完成" ? "stage-done" : stage.status === "进行中" ? "stage-active" : "stage-todo";
-        const body = `${stage.detail}<div class="council-card-foot">达成：${stage.reward}</div>`;
-        return councilCard(variant, `${icon} ${stage.status}`, stage.name, body);
-      }).join("");
-      const missionTitle = struggle ? `国家使命 · ${struggle.label}「${phaseName}」` : "国家使命";
-      const missionSection = councilSection("⚜", missionTitle,
-        councilCard("mission", "本局目标", mission.title, mission.why) + stageCards);
+      // 战役阶段使命与局势阶段已统一到右下角「局势浮窗」（反馈 #1）；御前会议只留本局基础目标。
+      const activeStruggle = window.HIFI_STRUGGLE_ENGINE?.struggleForPolity?.(world, polity);
+      const missionFoot = activeStruggle
+        ? `<div class="council-card-foot">局势：${activeStruggle.label} —— 详情见右下角局势浮窗</div>` : "";
+      const missionSection = councilSection("⚜", "国家使命",
+        councilCard("mission", "本局目标", mission.title, `${mission.why}${missionFoot}`));
       const warnSection = councilSection("⚠", "国家预警", warnings.map(text => {
         const calm = text.startsWith("国家目前没有");
         return councilCard(calm ? "calm" : "warn", calm ? "✓ 安稳" : "! 警讯", text);
@@ -412,7 +405,79 @@
       return true;
     }
 
-    return { renderCouncil, renderEvent, renderSeasonSummary, renderStruggleEnding, captureSeasonSnapshot: world => ({
+    // 统一局势界面（反馈 #1/#2）：顶部局势名+时期横幅；左右两阵营国家；中间依次为
+    // 诱因（阶段计量）→ 下一阶段可能结局 → 国家使命 → 全部决议（不可用置灰）。决议按钮由 main.js 绑定执行。
+    function renderStrugglePanel(key) {
+      const world = store.getState();
+      const polity = world.playerPolity;
+      const engine = window.HIFI_STRUGGLE_ENGINE;
+      const summary = engine?.struggleSummary(world, polity, key);
+      if (!summary) return false;
+
+      document.getElementById("struggleTitle").textContent = summary.label;
+      document.getElementById("struggleEra").textContent =
+        `${summary.startYear}–${summary.endYear} · ${summary.year ?? summary.startYear}年 · ${summary.phaseLabel}阶段` +
+        (summary.resolved ? ` · 已定局（${engine.ENDINGS.find(e => e.key === summary.ending)?.label || summary.ending}）` : "");
+      document.getElementById("struggleModal").dataset.key = key;
+
+      const campCol = (camp, side) => {
+        const ours = summary.ourSide === side;
+        return `<div class="struggle-camp${ours ? " struggle-camp--ours" : ""}">
+          <div class="struggle-camp-anchor">${camp.anchor}${ours ? " · 我方" : ""}</div>
+          ${camp.members.length
+            ? camp.members.map(name => `<div class="struggle-camp-member">${name}</div>`).join("")
+            : '<div class="struggle-camp-member dim">暂无盟友</div>'}
+        </div>`;
+      };
+      const leftSide = summary.ourSide === "england" ? "england" : "france";
+      const rightSide = leftSide === "france" ? "england" : "france";
+      const leftCamp = summary.camps[leftSide];
+      const rightCamp = summary.camps[rightSide];
+
+      const meterRows = engine.CYCLE_PHASES.map(phase => {
+        const value = summary.meters[phase] || 0;
+        const label = engine.phaseLabel({ key: summary.key }, phase);
+        const pct = Math.min(100, Math.round(value / summary.flipThreshold * 100));
+        return `<div class="struggle-meter${phase === summary.phase ? " is-current" : ""}"><span>${label}</span><i><b style="width:${pct}%"></b></i><small>${value}/${summary.flipThreshold}</small></div>`;
+      }).join("");
+
+      const endingCards = summary.endings.map(ending =>
+        `<div class="struggle-ending"><b>${ending.label}</b><small>${ending.hint}</small></div>`).join("");
+
+      const stages = window.HIFI_OBJECTIVES_ENGINE?.missionStages(world, polity) || [];
+      const stageRows = stages.length
+        ? stages.map(stage => {
+            const icon = stage.status === "已完成" ? "✓" : stage.status === "进行中" ? "▶" : "•";
+            const variant = stage.status === "已完成" ? "done" : stage.status === "进行中" ? "active" : "todo";
+            return `<div class="struggle-stage struggle-stage--${variant}"><span>${icon} ${stage.name}</span><small>${stage.status}</small></div>`;
+          }).join("")
+        : '<div class="struggle-stage struggle-stage--todo"><span>本国无专属战役使命</span><small>—</small></div>';
+
+      const decisionBtns = summary.decisions.length
+        ? summary.decisions.map(decision =>
+            `<button class="struggle-decision" data-struggle-action="${decision.id}"${decision.enabled ? "" : " disabled"} title="${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}">${decision.label}<small>${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}</small></button>`
+          ).join("")
+        : '<div class="struggle-decision dim">本局势暂无可执行决议</div>';
+
+      const neutral = summary.camps.neutral.length
+        ? `<div class="struggle-neutral">居中调停：${summary.camps.neutral.join("、")}</div>` : "";
+
+      document.getElementById("struggleBody").innerHTML = `
+        <div class="struggle-arena">
+          ${campCol(leftCamp, leftSide)}
+          <div class="struggle-center">
+            <div class="struggle-section-title">局势诱因（阶段计量 · 满即翻阶段）</div>${meterRows}
+            <div class="struggle-section-title">下一阶段可能的结局</div><div class="struggle-endings">${endingCards}</div>
+            <div class="struggle-section-title">国家使命</div>${stageRows}
+            <div class="struggle-section-title">可执行决议（不可用已置灰）</div><div class="struggle-decisions">${decisionBtns}</div>
+          </div>
+          ${campCol(rightCamp, rightSide)}
+        </div>${neutral}`;
+      open("struggleModal");
+      return true;
+    }
+
+    return { renderCouncil, renderEvent, renderSeasonSummary, renderStruggleEnding, renderStrugglePanel, captureSeasonSnapshot: world => ({
       turn: world.turn,
       population: playerPopulation(world, world.playerPolity),
       wars: playerWarNames(world, world.playerPolity),

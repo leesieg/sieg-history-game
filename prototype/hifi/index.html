@@ -123,6 +123,8 @@
       <div class="map-legend" id="mapLegend"></div>
     </aside>
 
+    <aside class="struggle-dock" id="struggleDock" aria-label="当前局势"></aside>
+
     <div class="toast metal-frame" id="toast" role="status"></div>
   </main>
 
@@ -175,6 +177,16 @@
       <div class="state-dialog-body council-body" id="seasonSummaryBody"></div>
     </section>
   </div>
+  <div class="modal-layer" id="struggleModal" aria-hidden="true">
+    <section class="state-dialog struggle-window metal-frame" role="dialog" aria-modal="true" aria-labelledby="struggleTitle">
+      <button class="dialog-close" data-close-dialog="struggleModal" aria-label="关闭">×</button>
+      <header class="struggle-banner" id="struggleBanner">
+        <div class="struggle-banner-crest" aria-hidden="true">⚔</div>
+        <div class="struggle-banner-text"><h2 id="struggleTitle">局势</h2><p id="struggleEra"></p></div>
+      </header>
+      <div class="struggle-body" id="struggleBody"></div>
+    </section>
+  </div>
   <div class="modal-layer" id="historyEventModal" aria-hidden="true">
     <section class="state-dialog metal-frame" role="dialog" aria-modal="true" aria-labelledby="historyEventTitle">
       <header><h2 id="historyEventTitle"></h2></header>
@@ -205,9 +217,9 @@
   <script src="scripts/ui/store.js?v=4"></script>
   <script src="scripts/ui/map.js?v=11"></script>
   <script src="scripts/ui/widgets.js?v=2"></script>
-  <script src="scripts/ui/drawers.js?v=26"></script>
+  <script src="scripts/ui/drawers.js?v=27"></script>
   <script src="scripts/ui/codex.js?v=2"></script>
-  <script src="scripts/ui/dialogs.js?v=23"></script>
-  <script src="scripts/main.js?v=25"></script>
+  <script src="scripts/ui/dialogs.js?v=24"></script>
+  <script src="scripts/main.js?v=26"></script>
 </body>
 </html>

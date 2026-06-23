@@ -54,12 +54,15 @@ assert.ok(html.includes('aria-hidden="true"'));
   console.log("顶栏微调（季节按钮/去命令坞/缩略图开关）OK");
 }
 
-// --- Task 4.2: 局势作战室不另起浮层（内嵌系统抽屉，沿用抽屉布局，不遮挡资源栏/地块详情）---
+// --- 统一局势入口：右下角悬浮组件 + 统一局势窗（反馈 #1/#2）---
 {
-  assert.ok(css.includes(".war-room"), "作战室必须有样式规则 .war-room");
-  assert.ok(!/\.war-room\s*\{[^}]*position:\s*fixed/.test(css), "作战室不能用 fixed 浮层遮挡 HUD");
-  assert.ok(!/id="warRoomModal"|class="war-room-modal"/.test(html), "作战室必须内嵌系统抽屉，不另起 modal");
-  console.log("Task 4.2 作战室内嵌布局 OK");
+  assert.ok(html.includes('id="struggleDock"'), "应有局势浮窗容器 struggleDock");
+  assert.ok(html.includes('id="struggleModal"'), "应有统一局势窗 struggleModal");
+  assert.ok(css.includes(".struggle-dock"), "局势浮窗应有样式 .struggle-dock");
+  assert.ok(css.includes(".struggle-banner"), "统一局势窗应有纹章横幅 .struggle-banner");
+  assert.ok(/\.struggle-dock\s*\{[\s\S]*?right:\s*248px/.test(css), "局势浮窗应位于地图工具左侧（right 248px）");
+  assert.ok(!css.includes(".war-room"), "旧作战室样式应已移除（统一到局势浮窗）");
+  console.log("局势统一入口布局 OK");
 }
 
 console.log("hifi layout contract passed");
