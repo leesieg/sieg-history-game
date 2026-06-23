@@ -70,6 +70,32 @@ assert.notEqual(veniceMission.id, franceMission.id, "战争国与和平国不应
 const defaultMission = objectives.nationalMission(world);
 assert.equal(defaultMission.id, objectives.nationalMission(world, world.playerPolity).id);
 
+// --- missionStages：法兰西数据驱动三段使命，状态按顺序派生 ---
+assert.equal(typeof objectives.missionStages, "function", "必须提供 missionStages");
+const validStatus = new Set(["未开始", "进行中", "已完成"]);
+const franceStages = objectives.missionStages(world, "法兰西王国");
+assert.equal(franceStages.length, 3, "法兰西开局应返回 3 个阶段");
+for (const stage of franceStages) {
+  assert.ok(stage.id && stage.name && stage.detail, "每段必须有 id/name/detail");
+  assert.ok(validStatus.has(stage.status), `status 必须是三态之一，实际：${stage.status}`);
+}
+// 巴黎控制力 80 ≥ 60 → 第一段「稳住王国核心」已完成
+assert.equal(franceStages[0].id, "secure-core");
+assert.equal(franceStages[0].status, "已完成", "巴黎控制力达标时第一段应已完成");
+// 有且仅有一个「进行中」（首个未完成段）
+assert.equal(franceStages.filter(stage => stage.status === "进行中").length, 1, "应恰有一个进行中阶段");
+
+// 核心控制力跌破阈值 → 第一段回退为进行中
+world.tiles.find(tile => tile.city === "巴黎").control = 30;
+const weakStages = objectives.missionStages(world, "法兰西王国");
+assert.equal(weakStages[0].status, "进行中", "核心控制力不达标时第一段应为进行中");
+world.tiles.find(tile => tile.city === "巴黎").control = 80; // 还原
+
+// 非法兰西国家不走专属阶段
+assert.deepEqual(objectives.missionStages(world, "威尼斯共和国"), [], "非法兰西国家应返回空阶段数组");
+// 默认 polity 参数
+assert.deepEqual(objectives.missionStages(world), objectives.missionStages(world, world.playerPolity));
+
 // --- midAgenda：0-2 条，结构完整 ---
 const franceAgenda = objectives.midAgenda(world, "法兰西王国");
 assert.ok(Array.isArray(franceAgenda));

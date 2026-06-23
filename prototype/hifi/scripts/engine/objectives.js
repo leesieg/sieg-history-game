@@ -65,6 +65,87 @@
     };
   }
 
+  // --- missionStages：战役阶段使命，数据驱动（CAMPAIGN_STAGES），非法兰西国家返回 [] 走通用目标 ---
+  // 设计依据 docs/design/26 §8 + france-campaign 计划 Task 2.1。终局结算（Phase 6）复用这套阶段状态。
+  function existingCityTiles(world, cities) {
+    const set = new Set(cities);
+    return world.tiles.filter(tile => !tile.isSea && set.has(tile.city));
+  }
+  function controlledCityTiles(world, polity, cities) {
+    return existingCityTiles(world, cities).filter(tile => tile.polity === polity);
+  }
+
+  const CAMPAIGN_STAGES = [
+    {
+      polity: "法兰西王国",
+      struggle: "hundred_years_war",
+      stages: [
+        {
+          id: "secure-core",
+          name: "稳住王国核心",
+          detail: "保持巴黎、鲁昂、奥尔良控制稳定（控制力 ≥ 60）",
+          reward: "核心稳固，合法性不再流失",
+          penalty: "核心动摇将拖垮整场战争",
+          cities: ["巴黎", "鲁昂", "奥尔良"],
+          done(world, polity) {
+            const owned = controlledCityTiles(world, polity, this.cities);
+            return owned.length > 0 && owned.every(tile => (tile.control ?? 100) >= 60);
+          },
+        },
+        {
+          id: "reclaim-disputed",
+          name: "收复争议领地",
+          detail: "夺回加斯科涅 / 阿基坦方向的争议地块，并清除敌国对本土的领土主张",
+          reward: "削弱英格兰在大陆的立足点",
+          penalty: "争议地久拖，英军会步步紧逼",
+          cities: ["加斯科涅", "阿基坦", "波尔多"],
+          done(world, polity) {
+            const existing = existingCityTiles(world, this.cities);
+            const owned = controlledCityTiles(world, polity, this.cities);
+            return existing.length > 0 && owned.length === existing.length && !hasTerritorialClaimAgainst(world, polity);
+          },
+        },
+        {
+          id: "favorable-peace",
+          name: "争取有利和平",
+          detail: "以有利和约或足够战争分数（≥ 40）收场",
+          reward: "百年战争向法兰西霸权倾斜",
+          penalty: "战争无限拖延，国力被掏空",
+          done(world, polity) {
+            const wars = warsAgainst(world, polity);
+            if (!wars.length) return false; // 还没开战，谈不上和平
+            const englandWar = wars.find(war => war.attackers.includes("英格兰王国") || war.defenders.includes("英格兰王国"));
+            if (!englandWar) return true; // 与英格兰已无战争 = 议和达成
+            // score 约定：正分利于进攻方。法兰西按其所处一方判定是否有利。
+            return englandWar.attackers.includes(polity) ? englandWar.score >= 40 : englandWar.score <= -40;
+          },
+        },
+      ],
+    },
+  ];
+
+  function campaignFor(polity) {
+    return CAMPAIGN_STAGES.find(entry => entry.polity === polity) || null;
+  }
+
+  function missionStages(world, polity = world.playerPolity) {
+    const entry = campaignFor(polity);
+    if (!entry) return [];
+    const resolved = entry.stages.map(stage => ({
+      id: stage.id,
+      name: stage.name,
+      detail: stage.detail,
+      reward: stage.reward,
+      penalty: stage.penalty,
+      done: !!stage.done(world, polity),
+    }));
+    const firstPending = resolved.findIndex(stage => !stage.done);
+    return resolved.map((stage, index) => ({
+      ...stage,
+      status: stage.done ? "已完成" : index === firstPending ? "进行中" : "未开始",
+    }));
+  }
+
   // --- midAgenda：中期议程，基于 pressures / 控制力低的地块，0-2 条 ---
   function midAgenda(world, polity) {
     const country = world.countries[polity];
@@ -217,7 +298,9 @@
 
   window.HIFI_OBJECTIVES_ENGINE = {
     advisorProposals,
+    CAMPAIGN_STAGES,
     midAgenda,
+    missionStages,
     nationalMission,
     seasonTasks,
   };
