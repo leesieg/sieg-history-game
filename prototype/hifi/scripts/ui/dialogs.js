@@ -142,6 +142,70 @@
       return advisorPanels[advisor] || "国家";
     }
 
+    // 单条资源账本行：产出 / 维护 / 事件 / 战争 四段拆分，net 为负时高亮（季报与季度总结共用）。
+    function resourceLedgerLine(label, e) {
+      const parts = [`产出 +${e.gross}`];
+      if (e.maintenance) parts.push(`维护 −${e.maintenance}`);
+      if (e.event) parts.push(`事件 −${e.event}`);
+      if (e.war) parts.push(`战争 −${e.war}`);
+      return `<div class="ledger-line${e.net < 0 ? " ledger-neg" : ""}"><span>${label}</span><b>${e.net >= 0 ? "+" : ""}${e.net}</b><small>${parts.join(" · ")}</small></div>`;
+    }
+
+    function playerPopulation(world, polity) {
+      return window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)
+        .reduce((sum, tile) => sum + (tile.population || 0), 0);
+    }
+
+    function playerWarNames(world, polity) {
+      return (world.diplomacy?.wars || [])
+        .filter(war => war.attackers.includes(polity) || war.defenders.includes(polity))
+        .map(war => war.name || "战争");
+    }
+
+    // 本季总结：推进季度后读 quarterLedger + 前后快照，把「收支 / 战争 / 外交 / 人口」的本季变化
+    // 摊开给玩家——让玩家知道每季发生了什么，而不只是看资源数字上涨（Task 3.3）。
+    function renderSeasonSummary(snapshot) {
+      const world = store.getState();
+      const polity = world.playerPolity;
+      const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(world, polity);
+      const calendar = window.HIFI_WORLD_ENGINE.calendarLabel(world.turn);
+
+      const fiscalSection = `<div class="season-section"><h4>§ 收支变化</h4>
+        ${resourceLedgerLine("国库", ledger.money)}${resourceLedgerLine("粮食", ledger.food)}${resourceLedgerLine("军需", ledger.military)}
+      </div>`;
+
+      // 战争变化：鏖战阶段的前线消耗 + 本季局势阶段翻转纪闻
+      const flips = (world.worldEvents || [])
+        .filter(ev => ev.kind === "struggle" && ev.turn === world.turn)
+        .map(ev => ev.text);
+      const warParts = [];
+      if (ledger.war) warParts.push(`${ledger.war.label}·${ledger.war.phase}：前线消耗 粮 −${ledger.war.food} · 军需 −${ledger.war.military}`);
+      flips.forEach(text => warParts.push(text));
+      const warSection = warParts.length
+        ? `<div class="season-section"><h4>⚔ 战争变化</h4>${warParts.map(t => `<p>${t}</p>`).join("")}</div>`
+        : "";
+
+      // 外交变化：本季新卷入 / 结束的战争
+      const warsNow = playerWarNames(world, polity);
+      const warsBefore = snapshot?.wars || [];
+      const diploParts = [];
+      warsNow.filter(name => !warsBefore.includes(name)).forEach(name => diploParts.push(`新卷入「${name}」`));
+      warsBefore.filter(name => !warsNow.includes(name)).forEach(name => diploParts.push(`「${name}」已结束`));
+      const diploSection = diploParts.length
+        ? `<div class="season-section"><h4>✉ 外交变化</h4>${diploParts.map(t => `<p>${t}</p>`).join("")}</div>`
+        : "";
+
+      // 人口变化：与上季快照比对
+      const popNow = playerPopulation(world, polity);
+      const popDelta = snapshot ? popNow - snapshot.population : 0;
+      const popSection = `<div class="season-section"><h4>👥 人口变化</h4>
+        <p>总人口 ${popNow}${snapshot ? `（${popDelta >= 0 ? "+" : ""}${popDelta}）` : ""}</p></div>`;
+
+      document.getElementById("seasonSummarySubtitle").textContent = calendar;
+      document.getElementById("seasonSummaryBody").innerHTML = `${fiscalSection}${warSection}${diploSection}${popSection}`;
+      open("seasonSummaryModal");
+    }
+
     function warningsWithWarStatus(world, polity, warnings) {
       const wars = world.diplomacy?.wars || [];
       const activeWar = wars.find(war => war.attackers.includes(polity) || war.defenders.includes(polity));
@@ -236,12 +300,7 @@
       const situationsSection = councilSection("◈", "世界局势", summary.situations.length
         ? summary.situations.map(text => councilCard("situation", "◈ 局势", text)).join("")
         : councilCard("calm", "— 局势", "暂无大型局势"));
-      const ledgerLine = (label, e) => {
-        const parts = [`产出 +${e.gross}`];
-        if (e.maintenance) parts.push(`维护 −${e.maintenance}`);
-        if (e.event) parts.push(`事件 −${e.event}`);
-        return `<div class="ledger-line${e.net < 0 ? " ledger-neg" : ""}"><span>${label}</span><b>${e.net >= 0 ? "+" : ""}${e.net}</b><small>${parts.join(" · ")}</small></div>`;
-      };
+      const ledgerLine = (label, e) => resourceLedgerLine(label, e);
       const ledgerCard = `<article class="council-card council-card--ledger">
         <div class="council-card-kind">§ 本季季报</div>
         ${quarterNote ? `<div class="council-card-note">${quarterNote}</div>` : ""}
@@ -329,7 +388,11 @@
       });
       open("historyEventModal");
     }
-    return { renderCouncil, renderEvent };
+    return { renderCouncil, renderEvent, renderSeasonSummary, captureSeasonSnapshot: world => ({
+      turn: world.turn,
+      population: playerPopulation(world, world.playerPolity),
+      wars: playerWarNames(world, world.playerPolity),
+    }) };
   }
 
   window.HIFI_DIALOGS = { bindArmyDialog, bindNarrativeDialogs };

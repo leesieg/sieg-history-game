@@ -361,9 +361,11 @@
       showToast(`仍有 ${blocking.length} 项裁断需要处理`);
       return;
     }
+    const snapshot = narrativeDialogs.captureSeasonSnapshot(current); // 推进前快照：人口/战争，供本季总结比对
     store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
     window.HIFI_HISTORY_ENGINE.completeTutorial(current, "advance_turn");
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
+    narrativeDialogs.renderSeasonSummary(snapshot); // toast 之外的可展开本季总结，说明这季到底变了什么
   });
 
   function focusInDrawer(selector) {
