@@ -329,7 +329,7 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   console.log("Task 3.2 鏖战战争压力回灌 OK");
 }
 
-// --- Task 6.1：processHistory 第 12 季触发局势终局结算（沙盒可继续）---
+// --- Task 6.1：processHistory 到历史终点年（1453）触发局势终局结算（沙盒可继续）---
 {
   const struggleEngine = context.window.HIFI_STRUGGLE_ENGINE;
   const sw = worldEngine.createWorld([
@@ -341,13 +341,19 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   const hyw = struggleEngine.struggleFor(sw, "hundred_years_war");
   assert.ok(hyw, "百年战争局势应成立");
 
+  // 1339 年（早期）：未达决定性终局，不应结算（局势真正持续百年）
   sw.turn = 12;
   history.processHistory(sw);
-  assert.equal(hyw.resolved, true, "第 12 季 processHistory 应触发终局结算");
+  assert.equal(hyw.resolved, false, "早期未达决定性终局不应结算");
+
+  // 1453 年：到历史终点拍板
+  sw.turn = 465; // year 1453
+  history.processHistory(sw);
+  assert.equal(hyw.resolved, true, "到 1453 年 processHistory 应触发终局结算");
   assert.ok(sw.pendingStruggleEnding, "结算应设 pendingStruggleEnding 供 UI");
 
   // 沙盒继续：再推进一季不崩、局势保持已结束
-  sw.turn = 13;
+  sw.turn = 466;
   assert.doesNotThrow(() => history.processHistory(sw), "结算后季度推进不应报错");
   assert.equal(hyw.resolved, true, "结算后局势保持已结束");
   console.log("Task 6.1 processHistory 终局结算 OK");

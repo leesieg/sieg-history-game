@@ -31,7 +31,8 @@ assert.ok(hyw.parties["法兰西王国"] && hyw.parties["英格兰王国"], "法
 assert.equal(struggle.involvement(world, "法兰西王国", hyw), "principal");
 assert.equal(struggle.involvement(world, "英格兰王国", hyw), "principal");
 assert.equal(struggle.involvement(world, "勃艮第公国", hyw), "interloper");
-assert.equal(struggle.involvement(world, "卡斯蒂利亚王国", hyw), "bystander");
+assert.equal(struggle.involvement(world, "卡斯蒂利亚王国", hyw), "interloper"); // 卡斯蒂利亚现为盟法干涉者
+assert.equal(struggle.involvement(world, "奥斯曼贝伊国", hyw), "bystander");     // 参与方表外的国家=旁观
 
 // 缺当事国时不开局（参与方表里没有的世界）
 const lonely = worldEngine.createWorld(
@@ -136,6 +137,19 @@ const ps = struggle.struggleSummary(peaceWorld, "法兰西王国");
 assert.ok(ps && ps.war === null, "没有战争时 war 为 null 且不报错");
 assert.ok(ps.recommendations.some(r => r.includes("集结")), "无主力军在前线应建议集结");
 
+// 统一界面用字段：两大阵营 / 全部决议（含置灰原因）/ 时期
+assert.ok(summary.camps && summary.camps.france && summary.camps.england, "摘要应带两大阵营");
+assert.ok(summary.camps.england.members.includes("勃艮第公国"), "勃艮第(lean>0)应归英格兰阵营");
+assert.ok(summary.camps.france.members.includes("卡斯蒂利亚王国"), "卡斯蒂利亚(lean<0)应归法兰西阵营");
+assert.equal(summary.ourSide, "france", "法兰西玩家所属阵营为法方");
+assert.ok(Array.isArray(summary.decisions) && summary.decisions.length >= 3, "摘要应带当前国家全部决议");
+const muster = summary.decisions.find(d => d.id === "muster_battle");
+const claim = summary.decisions.find(d => d.id === "press_claim");
+assert.ok(muster && muster.enabled, "鏖战阶段决战集结应可用");
+assert.ok(claim && !claim.enabled && claim.reason, "非当前阶段决议应置灰并附中文原因");
+assert.equal(summary.year, 1337, "摘要应带当前年份（开局 1337）");
+assert.equal(summary.endYear, 1453, "摘要应带历史终点年 1453");
+
 console.log("Task 4.1 局势态势摘要 OK");
 
 // --- Task 4.2：阶段限定操作 gate + 选边 ---
@@ -157,15 +171,15 @@ assert.throws(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "pres
 assert.throws(() => struggle.phaseActionGate(gateWorld, "勃艮第公国", "muster_battle"), /当事国/, "干涉者用当事国操作应中文报错");
 assert.throws(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "pick_side"), /干涉者/, "当事国用选边操作应中文报错");
 
-// 选边：干涉者改 lean 并注入诱因；当事国选边报错
+// 选边：干涉者改 lean 并注入诱因；当事国选边报错（勃艮第初始 lean=1 盟英，改为 -1 偏法）
 const leanBefore = gs.parties["勃艮第公国"].lean;
-struggle.pickSide(gateWorld, "勃艮第公国", 1);
-assert.equal(gs.parties["勃艮第公国"].lean, 1, "干涉者选边应改 lean");
+struggle.pickSide(gateWorld, "勃艮第公国", -1);
+assert.equal(gs.parties["勃艮第公国"].lean, -1, "干涉者选边应改 lean");
 assert.notEqual(gs.parties["勃艮第公国"].lean, leanBefore);
 assert.throws(() => struggle.pickSide(gateWorld, "法兰西王国"), /干涉者/, "当事国不能选边");
 console.log("Task 4.2 阶段限定操作 gate OK");
 
-// --- Task 6.1：12 季样板局终局结算 ---
+// --- Task 6.1（改）：百年终局结算——决定性终局随时触发，否则跑到 1453 拍板 ---
 function freshStruggleWorld() {
   const w = worldEngine.createWorld(tiles.map(tile => ({ ...tile })), {}, "法兰西王国"); // 克隆地块隔离各世界
   struggle.initializeStruggles(w);
@@ -174,55 +188,63 @@ function freshStruggleWorld() {
 const stubMissions = stages => { context.window.HIFI_OBJECTIVES_ENGINE = { missionStages: () => stages }; };
 const allDone = [{ name: "稳住核心", status: "已完成" }, { name: "收复争议", status: "已完成" }, { name: "有利和平", status: "已完成" }];
 const notDone = [{ name: "稳住核心", status: "进行中" }, { name: "收复争议", status: "未开始" }, { name: "有利和平", status: "未开始" }];
+const TURN_1453 = 465; // 1337 + floor((465-1)/4) = 1337 + 116 = 1453
 
-// 未到第 12 季不结算
+// 真正持续百年：未达决定性终局且远未到 1453，过了几十季也不结算
 const earlyWorld = freshStruggleWorld();
-stubMissions(allDone);
-earlyWorld.turn = 11;
+stubMissions(notDone);
+earlyWorld.turn = 200; // 约 1386 年
 struggle.settleStruggles(earlyWorld);
-assert.equal(struggle.struggleFor(earlyWorld, "hundred_years_war").resolved, false, "第 11 季不应结算");
+assert.equal(struggle.struggleFor(earlyWorld, "hundred_years_war").resolved, false, "未达决定性终局且未到 1453 不应结算（持续百年）");
 
-// 法兰西霸权：三段全完成
+// 法兰西霸权：三段全完成 → 决定性终局，任一年立即触发
 const hegWorld = freshStruggleWorld();
 stubMissions(allDone);
-hegWorld.turn = 12;
+hegWorld.turn = 40; // 早早达成
 hegWorld.countries["法兰西王国"].legitimacy = 70;
 struggle.settleStruggles(hegWorld);
 const hegStruggle = struggle.struggleFor(hegWorld, "hundred_years_war");
-assert.equal(hegStruggle.resolved, true, "第 12 季应结算");
+assert.equal(hegStruggle.resolved, true, "决定性终局应随时触发");
 assert.equal(hegStruggle.ending, "france_hegemony", "三段全完成应判法兰西霸权");
 assert.equal(hegStruggle.phase, "resolution", "结算后进入定局阶段");
 assert.ok(hegWorld.countries["法兰西王国"].legitimacy > 70, "霸权应给法兰西合法性加成");
 assert.ok(hegWorld.pendingStruggleEnding && hegWorld.pendingStruggleEnding.ending === "france_hegemony", "应设 pendingStruggleEnding 供 UI");
 
-// 英格兰主张得逞：占据核心
+// 英格兰占据核心 → 决定性终局，立即触发
 const engWorld = freshStruggleWorld();
 stubMissions(notDone);
-engWorld.turn = 12;
+engWorld.turn = 60;
 engWorld.tiles.find(tile => tile.city === "巴黎").polity = "英格兰王国";
 struggle.settleStruggles(engWorld);
-assert.equal(struggle.struggleFor(engWorld, "hundred_years_war").ending, "england_claim", "英占核心应判英格兰主张得逞");
+assert.equal(struggle.struggleFor(engWorld, "hundred_years_war").ending, "england_claim", "英占核心应随时判英格兰主张得逞");
 assert.ok(engWorld.countries["法兰西王国"].legitimacy < 70 || engWorld.countries["法兰西王国"].struggleLegacy?.coreDebuff, "核心崩坏应有 debuff");
 
-// 谈判和平：议和阶段且无当事国战争
+// 谈判和平：到 1453、议和阶段且无当事国战争
 const peaceWorld2 = freshStruggleWorld();
 stubMissions(notDone);
-peaceWorld2.turn = 12;
+peaceWorld2.turn = TURN_1453;
 struggle.struggleFor(peaceWorld2, "hundred_years_war").phase = "truce";
 peaceWorld2.diplomacy = { wars: [] };
 peaceWorld2.countries["法兰西王国"].warfare = { warExhaustion: 30 };
 struggle.settleStruggles(peaceWorld2);
-assert.equal(struggle.struggleFor(peaceWorld2, "hundred_years_war").ending, "negotiated_peace", "议和阶段无战争应判谈判和平");
+assert.equal(struggle.struggleFor(peaceWorld2, "hundred_years_war").ending, "negotiated_peace", "1453 议和阶段无战争应判谈判和平");
 assert.equal(peaceWorld2.countries["法兰西王国"].warfare.warExhaustion, 0, "谈判和平应解除战争疲惫");
 
-// 长期僵局：均未达成
+// 长期僵局：到 1453 仍未分胜负
 const staleWorld = freshStruggleWorld();
 stubMissions(notDone);
-staleWorld.turn = 12;
+staleWorld.turn = TURN_1453;
 struggle.struggleFor(staleWorld, "hundred_years_war").phase = "standoff";
 struggle.settleStruggles(staleWorld);
 const staleStruggle = struggle.struggleFor(staleWorld, "hundred_years_war");
-assert.equal(staleStruggle.ending, "stalemate", "未达成任一应判长期僵局");
+assert.equal(staleStruggle.ending, "stalemate", "1453 未分胜负应判长期僵局");
+
+// 1452（未到终点）且无决定性终局：不结算
+const notYetWorld = freshStruggleWorld();
+stubMissions(notDone);
+notYetWorld.turn = TURN_1453 - 4; // 约 1452 年
+struggle.settleStruggles(notYetWorld);
+assert.equal(struggle.struggleFor(notYetWorld, "hundred_years_war").resolved, false, "1453 之前未达决定性终局不结算");
 
 // 结算后沙盒可继续：再推进不崩、保持已结束
 assert.doesNotThrow(() => { struggle.processStruggles(staleWorld); struggle.settleStruggles(staleWorld); }, "结算后继续推进不应报错");
@@ -230,6 +252,6 @@ assert.equal(staleStruggle.resolved, true, "结算后局势保持已结束");
 assert.equal(staleStruggle.phase, "resolution", "已结束局势阶段保持定局");
 
 delete context.window.HIFI_OBJECTIVES_ENGINE;
-console.log("Task 6.1 终局结算 OK");
+console.log("Task 6.1 百年终局结算 OK");
 
 console.log("hifi struggle engine passed");

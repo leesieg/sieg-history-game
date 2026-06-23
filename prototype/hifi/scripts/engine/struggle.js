@@ -19,14 +19,13 @@
     ending_decision: { label: "终局决议", phase: "resolution", involvement: "principal" },
   };
 
-  const SAMPLE_END_SEASONS = 12; // 样板局终点：开局起第 12 季对三段使命拍快照触发终局结算
-
-  // 四终局预览（设计 §8）：摘要里静态展示，真实可达性由 Phase 6 终局结算判定。
+  // 四终局预览（设计 §8）：摘要里展示，真实可达性由终局结算判定。
+  // 决定性终局（霸权/英占核心）随时可触发；妥协/僵局只在历史终点年（1453）拍板。
   const ENDINGS = [
-    { key: "france_hegemony", label: "法兰西霸权", hint: "三段使命全完成且进入定局阶段" },
+    { key: "france_hegemony", label: "法兰西霸权", hint: "三段使命全完成，英格兰被逐出大陆" },
     { key: "england_claim", label: "英格兰主张得逞", hint: "英格兰占据核心法兰西争议地" },
-    { key: "negotiated_peace", label: "谈判和平", hint: "议和阶段达成双方妥协" },
-    { key: "stalemate", label: "长期僵局", hint: "12 季内未分胜负" },
+    { key: "negotiated_peace", label: "谈判和平", hint: "议和阶段双方妥协，争议地分割" },
+    { key: "stalemate", label: "长期僵局", hint: "至 1453 仍未分胜负，两败俱疲" },
   ];
 
   const STRUGGLE_DEFINITIONS = {
@@ -34,16 +33,21 @@
       key: "hundred_years_war",
       label: "百年战争",
       startYear: 1337,
+      endYear: 1453,            // 历史终点：1337→1453 共 116 年。未达决定性终局则在此年拍板妥协/僵局
       initialPhase: "standoff",
       flipThreshold: 8, // 单阶段计量达此值即翻阶段；时间默认诱因每季 +1
       // 争议区域（按城市名，与 objectives.CAMPAIGN_STAGES 的核心/收复城同源）：作战室「前线」与边境控制判定用
-      regionCities: ["巴黎", "鲁昂", "奥尔良", "加斯科涅", "阿基坦", "波尔多", "加莱", "弗兰德斯"],
+      regionCities: ["巴黎", "鲁昂", "奥尔良", "加斯科涅", "阿基坦", "波尔多", "加莱", "弗兰德斯", "诺曼底", "布列塔尼", "香槟", "勃艮第"],
+      // 参与方（数据驱动）：lean<0 偏法 / >0 偏英 / 0 中立。历史站位——苏格兰/卡斯蒂利亚盟法，
+      // 勃艮第/弗兰德斯/神圣罗马帝国盟英，教皇国居中调停。缺席世界里不存在的国家会被 startStruggle 过滤。
       parties: {
         "法兰西王国": { role: "principal" },
         "英格兰王国": { role: "principal" },
-        "勃艮第公国": { role: "interloper", lean: 0 },   // lean<0 偏法 / >0 偏英
+        "勃艮第公国": { role: "interloper", lean: 1 },
+        "弗兰德斯伯国": { role: "interloper", lean: 1 },
+        "神圣罗马帝国": { role: "interloper", lean: 1 },
         "苏格兰王国": { role: "interloper", lean: -1 },
-        "弗兰德斯伯国": { role: "interloper", lean: 0 },
+        "卡斯蒂利亚王国": { role: "interloper", lean: -1 },
         "教皇国": { role: "interloper", lean: 0 },
       },
       phases: {
@@ -243,6 +247,42 @@
       .map(([id, action]) => ({ id, label: action.label, phase: action.phase }));
   }
 
+  // 两大阵营：principal 各为锚，interloper 按 lean 归边（<0 法 / >0 英 / 0 中立）。供统一界面左右两侧展示。
+  function campsFor(struggle) {
+    const france = [], england = [], neutral = [];
+    for (const [name, party] of Object.entries(struggle.parties)) {
+      if (party.role === "principal") continue;
+      const lean = party.lean || 0;
+      if (lean < 0) france.push(name);
+      else if (lean > 0) england.push(name);
+      else neutral.push(name);
+    }
+    return {
+      france: { anchor: "法兰西王国", members: france },
+      england: { anchor: "英格兰王国", members: england },
+      neutral,
+    };
+  }
+
+  // 当前国家在该局势里能执行的「全部」决议（不止当前阶段）：enabled=false 的附中文不可用原因，供 UI 置灰。
+  function decisionsFor(world, polity, struggle, role) {
+    if (role === "bystander") return [];
+    return Object.entries(PHASE_ACTIONS)
+      .filter(([, action]) => action.involvement === role)
+      .map(([id, action]) => {
+        let enabled = true, reason = "";
+        try { phaseActionGate(world, polity, id); } catch (error) { enabled = false; reason = error.message; }
+        return {
+          id,
+          label: action.label,
+          phase: action.phase,
+          phaseLabel: action.phase ? phaseLabel(struggle, action.phase) : "任意阶段",
+          enabled,
+          reason,
+        };
+      });
+  }
+
   // 推荐下一步：先 3 条固定启发式（疲惫高→议和 / 主力军不在前线→集结 / 边境控制掉→增援）。
   function recommendations(world, polity, struggle, context) {
     const recs = [];
@@ -267,21 +307,35 @@
     const war = principalWar(world, struggle);
     const ourArmy = strongestArmy(world, new Set([polity]));
     const enemyThreat = strongestArmy(world, new Set(opponents));
+    const calendarOf = window.HIFI_WORLD_ENGINE?.calendarForTurn;
+    const year = calendarOf ? calendarOf(world.turn).year : null;
+    let ourSide = "france";
+    if (role === "principal") ourSide = polity === "英格兰王国" ? "england" : "france";
+    else if (role === "interloper") ourSide = (struggle.parties[polity].lean || 0) > 0 ? "england" : "france";
     return {
       key: struggle.key,
       label: struggle.label,
       phase: struggle.phase,
       phaseLabel: phaseLabel(struggle),
+      resolved: struggle.resolved,
+      ending: struggle.ending,
       meters: { ...struggle.meters },
       flipThreshold: def.flipThreshold,
       involvement: role,
       principals,
       opponents,
+      // 时期：供统一界面顶部横幅展示「1337–1453 · 当前年」
+      year,
+      startYear: def.startYear,
+      endYear: def.endYear,
+      camps: campsFor(struggle),
+      ourSide,
       war: war ? { name: war.name, score: war.score || 0, goalTile: tileLabel(world, war.primaryGoal?.tileId) } : null,
       warExhaustion: world.countries[polity]?.warfare?.warExhaustion || 0,
       ourArmy,
       enemyThreat,
       actions: availableActions(struggle, role),
+      decisions: decisionsFor(world, polity, struggle, role),
       endings: ENDINGS,
       recommendations: recommendations(world, polity, struggle, { ourArmy }),
     };
@@ -335,9 +389,17 @@
     return coreTiles.some(tile => tile.polity === "英格兰王国");
   }
 
-  function decideEnding(world, struggle) {
+  // 决定性终局：随时可触发（霸权 / 英占核心），让百年战争可以在任一年被某一方一锤定音。
+  function decisiveEnding(world) {
     if (franceMissionsAllDone(world)) return "france_hegemony";    // 法兰西霸权：三段全完成
     if (englandHoldsFrenchCore(world)) return "england_claim";     // 英格兰主张得逞：占据核心
+    return null;
+  }
+
+  // 历史终点年（1453）拍板：决定性终局未触发时，按当时阶段判妥协 / 僵局。
+  function decideEnding(world, struggle) {
+    const decisive = decisiveEnding(world);
+    if (decisive) return decisive;
     if (struggle.phase === "truce" && !principalWar(world, struggle)) return "negotiated_peace"; // 议和阶段双方妥协
     return "stalemate";                                            // 长期僵局：均未达成
   }
@@ -375,10 +437,18 @@
     return ending;
   }
 
+  // 终局结算：让局势真正跑「百年」。阶段在 1337→1453 间反复循环，期间只有某方达成决定性
+  // 终局才会提前定局；否则到历史终点年（1453）才拍板妥协 / 僵局。
   function settleStruggles(world) {
+    const calendarOf = window.HIFI_WORLD_ENGINE?.calendarForTurn;
     for (const struggle of activeStruggles(world)) {
-      if (world.turn < struggle.startedTurn + SAMPLE_END_SEASONS - 1) continue; // 未到第 12 季不结算
-      applyEnding(world, struggle, decideEnding(world, struggle));
+      const decisive = decisiveEnding(world);
+      if (decisive) { applyEnding(world, struggle, decisive); continue; } // 决定性终局：随时一锤定音
+      const endYear = definition(struggle.key)?.endYear;
+      const year = calendarOf ? calendarOf(world.turn).year : null;
+      if (endYear && year != null && year >= endYear) {                   // 到历史终点年：拍板妥协 / 僵局
+        applyEnding(world, struggle, decideEnding(world, struggle));
+      }
     }
   }
 
@@ -387,7 +457,6 @@
     CYCLE_PHASES,
     PHASE_ACTIONS,
     ENDINGS,
-    SAMPLE_END_SEASONS,
     initializeStruggles,
     startStruggle,
     processStruggles,
@@ -402,5 +471,7 @@
     pickSide,
     settleStruggles,
     decideEnding,
+    decisiveEnding,
+    campsFor,
   };
 })();
