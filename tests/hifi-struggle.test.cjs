@@ -89,4 +89,53 @@ const trBefore = fs2.meters.truce;
 struggle.processStruggles(fw);
 assert.ok(fs2.meters.truce > trBefore, "当事国财政崩溃应注入疲惫议和诱因");
 
+// --- Task 4.1：局势态势摘要 struggleSummary ---
+const sumWorld = worldEngine.createWorld(tiles, {}, "法兰西王国");
+struggle.initializeStruggles(sumWorld);
+const ss = struggle.struggleFor(sumWorld, "hundred_years_war");
+ss.phase = "open_war";
+sumWorld.diplomacy = { wars: [{ id: "w", name: "百年战争", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 30, primaryGoal: { tileId: 1 } }] };
+sumWorld.warfare = { armies: {
+  fr1: { id: "fr1", owner: "法兰西王国", tileId: 1, units: [{ soldiers: 3000 }], organization: 90 },
+  en1: { id: "en1", owner: "英格兰王国", tileId: 2, units: [{ soldiers: 2000 }], organization: 80 },
+} };
+sumWorld.countries["法兰西王国"].warfare = { warExhaustion: 25 };
+
+const summary = struggle.struggleSummary(sumWorld, "法兰西王国");
+assert.ok(summary, "法兰西应能拿到局势摘要");
+assert.equal(summary.label, "百年战争");
+assert.equal(summary.phase, "open_war");
+assert.equal(summary.involvement, "principal");
+assert.ok(summary.principals.includes("法兰西王国") && summary.opponents.includes("英格兰王国"), "应区分我方当事国与对手");
+assert.ok(summary.war && summary.war.score === 30, "应带出战争分数");
+assert.equal(summary.war.goalTile, "巴黎", "应带出战争目标地块名");
+assert.equal(summary.warExhaustion, 25, "应带出战争疲惫");
+assert.ok(summary.ourArmy && summary.ourArmy.owner === "法兰西王国", "应识别我方主力军");
+assert.equal(summary.ourArmy.location, "巴黎", "我方主力军应带出位置");
+assert.ok(summary.enemyThreat && summary.enemyThreat.owner === "英格兰王国", "应识别敌方威胁");
+assert.ok(summary.actions.some(a => a.id === "muster_battle"), "鏖战阶段当事国应可决战集结");
+assert.ok(!summary.actions.some(a => a.id === "press_claim"), "非对峙阶段不出现提王位主张");
+assert.ok(Array.isArray(summary.endings) && summary.endings.length === 4, "应预览四终局");
+assert.ok(summary.recommendations.some(r => r.includes("停战")), "疲惫高应建议停战");
+
+// 干涉者视图：只能选边，没有当事国操作
+const interSummary = struggle.struggleSummary(sumWorld, "勃艮第公国", "hundred_years_war");
+assert.equal(interSummary.involvement, "interloper");
+assert.ok(interSummary.actions.some(a => a.id === "pick_side"), "干涉者应能选边");
+assert.ok(!interSummary.actions.some(a => a.id === "muster_battle"), "干涉者不能用当事国操作");
+
+// 没有局势 → null（不报错）
+const noStruggleWorld = worldEngine.createWorld([{ id: 1, isSea: false, polity: "卡斯蒂利亚王国", population: 5, city: "布尔戈斯" }], {}, "卡斯蒂利亚王国");
+struggle.initializeStruggles(noStruggleWorld);
+assert.equal(struggle.struggleSummary(noStruggleWorld, "卡斯蒂利亚王国"), null, "没有局势应返回 null 不报错");
+
+// 没有战争时 war 为 null，但摘要仍可生成（主力军不在前线 → 建议集结）
+const peaceWorld = worldEngine.createWorld(tiles, {}, "法兰西王国");
+struggle.initializeStruggles(peaceWorld);
+const ps = struggle.struggleSummary(peaceWorld, "法兰西王国");
+assert.ok(ps && ps.war === null, "没有战争时 war 为 null 且不报错");
+assert.ok(ps.recommendations.some(r => r.includes("集结")), "无主力军在前线应建议集结");
+
+console.log("Task 4.1 局势态势摘要 OK");
+
 console.log("hifi struggle engine passed");

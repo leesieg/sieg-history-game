@@ -9,6 +9,24 @@
   // 阶段循环：对峙→鏖战→疲惫议和 由诱因计量驱动循环；定局(resolution)只由终局结算进入（Phase 6）。
   const CYCLE_PHASES = ["standoff", "open_war", "truce"];
 
+  // 阶段限定操作（设计 §7）：操作 → 可用阶段（null=任意阶段）+ 参与度。摘要据此列「当前阶段可用操作」，
+  // 作战室（Task 4.2）据此 gate。这里只声明可用性，不绑定具体引擎调用。
+  const PHASE_ACTIONS = {
+    press_claim: { label: "提王位主张", phase: "standoff", involvement: "principal" },
+    muster_battle: { label: "决战集结", phase: "open_war", involvement: "principal" },
+    favorable_truce: { label: "有利停战谈判", phase: "truce", involvement: "principal" },
+    pick_side: { label: "选边支持", phase: null, involvement: "interloper" },
+    ending_decision: { label: "终局决议", phase: "resolution", involvement: "principal" },
+  };
+
+  // 四终局预览（设计 §8）：摘要里静态展示，真实可达性由 Phase 6 终局结算判定。
+  const ENDINGS = [
+    { key: "france_hegemony", label: "法兰西霸权", hint: "三段使命全完成且进入定局阶段" },
+    { key: "england_claim", label: "英格兰主张得逞", hint: "英格兰占据核心法兰西争议地" },
+    { key: "negotiated_peace", label: "谈判和平", hint: "议和阶段达成双方妥协" },
+    { key: "stalemate", label: "长期僵局", hint: "12 季内未分胜负" },
+  ];
+
   const STRUGGLE_DEFINITIONS = {
     hundred_years_war: {
       key: "hundred_years_war",
@@ -16,6 +34,8 @@
       startYear: 1337,
       initialPhase: "standoff",
       flipThreshold: 8, // 单阶段计量达此值即翻阶段；时间默认诱因每季 +1
+      // 争议区域（按城市名，与 objectives.CAMPAIGN_STAGES 的核心/收复城同源）：作战室「前线」与边境控制判定用
+      regionCities: ["巴黎", "鲁昂", "奥尔良", "加斯科涅", "阿基坦", "波尔多", "加莱", "弗兰德斯"],
       parties: {
         "法兰西王国": { role: "principal" },
         "英格兰王国": { role: "principal" },
@@ -183,9 +203,93 @@
     }
   }
 
+  // --- Task 4.1：局势态势摘要 ----------------------------------------------
+  // 把局势的阶段 / 战况 / 我方与敌方主力 / 阶段操作 / 终局预览 / 推荐下一步收成一个可展示对象。
+  // 纯函数、读现有引擎产出（diplomacy.wars / warfare.armies），无 DOM，供作战室与顾问消费。
+
+  function tileLabel(world, tileId) {
+    const tile = (world.tiles || []).find(item => item.id === tileId);
+    if (!tile) return null;
+    return tile.city || `第 ${tile.id} 号地块`;
+  }
+
+  // 取某些归属国里实力最强的军团（实力 = 兵力 × 组织度），供「我方主力 / 敌方威胁」展示。
+  function strongestArmy(world, owners) {
+    let best = null;
+    for (const army of Object.values(world.warfare?.armies || {})) {
+      if (!owners.has(army.owner)) continue;
+      const soldiers = (army.units || []).reduce((sum, unit) => sum + (unit.soldiers || 0), 0);
+      const strength = Math.round(soldiers * (army.organization ?? 100) / 100);
+      if (!best || strength > best.strength) {
+        best = { id: army.id, owner: army.owner, strength, tileId: army.tileId, location: tileLabel(world, army.tileId) };
+      }
+    }
+    return best;
+  }
+
+  // 争议区域地块集（按 regionCities 城市名解析成地块 id），作「前线 / 边境控制」判定。
+  function regionTileIds(world, struggle) {
+    const cities = new Set(definition(struggle.key)?.regionCities || []);
+    return new Set((world.tiles || []).filter(tile => !tile.isSea && cities.has(tile.city)).map(tile => tile.id));
+  }
+
+  // 当前阶段 + 参与度下，玩家可用的阶段限定操作。
+  function availableActions(struggle, role) {
+    if (role === "bystander") return [];
+    return Object.entries(PHASE_ACTIONS)
+      .filter(([, action]) => action.involvement === role && (action.phase === null || action.phase === struggle.phase))
+      .map(([id, action]) => ({ id, label: action.label, phase: action.phase }));
+  }
+
+  // 推荐下一步：先 3 条固定启发式（疲惫高→议和 / 主力军不在前线→集结 / 边境控制掉→增援）。
+  function recommendations(world, polity, struggle, context) {
+    const recs = [];
+    const exhaustion = world.countries[polity]?.warfare?.warExhaustion || 0;
+    if (exhaustion >= 20) recs.push("战争疲惫偏高，宜寻求有利停战");
+    const front = regionTileIds(world, struggle);
+    const atFront = context.ourArmy && front.has(context.ourArmy.tileId);
+    if (!atFront) recs.push("主力军未在前线，集结决战");
+    const weakBorder = (world.tiles || []).some(tile =>
+      front.has(tile.id) && tile.polity === polity && (tile.control ?? 100) < 60);
+    if (weakBorder) recs.push("边境控制下滑，增援巩固");
+    return recs.slice(0, 3);
+  }
+
+  function struggleSummary(world, polity = world.playerPolity, key) {
+    const struggle = key ? struggleFor(world, key) : struggleForPolity(world, polity);
+    if (!struggle) return null; // 没有局势 → 空（不报错）
+    const def = definition(struggle.key);
+    const role = involvement(world, polity, struggle);
+    const principals = Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+    const opponents = principals.filter(name => name !== polity);
+    const war = principalWar(world, struggle);
+    const ourArmy = strongestArmy(world, new Set([polity]));
+    const enemyThreat = strongestArmy(world, new Set(opponents));
+    return {
+      key: struggle.key,
+      label: struggle.label,
+      phase: struggle.phase,
+      phaseLabel: phaseLabel(struggle),
+      meters: { ...struggle.meters },
+      flipThreshold: def.flipThreshold,
+      involvement: role,
+      principals,
+      opponents,
+      war: war ? { name: war.name, score: war.score || 0, goalTile: tileLabel(world, war.primaryGoal?.tileId) } : null,
+      warExhaustion: world.countries[polity]?.warfare?.warExhaustion || 0,
+      ourArmy,
+      enemyThreat,
+      actions: availableActions(struggle, role),
+      endings: ENDINGS,
+      recommendations: recommendations(world, polity, struggle, { ourArmy }),
+    };
+  }
+
   window.HIFI_STRUGGLE_ENGINE = {
     STRUGGLE_DEFINITIONS,
     CYCLE_PHASES,
+    PHASE_ACTIONS,
+    ENDINGS,
     initializeStruggles,
     startStruggle,
     processStruggles,
@@ -195,5 +299,6 @@
     activeStruggles,
     addCatalyst,
     phaseLabel,
+    struggleSummary,
   };
 })();
