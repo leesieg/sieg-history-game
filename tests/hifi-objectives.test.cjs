@@ -18,6 +18,7 @@ for (const file of [
   "engine/diplomacy.js",
   "engine/warfare.js",
   "engine/history.js",
+  "engine/struggle.js",
   "engine/objectives.js",
   "engine/proposals.js",
 ]) {
@@ -51,6 +52,8 @@ economy.initializeEconomy(world);
 diplomacy.initializeDiplomacy(world);
 warfare.initializeWarfare(world); // 自动声明法兰西/英格兰百年战争
 history.initializeHistory(world);
+const struggle = context.window.HIFI_STRUGGLE_ENGINE;
+struggle.initializeStruggles(world); // 法兰西=百年战争当事国
 
 // --- nationalMission：法兰西处于百年战争，应走「收复领土」分支 ---
 const franceMission = objectives.nationalMission(world, "法兰西王国");
@@ -157,5 +160,15 @@ for (const item of franceProposals) {
     assert.ok(item.preview.risk && item.preview.risk.length > 0, "preview.risk 不能为空");
   }
 }
+
+// --- Task 5.1：局势当事国（法兰西）顾问草案围绕百年战争，至少 2 张相关且军务领先 ---
+const franceStruggleProposals = objectives.advisorProposals(world, "法兰西王国");
+assert.ok(franceStruggleProposals.filter(item => item.struggleRelated).length >= 2,
+  "法兰西开局应至少 2 张草案与百年战争相关");
+assert.equal(franceStruggleProposals[0].advisor, "military", "局势当事国军务草案应领先呈现");
+// 非当事国（威尼斯）不强行标注战争草案
+const veniceStruggleProposals = objectives.advisorProposals(world, "威尼斯共和国");
+assert.equal(veniceStruggleProposals.filter(item => item.struggleRelated).length, 0,
+  "非局势当事国不应出现局势相关草案标注");
 
 console.log("hifi objectives engine passed");

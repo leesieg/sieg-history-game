@@ -259,14 +259,16 @@
     return { advisor: "fiscal", proposal: { type: "goto", panel: advisorPanels.fiscal }, preview: null };
   }
 
-  function buildDiplomacyProposal(world, polity) {
+  function buildDiplomacyProposal(world, polity, preferred = null) {
     const proposals = window.HIFI_PROPOSALS_ENGINE;
     const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
     const tenseAttitudes = new Set(["wary", "rival", "hostile"]);
     if (diplomacy.freeEnvoys(world, polity) > 0) {
-      const target = Object.keys(world.countries)
+      const tense = Object.keys(world.countries)
         .filter(candidate => candidate !== polity)
-        .find(candidate => tenseAttitudes.has(diplomacy.diplomaticAttitude(world, polity, candidate)));
+        .filter(candidate => tenseAttitudes.has(diplomacy.diplomaticAttitude(world, polity, candidate)));
+      // 局势当事国：优先把使节投向局势相关方（英格兰 / 勃艮第 / 苏格兰等），否则退回原有「第一个紧张国」
+      const target = (preferred ? tense.find(candidate => preferred.has(candidate)) : null) || tense[0];
       if (target) {
         const proposal = { type: "send_envoy", params: { target } };
         const validation = proposals.validate(world, polity, proposal);
@@ -288,12 +290,26 @@
     return { advisor: "military", proposal: { type: "goto", panel: advisorPanels.military }, preview: null };
   }
 
+  // 局势当事国（principal）信息：拿到当前局势与可作为外交目标的相关方
+  function struggleContext(world, polity) {
+    const engine = window.HIFI_STRUGGLE_ENGINE;
+    const struggle = engine?.struggleForPolity?.(world, polity);
+    if (!struggle || engine.involvement(world, polity, struggle) !== "principal") return null;
+    return { struggle, parties: new Set(Object.keys(struggle.parties).filter(name => name !== polity)) };
+  }
+
   function advisorProposals(world, polity = world.playerPolity) {
-    return [
-      buildFiscalProposal(world, polity),
-      buildDiplomacyProposal(world, polity),
-      buildMilitaryProposal(world, polity),
-    ].slice(0, 3);
+    const context = struggleContext(world, polity);
+    const fiscal = buildFiscalProposal(world, polity);
+    const diplomacy = buildDiplomacyProposal(world, polity, context?.parties || null);
+    const military = buildMilitaryProposal(world, polity);
+    if (context) {
+      // 局势当事国：军务（集结/动员）与外交（关键邻国）服务当前战役，优先呈现且标注；财政置后但仍保留
+      military.struggleRelated = true;
+      diplomacy.struggleRelated = true;
+      return [military, diplomacy, fiscal].slice(0, 3);
+    }
+    return [fiscal, diplomacy, military].slice(0, 3);
   }
 
   window.HIFI_OBJECTIVES_ENGINE = {
