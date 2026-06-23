@@ -18,6 +18,7 @@
   window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   window.HIFI_HISTORY_ENGINE.initializeHistory(world);
+  window.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
   window.HIFI_TRADE_ENGINE.initializeTrade(world);
   const store = window.HIFI_STORE.createStore(world);
   const dialogs = window.HIFI_DRAWERS.bindCountryDialogs(store);

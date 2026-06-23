@@ -460,6 +460,7 @@
   function processHistory(world) {
     applyPressureEffects(world);
     processSituations(world);
+    if (window.HIFI_STRUGGLE_ENGINE) window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
     spreadTechnology(world);
     processMilestones(world);
     applyMissions(world);
