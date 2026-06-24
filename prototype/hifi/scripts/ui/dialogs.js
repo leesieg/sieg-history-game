@@ -132,9 +132,24 @@
   }
 
   function bindNarrativeDialogs(store) {
+    function closeModal(id) {
+      const layer = document.getElementById(id);
+      if (!layer) return;
+      layer.classList.remove("open");
+      layer.setAttribute("aria-hidden", "true");
+    }
+
+    function closeAllModals(except) {
+      document.querySelectorAll(".modal-layer").forEach(layer => {
+        if (layer.id !== except) closeModal(layer.id);
+      });
+    }
+
     function open(id) {
-      document.getElementById(id).classList.add("open");
-      document.getElementById(id).setAttribute("aria-hidden", "false");
+      closeAllModals(id);
+      const layer = document.getElementById(id);
+      layer.classList.add("open");
+      layer.setAttribute("aria-hidden", "false");
     }
     const advisorNames = { fiscal: "财政官", diplomacy: "外交官", military: "军务官", internal: "内政官" };
     const advisorPanels = { fiscal: "经济", diplomacy: "外交", military: "军事", internal: "发展" };
@@ -324,7 +339,7 @@
           4
         );
         store.update(() => {});
-        document.getElementById("councilModal").classList.remove("open");
+        closeModal("councilModal");
         window.hifiGame?.showToast?.(advanced > 0
           ? `垂帘听政推进了 ${advanced} 季${advanced < 4 ? "（出现新裁断，提前还政）" : ""}`
           : "本季暂无可自动推进的空间");
@@ -337,7 +352,7 @@
           const label = window.HIFI_PROPOSALS_ENGINE.actionCatalog[item.proposal.type]?.label || item.proposal.type;
           try {
             store.update(current => window.HIFI_PROPOSALS_ENGINE.execute(current, current.playerPolity, item.proposal));
-            document.getElementById("councilModal").classList.remove("open");
+            closeModal("councilModal");
             window.hifiGame?.showToast?.(`已执行：${label}`);
           } catch (error) {
             window.hifiGame?.showToast?.(error.message);
@@ -349,13 +364,13 @@
           const item = proposals[Number(button.dataset.proposalGoto)];
           if (!item) return;
           const panel = item.proposal.type === "goto" ? item.proposal.panel : advisorPanelFor(item.advisor);
-          document.getElementById("councilModal").classList.remove("open");
+          closeModal("councilModal");
           window.dispatchEvent(new CustomEvent("hifi:open-system", { detail: { system: panel } }));
         });
       });
       document.querySelectorAll("[data-estate-panel]").forEach(button => {
         button.addEventListener("click", () => {
-          document.getElementById("councilModal").classList.remove("open");
+          closeModal("councilModal");
           window.dispatchEvent(new CustomEvent("hifi:open-system", { detail: { system: button.dataset.estatePanel } }));
         });
       });
@@ -376,12 +391,12 @@
       body.querySelectorAll("[data-history-choice]").forEach(button => {
         button.addEventListener("click", () => {
           store.update(world => window.HIFI_HISTORY_ENGINE.resolvePlayerEvent(world, eventId, button.dataset.historyChoice));
-          document.getElementById("historyEventModal").classList.remove("open");
+          closeModal("historyEventModal");
         });
       });
       open("historyEventModal");
     }
-    // 局势终局结算弹窗（Task 6.1）：到样板局第 12 季触发，复用季度总结弹窗外壳，
+    // 局势终局结算弹窗：复用季度总结弹窗外壳，
     // 展示终局名称 + 三段使命快照，告诉玩家这局百年战争打成了什么结果。结算后沙盒可继续。
     function renderStruggleEnding() {
       const world = store.getState();
@@ -405,6 +420,25 @@
       return true;
     }
 
+    function renderStruggleReview() {
+      const world = store.getState();
+      const review = world.pendingStruggleReview;
+      if (!review) return false;
+      const verdictText = {
+        "优势": "王国在这十年里守住了主动权，可以把资源继续投向收复争议领地。",
+        "劣势": "战争成本已经压过成果，必须重新整顿军队与财政。",
+        "胶着": "双方都没有打出决定性结果，下一轮局势会更依赖准备和外交。",
+      }[review.verdict] || "局势仍在发展。";
+      document.getElementById("seasonSummaryTitle").textContent = `${review.year || "本轮"}年 · 十年战局评估`;
+      document.getElementById("seasonSummarySubtitle").textContent = `${review.label} · ${review.verdict}`;
+      document.getElementById("seasonSummaryBody").innerHTML =
+        `<div class="season-section"><h4>⚔ 战局判定：${review.verdict}</h4><p>${verdictText}</p></div>
+        <div class="season-section"><h4>◈ 使命进度</h4><p>已完成 ${review.done}/${review.total || 3} 段使命</p><p>战争疲惫：${review.exhaustion}</p></div>`;
+      open("seasonSummaryModal");
+      store.update(next => { next.pendingStruggleReview = null; return next; });
+      return true;
+    }
+
     // 统一局势界面（反馈 #1/#2）：顶部局势名+时期横幅；左右两阵营国家；中间依次为
     // 诱因（阶段计量）→ 下一阶段可能结局 → 国家使命 → 全部决议（不可用置灰）。决议按钮由 main.js 绑定执行。
     function renderStrugglePanel(key) {
@@ -416,7 +450,7 @@
 
       document.getElementById("struggleTitle").textContent = summary.label;
       document.getElementById("struggleEra").textContent =
-        `${summary.startYear}–${summary.endYear} · ${summary.year ?? summary.startYear}年 · ${summary.phaseLabel}阶段` +
+        `${summary.startYear}–${summary.endYear} · ${summary.year ?? summary.startYear}年 · ${summary.displayPhaseLabel || summary.phaseLabel}阶段` +
         (summary.resolved ? ` · 已定局（${engine.ENDINGS.find(e => e.key === summary.ending)?.label || summary.ending}）` : "");
       document.getElementById("struggleModal").dataset.key = key;
 
@@ -444,6 +478,10 @@
       const endingCards = summary.endings.map(ending =>
         `<div class="struggle-ending"><b>${ending.label}</b><small>${ending.hint}</small></div>`).join("");
 
+      const recommendationRows = summary.recommendations?.length
+        ? summary.recommendations.map(text => `<div class="struggle-decision dim">${text}</div>`).join("")
+        : '<div class="struggle-decision dim">暂无推荐行动</div>';
+
       const stages = window.HIFI_OBJECTIVES_ENGINE?.missionStages(world, polity) || [];
       const stageRows = stages.length
         ? stages.map(stage => {
@@ -467,6 +505,7 @@
           ${campCol(leftCamp, leftSide)}
           <div class="struggle-center">
             <div class="struggle-section-title">局势诱因（阶段计量 · 满即翻阶段）</div>${meterRows}
+            <div class="struggle-section-title">推荐下一步</div><div class="struggle-decisions">${recommendationRows}</div>
             <div class="struggle-section-title">下一阶段可能的结局</div><div class="struggle-endings">${endingCards}</div>
             <div class="struggle-section-title">国家使命</div>${stageRows}
             <div class="struggle-section-title">可执行决议（不可用已置灰）</div><div class="struggle-decisions">${decisionBtns}</div>
@@ -477,7 +516,7 @@
       return true;
     }
 
-    return { renderCouncil, renderEvent, renderSeasonSummary, renderStruggleEnding, renderStrugglePanel, captureSeasonSnapshot: world => ({
+    return { renderCouncil, renderEvent, renderSeasonSummary, renderStruggleEnding, renderStruggleReview, renderStrugglePanel, captureSeasonSnapshot: world => ({
       turn: world.turn,
       population: playerPopulation(world, world.playerPolity),
       wars: playerWarNames(world, world.playerPolity),

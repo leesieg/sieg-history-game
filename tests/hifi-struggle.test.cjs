@@ -43,14 +43,15 @@ const lonely = worldEngine.createWorld(
 struggle.initializeStruggles(lonely);
 assert.equal(struggle.struggleFor(lonely, "hundred_years_war"), null, "缺当事国时不开局");
 
-// 时间默认诱因：standoff 默认流向 open_war，处理一季后 open_war 计量上升
+// 无真实战争时不再靠时间默认诱因流向 open_war，改为累计再开战压力
 const before = hyw.meters.open_war;
 struggle.processStruggles(world);
-assert.ok(hyw.meters.open_war > before, "时间漂移应增加默认下一阶段计量");
+assert.equal(hyw.meters.open_war, before, "无真实战争时不应自动增加鏖战计量");
+assert.ok(hyw.warPressure > 0, "对峙无战争时应累计再开战压力");
 
-// 持续推进会翻出对峙阶段
+// 无真实战争、且未加载战争引擎时，持续推进不会空转翻出对峙阶段
 for (let i = 0; i < 20; i++) struggle.processStruggles(world);
-assert.notEqual(hyw.phase, "standoff", "持续推进后应翻出对峙阶段");
+assert.equal(hyw.phase, "standoff", "无真实战争时不应靠时钟空转翻出对峙阶段");
 
 // 显式诱因能立刻推动指定阶段翻转
 const fresh = worldEngine.createWorld(tiles, {}, "法兰西王国");
@@ -74,7 +75,7 @@ const cs = struggle.struggleFor(cw, "hundred_years_war");
 cw.diplomacy = { wars: [{ id: "w1", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 25, primaryGoal: {} }] };
 const owBefore = cs.meters.open_war;
 struggle.processStruggles(cw);
-assert.ok(cs.meters.open_war - owBefore > 1, "war.score 上升应额外注入鏖战诱因（超过时间漂移）");
+assert.ok(cs.meters.open_war - owBefore > 1, "war.score 上升应额外注入鏖战诱因");
 
 // 议和：上季在战、这季战争消失 → 疲惫议和诱因（足以翻到 truce）
 cw.diplomacy.wars = [];
@@ -106,6 +107,8 @@ const summary = struggle.struggleSummary(sumWorld, "法兰西王国");
 assert.ok(summary, "法兰西应能拿到局势摘要");
 assert.equal(summary.label, "百年战争");
 assert.equal(summary.phase, "open_war");
+assert.equal(summary.displayPhaseLabel, "鏖战", "有真实战争时 open_war 应显示为鏖战");
+assert.equal(summary.warActive, true, "摘要应标识真实战争存在");
 assert.equal(summary.involvement, "principal");
 assert.ok(summary.principals.includes("法兰西王国") && summary.opponents.includes("英格兰王国"), "应区分我方当事国与对手");
 assert.ok(summary.war && summary.war.score === 30, "应带出战争分数");
@@ -133,8 +136,10 @@ assert.equal(struggle.struggleSummary(noStruggleWorld, "卡斯蒂利亚王国"),
 // 没有战争时 war 为 null，但摘要仍可生成（主力军不在前线 → 建议集结）
 const peaceWorld = worldEngine.createWorld(tiles, {}, "法兰西王国");
 struggle.initializeStruggles(peaceWorld);
+struggle.struggleFor(peaceWorld, "hundred_years_war").phase = "open_war";
 const ps = struggle.struggleSummary(peaceWorld, "法兰西王国");
 assert.ok(ps && ps.war === null, "没有战争时 war 为 null 且不报错");
+assert.equal(ps.displayPhaseLabel, "备战", "open_war 无真实战争时应显示备战");
 assert.ok(ps.recommendations.some(r => r.includes("集结")), "无主力军在前线应建议集结");
 
 // 统一界面用字段：两大阵营 / 全部决议（含置灰原因）/ 时期
@@ -159,8 +164,11 @@ const gs = struggle.struggleFor(gateWorld, "hundred_years_war");
 
 // 对峙阶段：当事国可提王位主张，但不能决战集结（鏖战专属）
 gs.phase = "standoff";
-assert.doesNotThrow(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "press_claim"), "对峙阶段当事国应可提王位主张");
+assert.doesNotThrow(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "press_claim"), "对峙阶段且无真实战争时当事国应可提王位主张");
 assert.throws(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "muster_battle"), /鏖战/, "非鏖战阶段决战集结应中文报错");
+
+gateWorld.diplomacy = { wars: [{ id: "hyw", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 0, primaryGoal: {} }], truces: [] };
+assert.throws(() => struggle.phaseActionGate(gateWorld, "法兰西王国", "press_claim"), /已经交战/, "已存在真实战争时提王位主张应置灰");
 
 // 鏖战阶段：可决战集结，不能提王位主张
 gs.phase = "open_war";
@@ -245,6 +253,15 @@ stubMissions(notDone);
 notYetWorld.turn = TURN_1453 - 4; // 约 1452 年
 struggle.settleStruggles(notYetWorld);
 assert.equal(struggle.struggleFor(notYetWorld, "hundred_years_war").resolved, false, "1453 之前未达决定性终局不结算");
+
+// 40 季战局评估：不定局，只生成 pendingStruggleReview
+const reviewWorld = freshStruggleWorld();
+stubMissions([{ name: "稳住核心", id: "secure-core", status: "已完成" }, { name: "收复争议", id: "reclaim-disputed", status: "进行中" }]);
+reviewWorld.turn = struggle.struggleFor(reviewWorld, "hundred_years_war").startedTurn + 40;
+struggle.reviewStruggles(reviewWorld);
+assert.ok(reviewWorld.pendingStruggleReview, "第 40 季应生成十年战局评估");
+assert.equal(struggle.struggleFor(reviewWorld, "hundred_years_war").resolved, false, "十年评估不应定局");
+assert.equal(reviewWorld.pendingStruggleReview.done, 1, "评估应记录使命完成数");
 
 // 结算后沙盒可继续：再推进不崩、保持已结束
 assert.doesNotThrow(() => { struggle.processStruggles(staleWorld); struggle.settleStruggles(staleWorld); }, "结算后继续推进不应报错");

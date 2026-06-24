@@ -198,6 +198,12 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   place-content: center;
   column-gap: 5px;
   border-left: 1px solid rgba(214, 174, 89, .24);
+  cursor: pointer;
+}
+.resource-token:hover,
+.resource-token:focus-visible {
+  outline: none;
+  background: rgba(214, 174, 89, .1);
 }
 .resource-token::after {
   content: "";
@@ -569,6 +575,26 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 .codex-pop ul { margin: 3px 0 0; padding-left: 16px; }
 .codex-pop li { margin: 1px 0; }
 .drawer-scroll-list { max-height: 150px; overflow: auto; }
+.diplo-group {
+  margin: 0 0 4px;
+  border-top: 1px solid rgba(214,174,89,.18);
+}
+.diplo-group summary {
+  padding: 5px 0 3px;
+  color: var(--gold-2);
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: .04em;
+  list-style: none;
+}
+.diplo-group summary::-webkit-details-marker { display: none; }
+.diplo-group summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 13px;
+  color: rgba(214,174,89,.72);
+}
+.diplo-group[open] summary::before { content: "▾"; }
 /* Task C7: 外交对象搜索框。 */
 .diplo-search {
   width: 100%;
@@ -723,6 +749,13 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   opacity: .82;
 }
 .issue-panel.issue-empty #issueList { display: none; }
+.issue-group-title {
+  margin: 8px 0 2px;
+  color: var(--gold-2);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
 .issue {
   width: 100%;
   min-height: 54px;

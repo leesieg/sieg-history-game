@@ -99,6 +99,7 @@ world.playerEvents.push({
   title: "阶层最后通牒",
   choices: [{ id: "accept", label: "接受", effect: { legitimacy: -5 } }],
 });
+world.situations = [];
 const issues = history.issues(world);
 assert.ok(issues.some(issue => issue.blocking));
 assert.equal(history.blockingIssues(world).length, 1);
@@ -147,10 +148,14 @@ assert.ok(dialogSource.includes("bindNarrativeDialogs"));
 context.window.HIFI_DIPLOMACY_ENGINE = { capacityUsed: () => 0, diplomaticAttitude: () => "wary" };
 world.playerPolity = "法兰西王国";
 world.diplomacy = { wars: [{ attackers: ["英格兰王国"], defenders: ["法兰西王国"], name: "百年战争" }] };
+context.window.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
 const queue = history.issues(world);
 assert.ok(queue.some(item => item.kind === "war"), "进行中战争必须进入待办队列");
 assert.ok(queue.some(item => item.kind === "war" && item.label.includes("英格兰王国")), "战争待办应指明交战对手");
 assert.ok(queue.some(item => item.kind === "diplomacy"), "紧张邻国必须形成外交待办");
+assert.ok(queue.some(item => item.kind === "struggle" && item.tier === "mainline"), "局势必须进入主线待办");
+assert.ok(queue.some(item => item.kind === "war" && item.tier === "mainline"), "战争必须进入主线待办");
+assert.ok(queue.some(item => item.kind === "diplomacy" && item.tier === "opportunity"), "外交机会必须进入机会待办");
 
 // --- 2.2：季度账本 quarterLedger ---
 const ledgerCountry = world.countries["法兰西王国"];
@@ -177,6 +182,35 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   assert(ledger.food.net === 100 - 30 - 12, "粮食净额 = 产出-维护-事件");
   assert(ledger.food.delta === ledger.food.net, "delta 应等于 net（兼容旧渲染）");
   console.log("A5 季报净额 OK");
+}
+
+// --- 局势战争压力：真实鏖战按军团规模消耗，并累加战争疲惫 ---
+{
+  const sw = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 },
+    { id: 1, isSea: false, polity: "英格兰王国", population: 10, buildings: [], city: "伦敦", terrain: "plains", control: 70 },
+  ]);
+  history.initializeHistory(sw);
+  context.window.HIFI_STRUGGLE_ENGINE.initializeStruggles(sw);
+  const hyw = context.window.HIFI_STRUGGLE_ENGINE.struggleFor(sw, "hundred_years_war");
+  hyw.phase = "open_war";
+  hyw.phaseSinceTurn = sw.turn;
+  sw.diplomacy = { wars: [{ id: "hyw", name: "百年战争", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 0, primaryGoal: { tileId: 0 } }], truces: [] };
+  sw.warfare = { armies: {
+    fr: { id: "fr", owner: "法兰西王国", tileId: 0, units: [{ serviceType: "levy", soldiers: 3000 }], organization: 100 },
+    en: { id: "en", owner: "英格兰王国", tileId: 1, units: [{ serviceType: "levy", soldiers: 3000 }], organization: 100 },
+  } };
+  sw.countries["法兰西王国"].food = 1000;
+  sw.countries["法兰西王国"].military = 1000;
+  sw.countries["法兰西王国"].lastReport = {};
+  history.processHistory(sw);
+  const report = sw.countries["法兰西王国"].lastReport;
+  assert.ok(report.war && report.war.food > 0, "真实鏖战应记录粮食战争消耗");
+  assert.ok(report.war.military > 0, "真实鏖战应记录军需战争消耗");
+  assert.ok(report.war.exhaustion > 0, "真实鏖战应累加战争疲惫");
+  const ledger = history.quarterLedger(sw, "法兰西王国");
+  assert.ok(ledger.food.war > 0 && ledger.military.war > 0, "季报应展示战争成本");
+  console.log("局势战争压力 OK");
 }
 
 // --- Phase C：历史因果链扩展（数据驱动 + 机制后果 + 纪元/流触发）---
@@ -304,8 +338,13 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   assert.ok(!fr.lastReport || fr.lastReport.war === undefined, "对峙阶段不产生战争压力段");
   assert.equal(fr.food, 500, "对峙阶段不扣粮");
 
-  // 鏖战阶段：每季消耗军需与粮食，资源停止无脑增长，并写进季度账本
+  // 鏖战阶段 + 真实战争：每季消耗军需与粮食，资源停止无脑增长，并写进季度账本
   hyw.phase = "open_war";
+  sw.diplomacy = { wars: [{ id: "hyw", name: "百年战争", attackers: ["英格兰王国"], defenders: ["法兰西王国"], score: 0, primaryGoal: { tileId: 0 } }], truces: [] };
+  sw.warfare = { armies: {
+    fr: { id: "fr", owner: "法兰西王国", tileId: 0, units: [{ serviceType: "levy", soldiers: 3000 }], organization: 100 },
+    en: { id: "en", owner: "英格兰王国", tileId: 1, units: [{ serviceType: "levy", soldiers: 3000 }], organization: 100 },
+  } };
   fr.food = 500; fr.military = 500;
   en.food = 500; en.military = 500;
   for (let i = 0; i < 4; i++) {

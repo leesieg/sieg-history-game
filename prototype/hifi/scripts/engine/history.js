@@ -348,15 +348,34 @@
 
   function issues(world) {
     const result = [];
-    if (world.pendingElection) result.push({ id: "election", label: "选立新领导人", detail: world.pendingElection.polity, blocking: true, kind: "election" });
-    for (const event of world.playerEvents) result.push({ id: event.id, label: event.title, detail: "需要裁断", blocking: true, kind: "event" });
-    if (world.pendingTransition) result.push({ id: "transition", label: world.pendingTransition.title, detail: "时代转折", blocking: false, kind: "transition" });
+    if (world.pendingElection) result.push({ id: "election", label: "选立新领导人", detail: world.pendingElection.polity, blocking: true, kind: "election", tier: "blocking" });
+    for (const event of world.playerEvents) result.push({ id: event.id, label: event.title, detail: "需要裁断", blocking: true, kind: "event", tier: "blocking" });
+    if (world.pendingTransition) result.push({ id: "transition", label: world.pendingTransition.title, detail: "时代转折", blocking: false, kind: "transition", tier: "opportunity" });
     const council = councilSummary(world);
     council.warnings
       .filter(warning => !warning.startsWith("国家目前没有"))
-      .forEach((warning, index) => result.push({ id: `warning-${index}`, label: warning, detail: "顾问预警", blocking: false, kind: "council" }));
-    world.situations.forEach(item => result.push({ id: `situation-${item.key}`, label: item.label, detail: item.phase, blocking: false, kind: "council" }));
+      .forEach((warning, index) => result.push({ id: `warning-${index}`, label: warning, detail: "顾问预警", blocking: false, kind: "council", tier: "opportunity" }));
+    world.situations.forEach(item => {
+      const severe = item.phase === "爆发" && item.eventGenerated;
+      result.push({ id: `situation-${item.key}`, label: item.label, detail: item.phase, blocking: severe, kind: "council", tier: severe ? "blocking" : "opportunity" });
+    });
     const player = world.playerPolity;
+    if (window.HIFI_STRUGGLE_ENGINE) {
+      const struggle = window.HIFI_STRUGGLE_ENGINE.struggleForPolity(world, player);
+      const summary = struggle && window.HIFI_STRUGGLE_ENGINE.struggleSummary(world, player, struggle.key);
+      if (summary) {
+        result.push({
+          id: `struggle-${summary.key}`,
+          label: summary.label,
+          detail: `${summary.displayPhaseLabel || summary.phaseLabel} · ${summary.recommendations?.[0] || "查看局势"}`,
+          blocking: false,
+          kind: "struggle",
+          tier: "mainline",
+          key: summary.key,
+          target: { panel: "struggle", key: summary.key },
+        });
+      }
+    }
     // 战争待办：玩家参战的每场战争（修 22 号 #3：战争没进队列）
     (world.diplomacy?.wars || []).forEach((war, index) => {
       const inAttack = war.attackers?.includes(player);
@@ -364,20 +383,44 @@
       if (!inAttack && !inDefend) return;
       const foes = (inAttack ? war.defenders : war.attackers) || [];
       const foe = foes[0] || "敌国";
-      result.push({ id: `war-${index}`, label: `与${foe}交战中`, detail: war.name ? `${war.name} · 可推进战争目标或议和` : "可推进战争目标或议和", blocking: false, kind: "war" });
+      result.push({
+        id: `war-${index}`,
+        label: `与${foe}交战中`,
+        detail: war.name ? `${war.name} · 可推进战争目标或议和` : "可推进战争目标或议和",
+        blocking: false,
+        kind: "war",
+        tier: "mainline",
+        target: { panel: "struggle", key: "hundred_years_war" },
+      });
     });
     // 外交机会：与紧张邻国的关系（可派使节改善或威慑）
     if (window.HIFI_DIPLOMACY_ENGINE) {
       const tense = Object.keys(world.countries).find(target =>
         target !== player
         && ["wary", "rival", "hostile"].includes(window.HIFI_DIPLOMACY_ENGINE.diplomaticAttitude(world, player, target)));
-      if (tense) result.push({ id: "diplomacy-tense", label: `与${tense}关系紧张`, detail: "可派使节改善或威慑", blocking: false, kind: "diplomacy" });
+      if (tense) result.push({
+        id: "diplomacy-tense",
+        label: `与${tense}关系紧张`,
+        detail: "可派使节改善或威慑",
+        blocking: false,
+        kind: "diplomacy",
+        tier: "opportunity",
+        target: { drawer: "外交", tab: "外交:邦交", polity: tense },
+      });
     }
     // 经济机会：可建设增收的己方地块
     if (window.HIFI_WORLD_ENGINE) {
       const buildable = window.HIFI_WORLD_ENGINE.controlledTiles(world, player)
         .find(tile => tile && !tile.isSea && Array.isArray(tile.buildings) && !tile.buildings.includes("market") && tile.population >= 2);
-      if (buildable) result.push({ id: `economy-${buildable.id}`, label: `${buildable.city || buildable.name || buildable.id}可建设增收`, detail: "可建市场提升产出", blocking: false, kind: "economy" });
+      if (buildable) result.push({
+        id: `economy-${buildable.id}`,
+        label: `${buildable.city || buildable.name || buildable.id}可建设增收`,
+        detail: "可建市场提升产出",
+        blocking: false,
+        kind: "economy",
+        tier: "opportunity",
+        target: { drawer: "经济", tab: "经济:建设", tileId: buildable.id, focus: "[data-building]" },
+      });
     }
     return result;
   }
@@ -432,21 +475,46 @@
     const engine = window.HIFI_STRUGGLE_ENGINE;
     if (!engine) return;
     for (const struggle of engine.activeStruggles(world)) {
-      if (struggle.phase !== "open_war") continue;
+      const summaryByPolity = {};
       for (const [polity, party] of Object.entries(struggle.parties)) {
         if (party.role !== "principal") continue;
         const country = world.countries[polity];
         if (!country) continue;
-        const foodCost = Math.min(country.food ?? 0, 8);
-        const militaryCost = Math.min(country.military ?? 0, 6);
+        const summary = summaryByPolity[polity] ||= engine.struggleSummary(world, polity, struggle.key);
+        const armies = Object.values(world.warfare?.armies || {}).filter(army => army.owner === polity);
+        const soldiers = armies.reduce((sum, army) => sum + (army.units || []).reduce((inner, unit) => inner + (unit.soldiers || 0), 0), 0);
+        const weightedMilitary = armies.reduce((sum, army) => sum + (army.units || []).reduce((inner, unit) => {
+          const weight = { guard: 0.25, levy: 0.35, mercenary: 0.55, professional: 0.75, standing: 0.9 }[unit.serviceType] ?? 0.4;
+          return inner + (unit.soldiers || 0) / 1000 * weight;
+        }, 0), 0);
+        let foodCost = 0, militaryCost = 0, moneyCost = 0, exhaustionGain = 0;
+        if (struggle.phase === "open_war" && summary?.warActive) {
+          foodCost = Math.ceil(soldiers / 1000 * 1.5);
+          militaryCost = Math.ceil(weightedMilitary);
+          exhaustionGain = 1 + Math.floor(Math.max(0, world.turn - struggle.phaseSinceTurn) / 4);
+        } else if (struggle.phase === "truce") {
+          moneyCost = Math.ceil((country.warfare?.warExhaustion || 0) / 5);
+        } else if (struggle.phase === "standoff" && (struggle.warPressure || 0) >= 6) {
+          militaryCost = Math.ceil(weightedMilitary * 0.5);
+        }
+        if (!foodCost && !militaryCost && !moneyCost && !exhaustionGain) continue;
+        // 夹到 [0, 库存]：库存为负时不倒扣（Math.min(负, 正)=负 会变成加资源），破产国按 0 扣
+        foodCost = Math.max(0, Math.min(country.food ?? 0, foodCost));
+        militaryCost = Math.max(0, Math.min(country.military ?? 0, militaryCost));
+        moneyCost = Math.max(0, Math.min(country.money ?? 0, moneyCost));
         country.food = (country.food ?? 0) - foodCost;
         country.military = (country.military ?? 0) - militaryCost;
+        country.money = (country.money ?? 0) - moneyCost;
+        country.warfare = country.warfare || { warExhaustion: 0 };
+        country.warfare.warExhaustion = Math.min(100, (country.warfare.warExhaustion || 0) + exhaustionGain);
         country.lastReport = country.lastReport || {};
         country.lastReport.war = {
           label: struggle.label,
-          phase: engine.phaseLabel(struggle),
+          phase: summary?.displayPhaseLabel || engine.phaseLabel(struggle),
           food: foodCost,
           military: militaryCost,
+          money: moneyCost,
+          exhaustion: exhaustionGain,
         };
       }
     }
@@ -468,7 +536,7 @@
     const militaryDelta = Math.round((report.military || 0) * central);
     const maint = report.maintenance || { food: 0, money: 0, military: 0 };
     const event = report.event || { food: 0, money: 0 };
-    const war = report.war || { food: 0, military: 0 };
+    const war = report.war || { food: 0, money: 0, military: 0 };
     const seg = (gross, m, e, w, sources) => {
       const net = gross - m - e - w;
       return { gross, maintenance: m, event: e, war: w, net, delta: net, sources };
@@ -479,7 +547,8 @@
       tiles: report.tiles || 0,
       food: seg(report.food || 0, maint.food || 0, event.food || 0, war.food || 0,
         [...(report.food ? [`地块产出 +${report.food}`] : []), ...warSrc(war.food || 0)]),
-      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, 0, moneySources),
+      money: seg(moneyProd + moneyTrade + moneyColonial, maint.money || 0, event.money || 0, war.money || 0,
+        [...moneySources, ...warSrc(war.money || 0)]),
       military: seg(militaryDelta, maint.military || 0, 0, war.military || 0,
         [...(militaryDelta ? [`地块产出 +${militaryDelta}`] : []), ...warSrc(war.military || 0)]),
       war: report.war || null,
@@ -492,6 +561,7 @@
     processSituations(world);
     if (window.HIFI_STRUGGLE_ENGINE) {
       window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
+      window.HIFI_STRUGGLE_ENGINE.reviewStruggles(world);  // 每 40 季给样板局一次战局评估
       window.HIFI_STRUGGLE_ENGINE.settleStruggles(world);  // 样板局第 12 季终局结算（不阻断沙盒继续）
     }
     applyStruggleWarPressure(world); // 鏖战阶段战争压力回灌产出流（在 settleCountry 写完 lastReport 之后追加 war 段）

@@ -12,10 +12,32 @@
   // 阶段限定操作（设计 §7）：操作 → 可用阶段（null=任意阶段）+ 参与度。摘要据此列「当前阶段可用操作」，
   // 作战室（Task 4.2）据此 gate。这里只声明可用性，不绑定具体引擎调用。
   const PHASE_ACTIONS = {
-    press_claim: { label: "提王位主张", phase: "standoff", involvement: "principal" },
-    muster_battle: { label: "决战集结", phase: "open_war", involvement: "principal" },
-    favorable_truce: { label: "有利停战谈判", phase: "truce", involvement: "principal" },
-    pick_side: { label: "选边支持", phase: null, involvement: "interloper" },
+    press_claim: {
+      label: "提王位主张", phase: "standoff", involvement: "principal",
+      precheck: (world, polity, struggle) => {
+        if (principalWar(world, struggle)) {
+          return { ok: false, reason: `与${opponentOf(struggle, polity)}已经交战，无需再提主张` };
+        }
+        if (underPrincipalTruce(world, struggle)) {
+          return { ok: false, reason: "停战协议尚未到期，不能重新提出战争主张" };
+        }
+        return { ok: true };
+      },
+    },
+    muster_battle: {
+      label: "决战集结", phase: "open_war", involvement: "principal",
+      precheck: (world, polity, struggle) => {
+        if (!principalWar(world, struggle)) return { ok: false, reason: "当前没有真实战争，无法决战集结" };
+        return hasMusterCity(world, polity) ? { ok: true } : { ok: false, reason: "没有可供集结的城市" };
+      },
+    },
+    favorable_truce: {
+      label: "有利停战谈判", phase: "truce", involvement: "principal",
+      precheck: (world, polity, struggle) => principalWar(world, struggle)
+        ? { ok: true }
+        : { ok: false, reason: "目前没有与对手的战争可议和" },
+    },
+    pick_side: { label: "选边支持", phase: null, involvement: "interloper", precheck: () => ({ ok: true }) },
     ending_decision: { label: "终局决议", phase: "resolution", involvement: "principal" },
   };
 
@@ -67,6 +89,10 @@
     return definition(struggle.key)?.phases?.[phase]?.label || phase;
   }
 
+  function clamp(value, min = 0, max = 100) {
+    return Math.max(min, Math.min(max, value));
+  }
+
   // 自带的纪闻写入：不依赖 history 引擎也能跑（测试只加载 world+struggle 时仍可用）。
   function logStruggleEvent(world, text) {
     world.worldEvents = world.worldEvents || [];
@@ -100,6 +126,8 @@
       phaseSinceTurn: world.turn,
       resolved: false,
       ending: null,
+      warPressure: 0,
+      warningTurn: null,
       // 诱因扫描的上季快照：战争分数 / 是否在战 / 各方统治者，用于折算战况增量
       signal: { score: 0, warActive: false, leaders: {} },
     };
@@ -162,12 +190,41 @@
   }
 
   // 当事国之间的主战争（百年战争=法兰西 vs 英格兰），从现有 world.diplomacy.wars 里查。
+  function principalsOf(struggle) {
+    return Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+  }
+
+  function opponentOf(struggle, polity) {
+    return principalsOf(struggle).find(name => name !== polity) || "对手";
+  }
+
   function principalWar(world, struggle) {
-    const principals = Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+    const principals = principalsOf(struggle);
     if (principals.length < 2) return null;
     return (world.diplomacy?.wars || []).find(war =>
       principals.every(name => war.attackers.includes(name) || war.defenders.includes(name))
     ) || null;
+  }
+
+  function hasMusterCity(world, polity) {
+    return (world.tiles || []).some(tile => !tile.isSea && tile.polity === polity && tile.city);
+  }
+
+  function underPrincipalTruce(world, struggle) {
+    const [a, b] = principalsOf(struggle);
+    if (!a || !b || !window.HIFI_WARFARE_ENGINE?.underTruce) return false;
+    return window.HIFI_WARFARE_ENGINE.underTruce(world, a, b);
+  }
+
+  function missionDone(world, polity, id) {
+    const stages = window.HIFI_OBJECTIVES_ENGINE?.missionStages?.(world, polity) || [];
+    const stage = stages.find(item => item.id === id);
+    return !!stage?.done || stage?.status === "已完成";
+  }
+
+  function borderTension(world, struggle) {
+    const front = regionTileIds(world, struggle);
+    return (world.tiles || []).filter(tile => front.has(tile.id) && (tile.control ?? 100) < 70).length;
   }
 
   // 诱因：把已发生的战况折算成阶段计量（读现有引擎产出，不新造事件）。
@@ -182,7 +239,12 @@
       signal.warActive = true;
     } else {
       // 上季还在打、这季战争消失 = 议和达成（concludePeace 移除了 war）→ 疲惫议和诱因
-      if (signal.warActive) addCatalyst(struggle, "truce", definition(struggle.key).flipThreshold);
+      // 记一笔「曾以停战收场」：终局判定据此判谈判和平，避免被默认诱因把阶段推回对峙后误判僵局。
+      if (signal.warActive) {
+        addCatalyst(struggle, "truce", definition(struggle.key).flipThreshold);
+        struggle.peaceReached = true;
+        struggle.lastPeaceTurn = world.turn;
+      }
       signal.warActive = false;
       signal.score = 0;
     }
@@ -201,12 +263,43 @@
     for (const struggle of activeStruggles(world)) {
       if (struggle.phase === "resolution") continue;
       applyCatalysts(world, struggle); // 战况诱因
-      const next = definition(struggle.key).phases[struggle.phase]?.next;
-      if (next && CYCLE_PHASES.includes(next)) {
-        addCatalyst(struggle, next, 1); // 时间默认诱因：每季向默认下一阶段 +1
-      }
+      const war = principalWar(world, struggle);
+      if (war) addCatalyst(struggle, "open_war", 1);
+      else if (struggle.phase === "open_war") addCatalyst(struggle, "truce", 2);
+      else if (struggle.phase === "truce") addCatalyst(struggle, "standoff", 1);
+      updateWarPressure(world, struggle);
       flipIfReady(world, struggle);
     }
+  }
+
+  function updateWarPressure(world, struggle) {
+    if (struggle.phase !== "standoff" || principalWar(world, struggle)) return;
+    struggle.warPressure ||= 0;
+    if (!underPrincipalTruce(world, struggle)) struggle.warPressure += 1;
+    if (!missionDone(world, "法兰西王国", "reclaim-disputed")) struggle.warPressure += 1;
+    if (borderTension(world, struggle) > 0) struggle.warPressure += 1;
+
+    if (struggle.warPressure >= 6 && !struggle.warningTurn) {
+      struggle.warningTurn = world.turn;
+      world.pendingStruggleWarning = { key: struggle.key, label: struggle.label, kind: "war_pressure" };
+      logStruggleEvent(world, `${struggle.label}战云密布，双方开始重新集结`);
+    }
+
+    const prepared = struggle.warningTurn && world.turn - struggle.warningTurn >= 2;
+    if (struggle.warPressure < 8 || !prepared || underPrincipalTruce(world, struggle)) return;
+    if (!window.HIFI_WARFARE_ENGINE?.declareWarOn) return;
+    // 重燃发生在两位当事国之间，与玩家身份无关（玩家可能是干涉者/旁观者，不能硬当被告）。
+    const principals = principalsOf(struggle);
+    if (principals.length < 2) return;
+    const attacker = principals.find(name => name !== world.playerPolity) || principals[0];
+    const defender = principals.find(name => name !== attacker);
+    const permission = window.HIFI_WARFARE_ENGINE.canDeclareWar?.(world, attacker, defender);
+    if (!permission?.ok) return;
+    window.HIFI_WARFARE_ENGINE.declareWarOn(world, attacker, defender, `${struggle.label}·重燃`);
+    struggle.warPressure = 0;
+    struggle.warningTurn = null;
+    addCatalyst(struggle, "open_war", definition(struggle.key).flipThreshold);
+    logStruggleEvent(world, `${struggle.label}重燃战火，${attacker}再度兴兵`);
   }
 
   // --- Task 4.1：局势态势摘要 ----------------------------------------------
@@ -294,7 +387,12 @@
     const weakBorder = (world.tiles || []).some(tile =>
       front.has(tile.id) && tile.polity === polity && (tile.control ?? 100) < 60);
     if (weakBorder) recs.push("边境控制下滑，增援巩固");
-    return recs.slice(0, 3);
+    const war = principalWar(world, struggle);
+    if (struggle.phase === "standoff") recs.push("集结备战，拉拢盟友，降低再开战压力");
+    if (struggle.phase === "open_war" && war) recs.push("标记争议地，规划军团路线并围攻目标");
+    if (struggle.phase === "open_war" && !war) recs.push("当前为备战态，先补员并等待战云密布");
+    if (struggle.phase === "truce") recs.push(war ? "评估有利停战条款" : "休整军团，准备下一轮对峙");
+    return [...new Set(recs)].slice(0, 3);
   }
 
   function struggleSummary(world, polity = world.playerPolity, key) {
@@ -302,7 +400,7 @@
     if (!struggle) return null; // 没有局势 → 空（不报错）
     const def = definition(struggle.key);
     const role = involvement(world, polity, struggle);
-    const principals = Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
+    const principals = principalsOf(struggle);
     const opponents = principals.filter(name => name !== polity);
     const war = principalWar(world, struggle);
     const ourArmy = strongestArmy(world, new Set([polity]));
@@ -317,9 +415,12 @@
       label: struggle.label,
       phase: struggle.phase,
       phaseLabel: phaseLabel(struggle),
+      displayPhaseLabel: struggle.phase === "open_war" && !war ? "备战" : phaseLabel(struggle),
+      warActive: !!war,
       resolved: struggle.resolved,
       ending: struggle.ending,
       meters: { ...struggle.meters },
+      warPressure: struggle.warPressure || 0,
       flipThreshold: def.flipThreshold,
       involvement: role,
       principals,
@@ -355,6 +456,8 @@
     if (action.phase !== null && action.phase !== struggle.phase) {
       throw new Error(`「${action.label}」只能在「${phaseLabel(struggle, action.phase)}」阶段执行，当前为「${phaseLabel(struggle)}」`);
     }
+    const check = action.precheck ? action.precheck(world, polity, struggle) : { ok: true };
+    if (!check.ok) throw new Error(check.reason || "当前条件不足，无法执行该局势操作");
     return struggle;
   }
 
@@ -376,9 +479,8 @@
 
   // 三段使命全完成（复用 objectives.missionStages 作同一真相源；未加载该引擎时视为未完成）。
   function franceMissionsAllDone(world) {
-    const engine = window.HIFI_OBJECTIVES_ENGINE;
-    if (!engine) return false;
-    const stages = engine.missionStages(world, "法兰西王国");
+    // missionStages?. 兜底：缓存到旧版 objectives.js（无该方法）时也不崩，仅视为未完成。
+    const stages = window.HIFI_OBJECTIVES_ENGINE?.missionStages?.(world, "法兰西王国") || [];
     return stages.length > 0 && stages.every(stage => stage.status === "已完成");
   }
 
@@ -400,7 +502,9 @@
   function decideEnding(world, struggle) {
     const decisive = decisiveEnding(world);
     if (decisive) return decisive;
-    if (struggle.phase === "truce" && !principalWar(world, struggle)) return "negotiated_peace"; // 议和阶段双方妥协
+    // 谈判和平：当前无当事国战争，且历史上曾以停战收场（不只看瞬时阶段——
+    // processStruggles 的默认诱因每个和平季把 truce 推回 standoff，瞬时 phase 很少停在 truce）。
+    if (!principalWar(world, struggle) && (struggle.phase === "truce" || struggle.peaceReached)) return "negotiated_peace";
     return "stalemate";                                            // 长期僵局：均未达成
   }
 
@@ -410,7 +514,6 @@
     struggle.phase = "resolution";
     struggle.phaseSinceTurn = world.turn;
     const france = world.countries["法兰西王国"];
-    const clamp = value => Math.max(0, Math.min(100, value));
     if (ending === "france_hegemony" && france) {
       france.legitimacy = clamp((france.legitimacy || 0) + 10);              // 永久合法性加成
       france.struggleLegacy = { key: ending, outputBonus: 0.1 };             // 核心永久产出加成标记（供 economy 后续接入）
@@ -452,6 +555,36 @@
     }
   }
 
+  function reviewStruggles(world) {
+    const calendarOf = window.HIFI_WORLD_ENGINE?.calendarForTurn;
+    for (const struggle of activeStruggles(world)) {
+      const elapsed = world.turn - struggle.startedTurn;
+      if (elapsed < 40 || elapsed % 40 !== 0) continue;
+      if (struggle.lastReviewTurn === world.turn) continue;
+      struggle.lastReviewTurn = world.turn;
+
+      const stages = window.HIFI_OBJECTIVES_ENGINE?.missionStages?.(world, "法兰西王国") || [];
+      const done = stages.filter(stage => stage.done || stage.status === "已完成").length;
+      const war = principalWar(world, struggle);
+      const exhaustion = world.countries["法兰西王国"]?.warfare?.warExhaustion || 0;
+      const advantage = done * 2 + (war ? Math.sign(war.score || 0) : 0) - Math.floor(exhaustion / 20);
+      const verdict = advantage >= 3 ? "优势" : advantage <= -1 ? "劣势" : "胶着";
+      const france = world.countries["法兰西王国"];
+      if (france) france.legitimacy = clamp((france.legitimacy || 0) + (verdict === "优势" ? 4 : verdict === "劣势" ? -4 : 0));
+      world.pendingStruggleReview = {
+        key: struggle.key,
+        label: struggle.label,
+        year: calendarOf ? calendarOf(world.turn).year : null,
+        turn: world.turn,
+        verdict,
+        done,
+        total: stages.length,
+        exhaustion,
+      };
+      logStruggleEvent(world, `${struggle.label}十年战局评估：${verdict}`);
+    }
+  }
+
   window.HIFI_STRUGGLE_ENGINE = {
     STRUGGLE_DEFINITIONS,
     CYCLE_PHASES,
@@ -469,7 +602,9 @@
     struggleSummary,
     phaseActionGate,
     pickSide,
+    reviewStruggles,
     settleStruggles,
+    updateWarPressure,
     decideEnding,
     decisiveEnding,
     campsFor,

@@ -50,11 +50,23 @@
     world.pendingElection = null;
     for (const [polity, country] of Object.entries(world.countries)) {
       const config = data.leaders[polity];
-      if (!config) continue;
-      country.leader = leaderFromRecord(polity, config.history[0]);
-      country.government = createGovernment(config.government);
-      country.estates = createEstates(config.government);
-      country.decisionLedger = [];
+      const governmentType = config?.government || country.government?.type || "monarchy";
+      if (config) {
+        country.leader = leaderFromRecord(polity, config.history[0]);
+      } else {
+        country.leader = {
+          ...country.leader,
+          title: data.governments[governmentType]?.title || country.leader?.title || "统治者",
+          succession: "hereditary",
+          termYears: null,
+          termEndsAtTurn: null,
+          historicalEndAtTurn: null,
+          historyIndex: -1,
+        };
+      }
+      country.government = createGovernment(governmentType);
+      country.estates = createEstates(governmentType);
+      country.decisionLedger = country.decisionLedger || [];
       country.introduction = data.introductions[polity] || `${polity}正处在 1337 年欧洲秩序重组的十字路口。`;
     }
     return world;

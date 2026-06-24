@@ -116,8 +116,12 @@
             if (!wars.length) return false; // 还没开战，谈不上和平
             const englandWar = wars.find(war => war.attackers.includes("英格兰王国") || war.defenders.includes("英格兰王国"));
             if (!englandWar) return true; // 与英格兰已无战争 = 议和达成
-            // score 约定：正分利于进攻方。法兰西按其所处一方判定是否有利。
-            return englandWar.attackers.includes(polity) ? englandWar.score >= 40 : englandWar.score <= -40;
+            // score 约定：只随进攻方占领单向 0→100 上涨，永不为负。
+            // 法兰西为进攻方 → 自身打出 ≥40 分即有利；为防守方 → score 无法体现己方优势，
+            // 改判「英军久攻无果」：开战已逾 8 季且英军推进分数 ≤10。
+            if (englandWar.attackers.includes(polity)) return englandWar.score >= 40;
+            const warAge = (world.turn ?? 0) - (englandWar.startedTurn ?? 0);
+            return warAge >= 8 && (englandWar.score ?? 0) <= 10;
           },
         },
       ],

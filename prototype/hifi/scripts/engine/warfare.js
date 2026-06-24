@@ -348,17 +348,26 @@
   }
 
   function declareWarOn(world, attacker, defender, name) {
-    if (!world.countries[defender]) throw new Error("目标国家不存在");
-    if (attacker === defender) throw new Error("不能对本国宣战");
+    const permission = canDeclareWar(world, attacker, defender);
+    if (!permission.ok) throw new Error(permission.reason);
     const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, defender).find(tile => tile.city)
       || window.HIFI_WORLD_ENGINE.controlledTiles(world, defender)[0];
     if (!target) throw new Error("目标国家没有可争夺的领土");
     return declareWar(world, attacker, defender, target.id, name || `${attacker}对${defender}的战争`);
   }
 
+  function canDeclareWar(world, attacker, defender) {
+    if (!world.countries[attacker]) return { ok: false, reason: "宣战国家不存在" };
+    if (!world.countries[defender]) return { ok: false, reason: "目标国家不存在" };
+    if (attacker === defender) return { ok: false, reason: "不能对本国宣战" };
+    if (areAtWar(world, attacker, defender)) return { ok: false, reason: "双方已经交战" };
+    if (underTruce(world, attacker, defender)) return { ok: false, reason: "停战协定期内不能宣战" };
+    return { ok: true };
+  }
+
   function declareWar(world, attacker, defender, targetTileId, name = "边境战争") {
-    if (areAtWar(world, attacker, defender)) throw new Error("双方已经交战");
-    if (underTruce(world, attacker, defender)) throw new Error("停战协定期内不能宣战");
+    const permission = canDeclareWar(world, attacker, defender);
+    if (!permission.ok) throw new Error(permission.reason);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
       name,
@@ -570,6 +579,7 @@
     assignGeneral,
     areAtWar,
     armyTotalSoldiers,
+    canDeclareWar,
     canRecruitCombatType,
     concludePeace,
     createArmy,

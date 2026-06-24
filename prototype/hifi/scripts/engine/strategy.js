@@ -21,6 +21,7 @@
   function processCountry(world, polity) {
     if (polity === world.playerPolity) return;
     const country = world.countries[polity];
+    if (!country?.leader?.abilities || !country.actionPoints || !country.government?.assembly) return;
     const technology = affordableTechnology(country);
     if (technology) window.HIFI_ECONOMY_ENGINE.adoptTechnology(world, polity, technology[0]);
     if ((country.pressures?.fiscal || 0) >= 60 && country.tariff !== 25) {
@@ -34,7 +35,7 @@
         window.HIFI_WARFARE_ENGINE.mobilizeArmy(world, polity, tile.id, "infantry");
       }
     }
-    if (country.government.assembly.unlocked && country.government.assembly.support < 45 && country.actionPoints.administrative > 0) {
+    if (country.government?.assembly?.unlocked && country.government.assembly.support < 45 && country.actionPoints.administrative > 0) {
       window.HIFI_POLITICS_ENGINE.holdAssembly(world, polity, "tax", "privilege");
     }
     pursueDiplomacy(world, polity);
@@ -197,6 +198,8 @@
     if (country.actionPoints.military > 0 && (world.__aiWarsThisQuarter || 0) < AI_WAR_BUDGET) {
       const target = warTarget(world, polity);
       if (target) {
+        const permission = warfare.canDeclareWar?.(world, polity, target);
+        if (!permission?.ok) return;
         try {
           warfare.declareWarOn(world, polity, target);
           country.actionPoints.military -= 1;
@@ -217,7 +220,11 @@
 
   function processAI(world) {
     world.__aiWarsThisQuarter = 0; // 每季重置全局开战预算
-    Object.keys(world.countries).forEach(polity => processCountry(world, polity));
+    Object.keys(world.countries).forEach(polity => {
+      const country = world.countries[polity];
+      if (!country?.leader?.abilities || !country.actionPoints || !country.government?.assembly) return;
+      processCountry(world, polity);
+    });
     return world;
   }
 

@@ -216,7 +216,7 @@
     const decisions = Object.entries(window.HIFI_POLITICS_ENGINE.decisions).map(([key, decision]) => {
       const can = decision.can(country, window.hifiGame?.store?.getState());
       const effect = window.HIFI_CODEX?.decisions[key]?.effect;
-      return actionButton("data-decision", key, decision.label, can ? (effect || "可执行") : decision.why);
+      return actionButton("data-decision", key, decision.label, can ? (effect || "可执行") : decision.why, false, can ? false : decision.why);
     }).join("");
     return `${bar}<div class="drawer-subtitle">国家决议</div>${decisions}
       <div class="drawer-subtitle">${codexTerm("领土整合", "领土整合")}</div>${integrate}`;
@@ -251,7 +251,12 @@
     let blockedClass = "";
     let titleAttr = "";
     let previewHtml = "";
-    let isDisabled = disabled;
+    let isDisabled = Boolean(disabled);
+    if (typeof disabled === "string") {
+      isDisabled = true;
+      blockedClass = " action-disabled";
+      titleAttr = ` title="${disabled}"`;
+    }
     if (preview) {
       const { world, polity, type, params } = preview;
       const availability = actionAvailability(world, polity, type, params);
@@ -278,9 +283,11 @@
         ["closed", "封闭贸易", "本土产出 +5% · 商路分成减半"],
         ["normal", "常规贸易", "均衡"],
         ["open", "开放贸易", "商路分成 +30% · 积累资本"],
-      ].map(([key, label, detail]) => actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key)).join("");
+      ].map(([key, label, detail]) =>
+        actionButton("data-trade-policy", key, label, detail, country.tradePolicy === key, country.tradePolicy === key ? "当前已是该贸易政策" : false)
+      ).join("");
       const tariffs = [0, 10, 25].map(value =>
-        actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前 · 本国分成 +" : "切换 · 免费", value === country.tariff)
+        actionButton("data-tariff", value, `${value}% 关税`, value === country.tariff ? "当前 · 本国分成 +" : "切换 · 免费", value === country.tariff, value === country.tariff ? "当前已是该关税档位" : false)
       ).join("");
       const edicts = Object.entries(rules.edicts).map(([key, edict]) => {
         const cost = Object.entries(edict.cost).map(([resource, amount]) => `${resourceLabels[resource]} ${amount}`).join(" · ");
@@ -309,7 +316,7 @@
       const routes = Object.entries(world.trade.routes).map(([key, route]) =>
         actionButton("data-trade-route", key, route.label, route.active
           ? `${wd().meter(route.flow, maxFlow, { tone: "green" })} 流量 ${route.flow} · 成本 ${route.cost}${route.boost ? ` · 已投资 +${Math.round(route.boost * 100)}%` : ""} · 投资 15 钱 + 1 行政`
-          : "尚未解锁")
+          : "尚未解锁", false, route.active ? false : "商路尚未解锁")
       ).join("");
       const pressureMax = Math.max(10, ...Object.values(country.pressures));
       const pressureRadar = wd().radar(Object.entries(country.pressures).map(([key, value]) =>
@@ -370,6 +377,10 @@
     const currentYear = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
     const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) => {
       const awareness = country.technologyAwareness[key] || 0;
+      const unmet = [];
+      if (currentYear < technology.year) unmet.push(`年代 ${currentYear}/${technology.year}`);
+      if (awareness < 25) unmet.push(`传播 ${awareness}%/25%`);
+      if (country.ideas < technology.cost) unmet.push(`思想点 ${Math.round(country.ideas)}/${technology.cost}`);
       const detail = country.technology[key]
         ? `已采纳 · ${technology.effect}`
         : `${wd().checklist([
@@ -377,7 +388,8 @@
             { label: `传播 ${awareness}%≥25`, met: awareness >= 25 },
             { label: `思想 ${technology.cost}`, met: country.ideas >= technology.cost },
           ])} ${technology.effect}`;
-      return actionButton("data-technology", key, technology.label, detail, country.technology[key]);
+      const disabled = country.technology[key] ? "科技已经采纳" : unmet.length ? `尚不满足：${unmet.join("，")}` : false;
+      return actionButton("data-technology", key, technology.label, detail, country.technology[key], disabled);
     }).join("");
     return `${bar}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
   }
@@ -439,7 +451,15 @@
     const subject = engine.subjectBetween(world, country.name, target);
     const atWar = window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, target);
     const truce = window.HIFI_WARFARE_ENGINE.underTruce(world, country.name, target);
-    const targetButtons = targets.map(name => {
+    function targetGroup(name) {
+      const attitude = engine.diplomaticAttitude(world, country.name, name);
+      if (window.HIFI_WARFARE_ENGINE.areAtWar(world, country.name, name)) return "强敌";
+      if (engine.subjectBetween(world, country.name, name)) return "从属";
+      if (["hostile", "rival", "wary"].includes(attitude)) return "强敌";
+      if (["close", "cooperative"].includes(attitude)) return "伙伴";
+      return "远方国家";
+    }
+    function targetButton(name) {
       const attitude = engine.diplomaticAttitude(world, country.name, name);
       return actionButton(
         "data-diplomatic-target",
@@ -448,6 +468,16 @@
         attitudeLabels[attitude],
         name === target
       );
+    }
+    const groupOrder = ["强敌", "伙伴", "从属", "远方国家"];
+    const groupedTargets = groupOrder.map(group => {
+      const names = targets.filter(name => targetGroup(name) === group);
+      if (!names.length) return "";
+      const open = group === "远方国家" ? "" : " open";
+      return `<details class="diplo-group"${open}>
+        <summary>${group} · ${names.length}</summary>
+        ${names.map(targetButton).join("")}
+      </details>`;
     }).join("");
     // 第四个元素是可选的 catalog 行动类型（send_envoy/propose_trade），用于挂成本/预期预览；其余外交动作（私人会晤等）不在 catalog 中，维持原样
     const renderActions = list => list.map(([key, label, detail, catalogType]) => {
@@ -478,7 +508,7 @@
         <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${wd().meter(capUsed, capTotal, { tone: capUsed >= capTotal ? "red" : "gold" })} ${capUsed} / ${capTotal}</span></div>
         <div class="drawer-subtitle">外交对象</div>
         <input class="diplo-search" type="search" data-diplo-search placeholder="搜索国家…" aria-label="搜索外交对象">
-        <div class="drawer-scroll-list" id="diploTargetList">${targetButtons}</div>
+        <div class="drawer-scroll-list" id="diploTargetList">${groupedTargets}</div>
         <div class="drawer-subtitle">${targetCountry.name} · 对我方态度</div>
         <div class="drawer-row">${codexTerm("信任", "信任")}<span>${wd().meter(relation.trust, 100, { tone: "green" })} ${relation.trust}</span></div>
         <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${wd().meter(relation.threat, 100, { tone: "red" })} ${relation.threat}</span></div>
@@ -527,6 +557,11 @@
   }
 
   function openLayer(id) {
+    document.querySelectorAll(".modal-layer").forEach(layer => {
+      if (layer.id === id) return;
+      layer.classList.remove("open");
+      layer.setAttribute("aria-hidden", "true");
+    });
     const layer = document.getElementById(id);
     layer.classList.add("open");
     layer.setAttribute("aria-hidden", "false");

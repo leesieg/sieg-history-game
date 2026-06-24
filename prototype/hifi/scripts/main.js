@@ -33,6 +33,18 @@
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
   }
 
+  function openModal(id) {
+    document.querySelectorAll(".modal-layer").forEach(layer => {
+      if (layer.id === id) return;
+      layer.classList.remove("open");
+      layer.setAttribute("aria-hidden", "true");
+    });
+    const layer = document.getElementById(id);
+    if (!layer) throw new Error(`缺少弹窗：${id}`);
+    layer.classList.add("open");
+    layer.setAttribute("aria-hidden", "false");
+  }
+
   const RESOURCE_DIFF_LABELS = {
     food: "粮食",
     money: "金钱",
@@ -137,19 +149,121 @@
     // 播放/暂停样式：可推进显 ▶（绿），有阻塞裁断显 ‖（红）。
     seasonIcon.textContent = blocking.length ? "‖" : "▶";
     seasonControl.classList.toggle("ready", blocking.length === 0);
-    document.getElementById("issueList").innerHTML = issues.map(issue =>
-      `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}">
+    const tierLabels = { blocking: "裁断", mainline: "主线", opportunity: "机会" };
+    const groupedIssues = ["blocking", "mainline", "opportunity"]
+      .map(tier => ({ tier, items: issues.filter(issue => (issue.tier || "opportunity") === tier) }))
+      .filter(group => group.items.length);
+    document.getElementById("issueList").innerHTML = groupedIssues.map(group =>
+      `<div class="issue-group-title">${tierLabels[group.tier]}</div>` + group.items.map(issue =>
+      `<button class="issue" data-history-issue="${issue.id}" data-kind="${issue.kind}" data-key="${issue.key || ""}"
+        data-target-panel="${issue.target?.panel || ""}" data-target-drawer="${issue.target?.drawer || ""}"
+        data-target-tab="${issue.target?.tab || ""}" data-target-polity="${issue.target?.polity || ""}"
+        data-target-tile="${issue.target?.tileId ?? ""}" data-target-focus="${issue.target?.focus || ""}"
+        data-target-key="${issue.target?.key || ""}">
         <span class="issue-symbol">${issue.blocking ? "!" : "◇"}</span>
         <span><strong>${issue.label}</strong><small>${issue.detail}</small></span><span class="issue-arrow">›</span>
       </button>`
-    ).join("");
+    ).join("")).join("");
     document.querySelectorAll("[data-history-issue]").forEach(button => {
       button.addEventListener("click", () => {
         if (button.dataset.kind === "event") narrativeDialogs.renderEvent(button.dataset.historyIssue);
+        else if (button.dataset.targetPanel || button.dataset.targetDrawer) openIssueTarget(button);
+        else if (button.dataset.kind === "struggle") openStrugglePanel(button.dataset.key);
         else narrativeDialogs.renderCouncil();
       });
     });
     dialogs.renderPendingElection();
+  }
+
+  const RESOURCE_LEDGER_LABELS = {
+    food: ["粮食", "人口与军队消耗的基础资源"],
+    money: ["国库", "建设、外交、雇佣军和军队维护的通用资源"],
+    military: ["军需", "动员、补给和战争消耗的军事资源"],
+    legitimacy: ["合法性", "政权稳定、改革阻力和国内服从度"],
+    administrative: ["行政点", "法律、建设和内政改革的行动点"],
+    diplomatic: ["外交点", "使节、条约和领导人外交的行动点"],
+    militaryPoint: ["军事点", "动员、军团命令和战时决断的行动点"],
+  };
+
+  function signed(value) {
+    const rounded = Math.round(Number(value) || 0);
+    return `${rounded >= 0 ? "+" : "−"}${Math.abs(rounded)}`;
+  }
+
+  function resourceLedgerRows(key, country, ledger) {
+    if (ledger[key]) {
+      const item = ledger[key];
+      const sources = item.sources?.length ? item.sources.join("；") : "暂无来源明细";
+      return [
+        ["产出", signed(item.gross), sources],
+        ["维护", item.maintenance ? `−${Math.round(item.maintenance)}` : "0", "军团、建筑与行政网络的季度维护"],
+        ["事件", item.event ? `−${Math.round(item.event)}` : "0", "本季事件或局势带来的即时影响"],
+        ["战争", item.war ? `−${Math.round(item.war)}` : "0", ledger.war ? `${ledger.war.label} · ${ledger.war.phase}` : "无战争消耗"],
+        ["净变化", signed(item.net), `本季结算后${RESOURCE_LEDGER_LABELS[key][0]}变化`],
+      ];
+    }
+    const pointRows = {
+      administrative: ["行政点", country.actionPoints.administrative, country.leader.abilities.administrative, "内政、建设、改革"],
+      diplomatic: ["外交点", country.actionPoints.diplomatic, country.leader.abilities.diplomatic, "外交、条约、元首互动"],
+      militaryPoint: ["军事点", country.actionPoints.military, country.leader.abilities.military, "动员、军令、战场决断"],
+    };
+    if (pointRows[key]) {
+      const [, current, ability, usage] = pointRows[key];
+      return [
+        ["当前", Math.round(current), "本季度可直接使用的行动点"],
+        ["来源", `能力 ${ability}`, `${country.leader.title}${country.leader.name} 的对应能力影响季度行动点`],
+        ["用途", "消耗", usage],
+      ];
+    }
+    if (key === "legitimacy") {
+      return [
+        ["当前", Math.round(country.legitimacy), "政权稳定和国内服从的综合结果"],
+        ["来源", country.government.powerName, `${country.government.typeLabel} 的权力结构影响合法性波动`],
+        ["风险", country.legitimacy < 45 ? "偏低" : "稳定", "合法性偏低时，改革、阶层和局势压力更难处理"],
+      ];
+    }
+    return [["状态", "暂无", "该资源还没有接入账本"]];
+  }
+
+  function renderResourceLedger(key) {
+    const [label, subtitle] = RESOURCE_LEDGER_LABELS[key] || ["资源", "资源明细"];
+    const current = store.getState();
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(current);
+    const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(current, current.playerPolity);
+    document.getElementById("resourceLedgerTitle").textContent = `${label}账本`;
+    document.getElementById("resourceLedgerSubtitle").textContent =
+      `${country.name} · ${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)} · ${subtitle}`;
+    document.getElementById("resourceLedgerBody").innerHTML = `
+      <section class="state-section">
+        <h3>本季明细</h3>
+        ${resourceLedgerRows(key, country, ledger).map(([name, value, detail]) =>
+          `<div class="ledger-line"><span>${name}</span><b>${value}</b><small>${detail}</small></div>`
+        ).join("")}
+      </section>
+      <section class="state-section">
+        <h3>口径</h3>
+        <p>这里读取本季结算账本，不另起一套计算。粮食、国库、军需来自地块产出、维护、事件和战争；行动点来自当前领导人能力。</p>
+      </section>`;
+    openModal("resourceLedgerModal");
+  }
+
+  function openIssueTarget(button) {
+    if (button.dataset.targetPanel === "struggle") {
+      openStrugglePanel(button.dataset.key || button.dataset.targetKey || "hundred_years_war");
+      return;
+    }
+    const system = button.dataset.targetDrawer;
+    if (!system) return narrativeDialogs.renderCouncil();
+    store.update(current => {
+      if (button.dataset.targetPolity) current.diplomacy.selectedTarget = button.dataset.targetPolity;
+      if (button.dataset.targetTile) current.selectedTile = Number(button.dataset.targetTile);
+    });
+    if (button.dataset.targetTab) window.HIFI_DRAWERS.setDrawerTab(button.dataset.targetTab);
+    const target = document.querySelector(`.system-button[data-system="${system}"]`);
+    if (!target) return narrativeDialogs.renderCouncil();
+    if (!target.classList.contains("active")) openSystem(target);
+    else renderSystemBody(system);
+    focusInDrawer(button.dataset.targetFocus);
   }
 
   function renderSystemBody(system) {
@@ -366,7 +480,7 @@
       const summary = engine.struggleSummary(current, current.playerPolity, item.key);
       return `<button class="struggle-dock-card" data-struggle-open="${item.key}">
         <span class="struggle-dock-name">⚔ ${summary.label}</span>
-        <span class="struggle-dock-phase">${summary.phaseLabel} · ${summary.year ?? summary.startYear}年</span>
+        <span class="struggle-dock-phase">${summary.displayPhaseLabel || summary.phaseLabel} · ${summary.year ?? summary.startYear}年</span>
       </button>`;
     }).join("");
     dock.querySelectorAll("[data-struggle-open]").forEach(button =>
@@ -415,6 +529,18 @@
     button.addEventListener("click", () => openSystem(button));
   });
 
+  document.querySelectorAll(".resource-token").forEach(token => {
+    token.setAttribute("role", "button");
+    token.tabIndex = 0;
+    token.title = "查看资源账本";
+    token.addEventListener("click", () => renderResourceLedger(token.dataset.resource));
+    token.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      renderResourceLedger(token.dataset.resource);
+    });
+  });
+
   document.getElementById("drawerClose").addEventListener("click", () => {
     drawer.classList.remove("open");
     drawer.setAttribute("aria-hidden", "true");
@@ -438,8 +564,8 @@
     store.update(next => window.HIFI_TURN_ENGINE.advanceQuarter(next));
     window.HIFI_HISTORY_ENGINE.completeTutorial(current, "advance_turn");
     showToast(`进入${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)}`);
-    // 局势终局优先：第 12 季触发结算弹窗（复用季度总结弹窗外壳）；否则展开本季总结
-    if (!narrativeDialogs.renderStruggleEnding()) {
+    // 局势终局 / 十年战局评估优先；否则展开本季总结
+    if (!narrativeDialogs.renderStruggleEnding() && !narrativeDialogs.renderStruggleReview()) {
       narrativeDialogs.renderSeasonSummary(snapshot); // toast 之外的可展开本季总结，说明这季到底变了什么
     }
   });
@@ -493,6 +619,12 @@
     document.querySelectorAll("[data-diplomatic-target]").forEach(button => {
       const name = (button.dataset.diplomaticTarget || button.textContent || "").toLowerCase();
       button.style.display = name.includes(query) ? "" : "none";
+    });
+    document.querySelectorAll(".diplo-group").forEach(group => {
+      const matches = Array.from(group.querySelectorAll("[data-diplomatic-target]"))
+        .some(button => button.style.display !== "none");
+      group.hidden = query && !matches;
+      if (query && matches) group.open = true;
     });
   });
 
