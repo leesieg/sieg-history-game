@@ -41,6 +41,11 @@
     });
     const layer = document.getElementById(id);
     if (!layer) throw new Error(`缺少弹窗：${id}`);
+    // 打开任意主界面弹窗时统一收起系统抽屉与其 active 态，避免弹窗与抽屉同屏（33 号 P0-2）
+    drawer.classList.remove("open");
+    drawer.setAttribute("aria-hidden", "true");
+    document.getElementById("game").classList.remove("system-open");
+    document.querySelectorAll(".system-button").forEach(b => b.classList.remove("active"));
     layer.classList.add("open");
     layer.setAttribute("aria-hidden", "false");
   }

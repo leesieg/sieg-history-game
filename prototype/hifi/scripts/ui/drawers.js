@@ -527,12 +527,29 @@
       return `${bar}${targetLine}${treaties}`;
     }
 
-    // 从属
-    const subjects = renderActions([
-      ["subject:tributary", "要求朝贡", "2 外交点 · 高自主 · 收贡赋"],
-      ["subject:vassal", "要求附庸", "2 外交点 · 中自主"],
-      ["subject:puppet", "建立傀儡", "3 外交点 · 低自主"],
-    ]);
+    // 从属（34 号 P1-1）：每个类型按当前对象实算接受度与每季贡赋，标出"可签/会被拒"并对不可成立的提案禁用
+    const subjects = [
+      ["subject:tributary", "tributary", "要求朝贡", "2 外交点 · 高自主"],
+      ["subject:vassal", "vassal", "要求附庸", "2 外交点 · 中自主"],
+      ["subject:puppet", "puppet", "建立傀儡", "3 外交点 · 低自主"],
+    ].map(([key, type, label, base]) => {
+      let detail = base;
+      let disabled = false;
+      try {
+        const ev = engine.evaluateProposal(world, country.name, target, type);
+        if (!ev.available) {
+          detail = `${base} · ${ev.reason || "不可提案"}`;
+          disabled = true;
+        } else {
+          const def = engine.subjectTypes[type];
+          detail = `${base} · 每季贡赋 +${def.tribute} · 接受度 ${ev.score}/${ev.threshold} · ${ev.accepted ? "可签" : "会被拒"}`;
+          disabled = !ev.accepted;
+        }
+      } catch (error) {
+        disabled = true;
+      }
+      return actionButton("data-diplomatic-action", key, label, detail, false, disabled);
+    }).join("");
     const subjectRows = subject
       ? `<div class="drawer-subtitle">${codexTerm("从属", "权利结构")}</div>
         <div class="drawer-row">关系<span>${engine.subjectTypes[subject.type].label}</span></div>

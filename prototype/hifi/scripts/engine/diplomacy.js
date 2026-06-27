@@ -10,8 +10,10 @@
   };
 
   const subjectTypes = {
-    tributary: { label: "朝贡国", actionCost: 2, capacity: 1, base: 34, threshold: 58, autonomy: 78, loyalty: 62, tribute: 10 },
-    vassal: { label: "附庸国", actionCost: 2, capacity: 1.5, base: 18, threshold: 62, autonomy: 48, loyalty: 55, tribute: 10 },
+    // 34 号 P1-1：阈值下调，让明显更强的国家能压服接壤弱邻（之前 58/62 与 Phase E 惩罚叠加成"谁都签不成"死区）；
+    // 评分项结构与上限/惩罚不变，仅放宽阈值，便于 tools/sim 回归。
+    tributary: { label: "朝贡国", actionCost: 2, capacity: 1, base: 34, threshold: 48, autonomy: 78, loyalty: 62, tribute: 10 },
+    vassal: { label: "附庸国", actionCost: 2, capacity: 1.5, base: 18, threshold: 54, autonomy: 48, loyalty: 55, tribute: 10 },
     puppet: { label: "傀儡国", actionCost: 3, capacity: 2, base: -4, threshold: 65, autonomy: 18, loyalty: 38, tribute: 20 },
   };
 
@@ -234,12 +236,15 @@
     }
     const relation = relationView(world, target, actor);
     const leader = leaderRelationView(world, target, actor);
+    // 威胁权重（34 号 P1-1 折中）：对高自主的朝贡国，邻国的"被威胁感"部分转化为"求庇护"动机，威胁减半计入；
+    // 对附庸/傀儡（低自主、丧权多）仍按完整恐惧计入——强国可较自然收朝贡国，深度臣服仍需经营关系。
+    const threatWeight = type === "tributary" ? .19 : .38;
     const parts = [
       ["提案本身", definition.base],
       ["国家信任", Math.round((relation.trust - 50) * .7)],
       ["战略利益", Math.round(relation.strategicInterest * .55)],
       ["领导人关系", Math.round(leader.friendship * .35 + leader.respect * .25 - leader.grudge * .4) + (leader.kinship ? 12 : 0)],
-      ["国家威胁", -Math.round(relation.threat * .38)],
+      ["国家威胁", -Math.round(relation.threat * threatWeight)],
       ["领土矛盾", -Math.round(relation.territorialConflict * .42)],
       ["制度冲突", -Math.round(relation.institutionalConflict * .25)],
     ];

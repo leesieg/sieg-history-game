@@ -152,15 +152,28 @@
   // 选可索取附属的接壤弱邻（靠 evaluateProposal 阈值天然限流，平衡约束见 Phase E）。
   function subjectTarget(world, polity) {
     const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    const warfare = window.HIFI_WARFARE_ENGINE;
     if (!diplomacy) return null;
     const candidate = Object.keys(world.countries).find(name => {
       if (name === polity) return false;
       if (!sharesBorder(world, polity, name)) return false;
       if (diplomacy.subjectBetween(world, polity, name)) return false;
+      if (warfare?.areAtWar?.(world, polity, name)) return false; // 不向交战对象提和平臣服
       const evaluation = diplomacy.evaluateProposal(world, polity, name, "tributary");
       return evaluation.available && evaluation.accepted;
     });
     return candidate || null;
+  }
+
+  // 和平臣服：用外交点压服可接受的接壤弱邻。独立于战争状态（外交点 ≠ 军事点），
+  // 且在宣战前优先尝试——能和平附庸的弱邻不必动武（34 号 P1-1：让从属机制真正触发）。
+  function trySubjugate(world, polity) {
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    const country = world.countries[polity];
+    if (!diplomacy || country.actionPoints.diplomatic <= 0) return;
+    const target = subjectTarget(world, polity);
+    if (!target) return;
+    try { diplomacy.proposeSubject(world, polity, target, "tributary"); } catch (error) { /* 容量/分数不足则跳过 */ }
   }
 
   function announceWar(world, polity, defender, kind) {
@@ -193,7 +206,10 @@
       }
     }
 
-    if (inAnyWar(world, polity)) return; // 仍在战争中则本季不另开新动作
+    // 和平臣服优先：能附庸的接壤弱邻先用外交手段拿下（独立于战争状态，也避免对其多余开战）
+    trySubjugate(world, polity);
+
+    if (inAnyWar(world, polity)) return; // 仍在战争中则本季不另开新战
 
     if (country.actionPoints.military > 0 && (world.__aiWarsThisQuarter || 0) < AI_WAR_BUDGET) {
       const target = warTarget(world, polity);
@@ -207,13 +223,6 @@
           announceWar(world, polity, target, "declare");
           return;
         } catch (error) { /* 停战期/已交战等被引擎拒绝 */ }
-      }
-    }
-
-    if (country.actionPoints.diplomatic > 0) {
-      const subject = subjectTarget(world, polity);
-      if (subject) {
-        try { diplomacy.proposeSubject(world, polity, subject, "tributary"); } catch (error) { /* 容量/分数不足则跳过 */ }
       }
     }
   }

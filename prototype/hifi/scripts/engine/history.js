@@ -278,6 +278,71 @@
     }
   }
 
+  // 玩家裁断危机（34 号 P1-2）：把"压力层"变成真正必须二选一的阻塞决策，让御前会议出现真实决策压力
+  // （此前阻塞裁断长期为 0）。节流：两次危机至少间隔 CRISIS_COOLDOWN 季、且同一时刻至多一个危机挂起，
+  // 配合黑死病等既有 playerEvent，目标阻塞中位数 1、峰值 ≤2，不打断节奏。仅作用于玩家国。
+  const CRISIS_COOLDOWN = 8;
+  function processPlayerCrises(world) {
+    const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
+    if (!country) return;
+    if (world.playerEvents.some(event => event.crisis)) return; // 已有危机挂起则不叠加
+    if (world.lastCrisisTurn != null && world.turn - world.lastCrisisTurn < CRISIS_COOLDOWN) return;
+
+    // 财政危机：国库见底——给"举债 / 增税 / 削军费"三条各有代价的出路（同时给小国一个不至于动作归零的活口）
+    if (country.money <= 0) {
+      world.playerEvents.push({
+        id: `event-${world.historyNextId++}`,
+        title: "国库见底",
+        crisis: true,
+        choices: [
+          { id: "borrow", label: "向银行家举债", effect: { money: 45, legitimacy: -6 } },
+          { id: "tax", label: "加征非常赋税", effect: { money: 28, legitimacy: -3 } },
+          { id: "retrench", label: "削减军费开支", effect: { money: 12, military: -18 } },
+        ],
+      });
+      world.lastCrisisTurn = world.turn;
+      pushWorldEvent(world, `${country.name}财政告急，宫廷被迫裁断`, "council");
+      return;
+    }
+
+    // 合法性危机（34 号 P2：给坠落的小国一个"可主动选择的恢复手段"，而非静态补贴）：
+    // 合法性触底时给两条恢复路径——加冕大典（强但贵）/ 大赦减税（弱但廉价，破产小国也付得起）。
+    if (country.legitimacy <= 10) {
+      world.playerEvents.push({
+        id: `event-${world.historyNextId++}`,
+        title: "王权威信濒危",
+        crisis: true,
+        choices: [
+          { id: "coronation", label: "举行加冕大典", effect: { legitimacy: 16, money: -25 } },
+          { id: "amnesty", label: "大赦与减税", effect: { legitimacy: 9, money: -8 } },
+        ],
+      });
+      world.lastCrisisTurn = world.turn;
+      pushWorldEvent(world, `${country.name}王权威信濒危，亟需重振`, "council");
+      return;
+    }
+
+    // 阶层冲突：最不满的阶层跌破临界——"让步安抚 vs 强力弹压"二选一，回灌该阶层满意度流
+    if (country.estates) {
+      const entries = Object.entries(country.estates);
+      const worst = entries.reduce((min, cur) => cur[1].satisfaction < min[1].satisfaction ? cur : min, entries[0]);
+      if (worst && worst[1].satisfaction <= -40) {
+        world.playerEvents.push({
+          id: `event-${world.historyNextId++}`,
+          title: `${worst[1].label}群情激愤`,
+          crisis: true,
+          estateKey: worst[0],
+          choices: [
+            { id: "concede", label: "让步安抚", effect: { legitimacy: 6, money: -25 } },
+            { id: "repress", label: "强力弹压", effect: { legitimacy: 3, military: -10 } },
+          ],
+        });
+        world.lastCrisisTurn = world.turn;
+        pushWorldEvent(world, `${country.name}阶层冲突激化，需君主裁断`, "council");
+      }
+    }
+  }
+
   function applyCausalChain(world, key) {
     const chain = CAUSAL_CHAINS[key];
     if (!chain) throw new Error("未知历史因果链");
@@ -325,6 +390,12 @@
     const country = window.HIFI_WORLD_ENGINE.activeCountry(world);
     for (const [resource, amount] of Object.entries(choice.effect || {})) {
       country[resource] += amount;
+    }
+    // 阶层裁断回灌满意度流：让步平息怨气（升满意，脱离再触发区间），弹压只压一时（小升、留隐患）
+    if (event.estateKey && country.estates?.[event.estateKey]) {
+      const delta = choice.id === "concede" ? 36 : choice.id === "repress" ? -8 : 0;
+      const estate = country.estates[event.estateKey];
+      estate.satisfaction = Math.max(-100, Math.min(100, estate.satisfaction + delta));
     }
     pushChronicle(world, world.playerPolity, "decision", `${event.title}：${choice.label}`);
     world.playerEvents = world.playerEvents.filter(item => item.id !== eventId);
@@ -559,6 +630,7 @@
   function processHistory(world) {
     applyPressureEffects(world);
     processSituations(world);
+    processPlayerCrises(world); // 压力层 → 必须裁断的阻塞决策（34 号 P1-2）
     if (window.HIFI_STRUGGLE_ENGINE) {
       window.HIFI_STRUGGLE_ENGINE.processStruggles(world); // 局势（百年战争）按季推进，与被动情势并列
       window.HIFI_STRUGGLE_ENGINE.reviewStruggles(world);  // 每 40 季给样板局一次战局评估
