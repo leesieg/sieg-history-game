@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帝国的代价 · 操作→成本→影响 全景图（hifi 主线）</title>
+<style>
+  :root{
+    --bg:#0c1310; --panel:#141d18; --panel2:#1b2620; --line:#2c3a31;
+    --gold:#c9a227; --ink:#e8e3d4; --dim:#9aa896; --dim2:#6f7e6c;
+    --admin:#5b8def; --diplo:#3fae6e; --milpt:#d4574e; --res:#c9a227; --free:#7a8a78;
+    --flow-output:#c9a227; --flow-trade:#3fae6e; --flow-pop:#8f9e6a; --flow-tech:#5b8def;
+    --flow-faith:#9c6bd6; --flow-legit:#e0b341; --flow-estate:#d4884e; --flow-crown:#cf6f6f;
+    --flow-pressure:#e08a3a; --flow-relation:#4fb0c9; --flow-mil:#d4574e; --flow-turn:#b06bd6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0a100d,#0c1310 240px);color:var(--ink);
+    font:14px/1.5 "PingFang SC","Microsoft YaHei",system-ui,sans-serif;}
+  header{padding:26px 32px 18px;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 200px at 20% 0,rgba(201,162,39,.10),transparent);}
+  h1{margin:0 0 6px;font-size:24px;color:var(--gold);letter-spacing:.5px;font-weight:700;}
+  .model{font-size:13.5px;color:var(--dim);margin:8px 0 0;max-width:1100px;}
+  .model b{color:var(--ink);}
+  .arrow{color:var(--gold);font-weight:700;}
+  .wrap{padding:22px 32px 60px;max-width:1640px;margin:0 auto;}
+
+  /* legend + filters */
+  .toolbar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:18px 0 6px;
+    padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;position:sticky;top:0;z-index:20;}
+  .toolbar .group{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+  .toolbar .lbl{color:var(--dim2);font-size:12px;margin-right:2px;}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;
+    font-size:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;user-select:none;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;}
+  .chip.off{opacity:.35;}
+  .chip.cost-admin{border-color:var(--admin);} .chip.cost-diplo{border-color:var(--diplo);}
+  .chip.cost-milpt{border-color:var(--milpt);} .chip.cost-res{border-color:var(--res);} .chip.cost-free{border-color:var(--free);}
+  .reset{margin-left:auto;font-size:12px;color:var(--gold);cursor:pointer;border:1px solid var(--line);
+    padding:5px 12px;border-radius:20px;background:transparent;}
+
+  /* turn flow */
+  .turnflow{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin:18px 0 8px;}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 11px;position:relative;}
+  .step .n{position:absolute;top:-9px;left:10px;width:20px;height:20px;border-radius:50%;background:var(--gold);
+    color:#1a1407;font-weight:700;font-size:12px;display:grid;place-items:center;}
+  .step h4{margin:8px 0 4px;font-size:13px;color:var(--gold);}
+  .step p{margin:0;font-size:11.5px;color:var(--dim);}
+  .step.auto{border-style:dashed;}
+
+  .section-title{font-size:13px;color:var(--dim2);text-transform:uppercase;letter-spacing:2px;margin:30px 0 10px;
+    border-bottom:1px solid var(--line);padding-bottom:6px;}
+
+  /* subsystem grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:18px;align-items:start;}
+  .sys{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .sys > .head{padding:12px 15px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);
+    background:linear-gradient(90deg,rgba(201,162,39,.10),transparent);}
+  .sys > .head .ic{font-size:20px;}
+  .sys > .head h3{margin:0;font-size:16px;color:var(--gold);}
+  .sys > .head .tabs{margin-left:auto;font-size:11px;color:var(--dim2);}
+  .ops{padding:8px 10px 12px;}
+  .op{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:7px 0;background:var(--panel2);}
+  .op.read{opacity:.7;border-style:dashed;}
+  .op .btnrow{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  .op .btn{font-weight:600;color:var(--ink);font-size:14px;}
+  .op .loc{font-size:11px;color:var(--dim2);}
+  .op .pre{font-size:11.5px;color:#caa84e;margin-top:3px;}
+  .op .pre::before{content:"前置 ";color:var(--dim2);}
+  .op .eff{font-size:12.5px;color:var(--dim);margin-top:4px;}
+  .op .eff::before{content:"影响 ";color:var(--dim2);}
+  .costs{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+  .cost{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;}
+  .cost.admin{background:rgba(91,141,239,.18);color:#9bc0ff;border:1px solid var(--admin);}
+  .cost.diplo{background:rgba(63,174,110,.18);color:#86e0ad;border:1px solid var(--diplo);}
+  .cost.milpt{background:rgba(212,87,78,.18);color:#ffb0a8;border:1px solid var(--milpt);}
+  .cost.res{background:rgba(201,162,39,.16);color:#e6c860;border:1px solid var(--res);}
+  .cost.free{background:rgba(122,138,120,.15);color:#aeb9ac;border:1px solid var(--free);}
+  .flows{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+  .fl{font-size:10.5px;padding:1px 7px;border-radius:20px;background:#10110d;border:1px solid;}
+  .op.dim{display:none;}
+
+  footer{color:var(--dim2);font-size:12px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px;}
+  .loops{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;}
+  .loop{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:11px 13px;}
+  .loop b{color:var(--gold);font-size:13px;} .loop p{margin:5px 0 0;font-size:12px;color:var(--dim);}
+  code{background:#10110d;padding:1px 5px;border-radius:4px;color:#caa84e;font-size:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>《帝国的代价》机制全景图 · 操作 <span class="arrow">→</span> 成本 <span class="arrow">→</span> 影响</h1>
+  <p class="model">世界是一台<b>每季自转的机器</b>：<b>基底</b>（地块·人口·资源）<span class="arrow">→</span> <b>各种流</b>（产出/贸易/人口/科技/信仰）<span class="arrow">→</span> <b>压力层</b>（pressures + 合法性 + 阶层满意）<span class="arrow">→</span> <b>转折层</b>（纪元/情势/事件）<span class="arrow">→</span> 反作用回基底。机制不是阶段，而是<b>挂在流上的调节阀</b>；<b>行动点</b>（行政/外交/军事）只 gate 下面这些自由操作，自动流不受其限。<b>玩家是扰动机器，不是驱动机器。</b></p>
+</header>
+<div class="wrap">
+
+  <!-- 回合流转 -->
+  <div class="section-title">每季自转 8 步（<code>HIFI_TURN_ENGINE.advanceQuarter</code>，玩家不点键也照跑）</div>
+  <div class="turnflow" id="turnflow"></div>
+
+  <!-- 过滤器 -->
+  <div class="toolbar">
+    <div class="group"><span class="lbl">按成本筛选</span><span id="costFilters"></span></div>
+    <div class="group"><span class="lbl">高亮影响的流</span><span id="flowFilters"></span></div>
+    <button class="reset" id="reset">重置</button>
+  </div>
+
+  <!-- 子系统操作 -->
+  <div class="section-title">子系统操作详表（每个按钮的成本与影响）</div>
+  <div class="grid" id="grid"></div>
+
+  <!-- 核心反馈回路 -->
+  <div class="section-title">核心反馈回路（机制如何互相喂养）</div>
+  <div class="loops" id="loops"></div>
+
+  <footer>
+    生成自 <code>prototype/hifi</code> 引擎源码全量梳理（politics/economy/diplomacy/warfare/trade/history/struggle/turn + drawers UI）。配套：<code>docs/design/35-游戏机制全景图.md</code>、<code>34-当前版本优化方案.md</code>。
+    成本中 <b style="color:#9bc0ff">行</b>/<b style="color:#86e0ad">外</b>/<b style="color:#ffb0a8">军</b> = 行政/外交/军事点；<b style="color:#e6c860">金/粮/军需/思想/资本/合法性</b>为库存消耗；<b style="color:#aeb9ac">免点</b>=不耗行动点。
+  </footer>
+</div>
+
+<script>
+const COSTS = {
+  admin:{label:"行政点",cls:"admin"}, diplo:{label:"外交点",cls:"diplo"},
+  milpt:{label:"军事点",cls:"milpt"}, res:{label:"资源",cls:"res"}, free:{label:"免点",cls:"free"}
+};
+const FLOWS = {
+  output:["产出流","--flow-output"], trade:["贸易流","--flow-trade"], pop:["人口流","--flow-pop"],
+  tech:["科技流","--flow-tech"], faith:["信仰流","--flow-faith"], legit:["合法性","--flow-legit"],
+  estate:["阶层满意","--flow-estate"], crown:["王权","--flow-crown"], pressure:["压力层","--flow-pressure"],
+  relation:["外交关系","--flow-relation"], mil:["战力/军事","--flow-mil"], turn:["转折层","--flow-turn"]
+};
+
+const TURN = [
+  ["战争 processWarfare","佣兵合同→行军移动→补给→同格战斗→占领推进→土地恢复→战争疲惫"],
+  ["补行动点","行政/外交/军事 = leaderActionGain(统治者三维)，每季累加，上限 10"],
+  ["经济 settleCountry","逐国：地块产出 − 军团/建筑维护 − 短缺惩罚 → 入库；钱<0 扣合法性"],
+  ["贸易 processTrade","商路流量 → 关税×政策分成 → 白银累积→物价通胀 → 重算 6 维压力"],
+  ["外交 processDiplomacy","使节任务进度 · 条约计酬/到期 · 附属收贡赋(忠诚<25叛离) · 战争累积矛盾"],
+  ["政治领导","processEstates(满意<-40惩罚流·王权漂移) + processLeadership(继承/任期选举)"],
+  ["历史 processHistory","压力效果→情势(黑死病/小冰期)→裁断危机→局势→科技传播→里程碑→使命→纪元"],
+  ["AI processAI","其余国家走同一套引擎 API：宣战预算2/季·和平臣服优先·缔约·派使节"]
+];
+
+// 每个子系统的每个操作按钮：btn 标签 / loc 面板·页签 / cost 成本chip / pre 前置 / eff 影响 / flows 影响的流
+const SYS = [
+{ id:"politics", name:"国家 / 政治", ic:"👑", tabs:"概览·政制·议会·决议", ops:[
+  {btn:"推进改革 ×6 槽", loc:"政制", cost:[["res","行/财政槽免费"],["res","军事槽 10军需"],["res","政治槽 4合法性"],["res","海事槽 10钱"]],
+   pre:"对应槽 < 5", eff:"财政槽→金钱产出+3%/级、军事槽→军需+3%/级、行政槽→整合效率；解锁高阶法律/决议前置", flows:["output","mil"]},
+  {btn:"颁布法律：税收制度", loc:"政制·setLaw", cost:[["admin","1 行政"]],
+   pre:"统一税制需王权≥50", eff:"传统×1 / 阶层免税×0.85+贵族教士满意↑ / 统一税×1.15+贵族↓平民↑（金钱产出乘数）", flows:["output","estate"]},
+  {btn:"颁布法律：动员制度", loc:"政制·setLaw", cost:[["admin","1 行政"]],
+   pre:"常备军制需财政改革≥2", eff:"有限×1 / 征召×0.7 征兵人口成本-30%+平民满意↓ / 常备军制", flows:["pop","estate","mil"]},
+  {btn:"颁布法律：宗教政策", loc:"政制·setLaw", cost:[["admin","1 行政"]],
+   pre:"改革宗需宗教改革浪潮", eff:"宽容→教士满意↓ / 正统→教士满意↑ / 改革宗", flows:["estate","faith"]},
+  {btn:"颁布法律：权力结构", loc:"政制·setLaw", cost:[["admin","1 行政"]],
+   pre:"绝对权力需绝对主义纪元+财政改革≥3", eff:"王朝 / 公民+商人满意(王权上限70) / 宪政+合法性4(上限60) / 绝对+王权8贵族↓", flows:["crown","estate","legit"]},
+  {btn:"议会·让渡特权", loc:"议会·holdAssembly", cost:[["admin","1 行政"]],
+   pre:"需议会解锁", eff:"重算议会支持=f(平均满意,政改,+15让步)；过(≥50)→合法性+3；阶层权力+2", flows:["legit","estate"]},
+  {btn:"议会·收买议会", loc:"议会·holdAssembly", cost:[["admin","1 行政"],["res","12 金钱"]],
+   pre:"国库≥12", eff:"议会支持 +10 基准；过则合法性+3", flows:["legit"]},
+  {btn:"议会·强硬施压", loc:"议会·holdAssembly", cost:[["admin","1 行政"]],
+   pre:"需议会解锁", eff:"不让步，仅按满意/政改算支持", flows:["legit"]},
+  {btn:"国家决议 ×6", loc:"决议·enactDecision", cost:[["free","免点"]],
+   pre:"重前置：改革槽/纪元/议会", eff:"制度跃迁：召开等级会议 / 议会财政路线 / 绝对主义 / 接纳宗改 / 君主立宪 / 公民共和", flows:["crown","output","faith"]},
+  {btn:"整合地块 integrateTile", loc:"决议", cost:[["admin","1 行政"],["res","20 金钱"]],
+   pre:"己方陆地·控制<100", eff:"control +20(+行政改革2/级) → 放大该地块全部产出流", flows:["output"]},
+  {btn:"完成选举 completeElection", loc:"裁断", cost:[["free","裁断"]],
+   pre:"pendingElection(玩家国可选举政体)", eff:"选定新统治者三维 → 改未来行动点产能", flows:[]},
+]},
+{ id:"economy", name:"经济", ic:"💰", tabs:"财政·贸易·建设", ops:[
+  {btn:"贸易政策 closed/normal/open", loc:"财政·setTradePolicy", cost:[["free","免点"]],
+   pre:"—", eff:"封闭：本土钱×1.05·对外分成×0.5 ／ 开放：分成×1.3+额外贸易&资本 ／ 常规均衡", flows:["output","trade"]},
+  {btn:"关税 0/10/25%", loc:"财政·setTariff", cost:[["free","免点"]],
+   pre:"—", eff:"高关税↑商路分成，但↑财政&贸易压力、↑商路成本", flows:["trade","pressure"]},
+  {btn:"敕令·强化征税", loc:"财政·enactEdict", cost:[["admin","1 行政"]],
+   pre:"—", eff:"+25 金钱，−2 合法性", flows:["legit"]},
+  {btn:"敕令·建立粮储", loc:"财政·enactEdict", cost:[["admin","1 行政"],["res","12 金钱"]],
+   pre:"—", eff:"+35 粮食", flows:["output"]},
+  {btn:"敕令·征集军需", loc:"财政·enactEdict", cost:[["milpt","1 军事"],["res","10 金钱"]],
+   pre:"—", eff:"+30 军需", flows:["mil"]},
+  {btn:"国家议程 ×3", loc:"财政·setAgenda", cost:[["free","免点"]],
+   pre:"—", eff:"平衡财政(钱≥120)/充实粮仓(粮≥180)/整顿军备(军需≥160) → 达成给合法性奖励", flows:["legit"]},
+  {btn:"投资商路 investRoute", loc:"贸易", cost:[["admin","1 行政"],["res","15 金钱"]],
+   pre:"本国有该商路节点·已解锁", eff:"路线 boost +15%（上限60%）→ 抬该路线贸易流", flows:["trade"]},
+  {btn:"建造建筑 ×5", loc:"建设·constructBuilding", cost:[["admin","1 行政"],["res","18~34 金钱"]],
+   pre:"己方陆地·未建该建筑", eff:"农庄粮×1.35 / 市场钱×1.4 / 港口钱×1.25 / 堡垒军需×1.3+防御 / 工坊钱军需×1.2", flows:["output"]},
+  {btn:"资本开发 developTile", loc:"建设", cost:[["admin","1 行政"],["res","30 资本"]],
+   pre:"己方陆地·资本≥30", eff:"人口 +1 并抬恢复上限 → 扩大产出基底", flows:["pop","output"]},
+]},
+{ id:"develop", name:"发展 / 科技", ic:"📜", tabs:"概览·科技", ops:[
+  {btn:"采纳科技 ×9", loc:"科技·adoptTechnology", cost:[["res","30~100 思想点"]],
+   pre:"三门槛：年代到 + 传播≥25% + 思想点足", eff:"火炮→解锁炮兵 / 复式记账→钱+10% / 常备军→军需+20% / 印刷→思想+3&传播 / 远洋&跨洋→解锁商路 / 棱堡→降围攻破坏 / 蒸汽&铁路→工业产出", flows:["output","tech","mil"]},
+  {btn:"（自动）思想点积累", loc:"概览", cost:[["free","自动"]],
+   pre:"印刷术", eff:"每季 +3 思想点；时代使命达成给资源奖励", flows:["tech"]},
+]},
+{ id:"diplomacy", name:"外交", ic:"🕊️", tabs:"邦交·条约·从属", ops:[
+  {btn:"派遣使节 mission:improve", loc:"邦交·startMission", cost:[["diplo","1 外交"]],
+   pre:"需空闲使节名额", eff:"持续任务：每季信任+4、威胁-2（改善关系）", flows:["relation"]},
+  {btn:"私人会晤 leader:meeting", loc:"邦交·performLeaderAction", cost:[["diplo","1 外交"]],
+   pre:"—", eff:"元首友谊+7、尊重+6", flows:["relation"]},
+  {btn:"赠送礼物 leader:gift", loc:"邦交·performLeaderAction", cost:[["diplo","1 外交"],["res","20 金钱"]],
+   pre:"国库≥20", eff:"信任+8、元首友谊+5", flows:["relation"]},
+  {btn:"公开威慑 leader:threaten", loc:"邦交·performLeaderAction", cost:[["diplo","1 外交"]],
+   pre:"—", eff:"威胁+9、信任-5、元首恐惧+10宿怨+7", flows:["relation"]},
+  {btn:"宣战 war:declare", loc:"邦交·declareWarOn", cost:[["free","免点"]],
+   pre:"非停战期·未交战", eff:"建立战争；防御同盟自动参战；真实成本=后续维护+疲惫+破坏", flows:["mil","relation"]},
+  {btn:"缔约·贸易协定", loc:"条约·proposeTreaty", cost:[["diplo","1 外交"]],
+   pre:"对方接受度≥50", eff:"占外交容量0.5；每季按真实贸易流计酬", flows:["relation","trade"]},
+  {btn:"缔约·军事通行", loc:"条约", cost:[["diplo","1 外交"]],
+   pre:"接受度≥50", eff:"开放军队通行路线（容量0.5）", flows:["relation"]},
+  {btn:"缔约·王室联姻", loc:"条约", cost:[["diplo","1 外交"]],
+   pre:"接受度≥55", eff:"结王朝纽带→持续抬信任、便于和平整合（容量1）", flows:["relation"]},
+  {btn:"缔约·互不侵犯", loc:"条约", cost:[["diplo","1 外交"]],
+   pre:"接受度≥55", eff:"短期止戈，禁止互相宣战（容量1）", flows:["relation"]},
+  {btn:"缔约·防御同盟", loc:"条约", cost:[["diplo","2 外交"]],
+   pre:"接受度≥60", eff:"盟友被攻击自动参战（容量2）", flows:["relation","mil"]},
+  {btn:"索朝贡 subject:tributary", loc:"从属·proposeSubject", cost:[["diplo","2 外交"]],
+   pre:"接受度≥48（P1-1放宽，朝贡威胁权重减半）", eff:"建立朝贡国，每季收贡赋10；高自主", flows:["relation","output"]},
+  {btn:"索附庸 subject:vassal", loc:"从属", cost:[["diplo","2 外交"]],
+   pre:"接受度≥54", eff:"建立附庸国，贡赋10、中自主、可应召参战", flows:["relation","output","mil"]},
+  {btn:"建傀儡 subject:puppet", loc:"从属", cost:[["diplo","3 外交"]],
+   pre:"接受度≥65（强独立国几乎拒绝）", eff:"贡赋20、低自主、强制参战", flows:["relation","output","mil"]},
+  {btn:"调整附属 收紧/放宽", loc:"从属·adjustSubjectControl", cost:[["diplo","1 外交"]],
+   pre:"须为宗主", eff:"收紧：自主-10/贡赋+1 ／ 放宽：忠诚+12/贡赋-1", flows:["relation","output"]},
+]},
+{ id:"warfare", name:"军事", ic:"⚔️", tabs:"概览·军团·战争", ops:[
+  {btn:"动员步兵", loc:"军团·mobilizeArmy", cost:[["milpt","1 军事"],["res","地块人口"]],
+   pre:"己方陆地·人口≥2·疲惫<40", eff:"1200 步兵军团；按动员法消耗人口", flows:["pop","mil"]},
+  {btn:"动员骑兵", loc:"军团·mobilizeArmy", cost:[["milpt","1 军事"],["res","地块人口"]],
+   pre:"己方陆地·疲惫<40", eff:"500 骑兵军团", flows:["pop","mil"]},
+  {btn:"铸造炮队", loc:"军团·mobilizeArmy", cost:[["milpt","1 军事"],["res","30 军需"]],
+   pre:"需火炮科技", eff:"300 炮兵军团（攻坚强）", flows:["mil"]},
+  {btn:"雇佣自由佣兵团", loc:"军团·hireMercenary", cost:[["res","40 金钱"]],
+   pre:"己方陆地", eff:"约2000佣兵·8季合约·每季工资20；欠饷掉忠诚→解散", flows:["mil"]},
+  {btn:"训练军团 train", loc:"军团详情", cost:[["milpt","1 军事"],["res","10 军需"]],
+   pre:"—", eff:"经验+1、组织+15 → 战力", flows:["mil"]},
+  {btn:"补充兵员 reinforce", loc:"军团详情", cost:[["res","军需(20兵/军需)"]],
+   pre:"非佣兵团·有缺额", eff:"回填军团缺额", flows:["mil"]},
+  {btn:"招募将领 recruitGeneral", loc:"军团详情", cost:[["milpt","1 军事"]],
+   pre:"—", eff:"新将领，指挥力=f(军事改革+常备军科技)", flows:["mil"]},
+  {btn:"统治者领军 / 撤将", loc:"军团详情", cost:[["free","免点"]],
+   pre:"—", eff:"统治者军事能力→指挥加成；佣兵自带首领", flows:["mil"]},
+  {btn:"拆分 / 合并 / 复员", loc:"军团详情", cost:[["free","免点"]],
+   pre:"复员仅征召兵", eff:"编制管理；复员征召兵→人口回流", flows:["mil","pop"]},
+  {btn:"规划路线 / 防守 / 行军", loc:"军团详情", cost:[["free","免点"]],
+   pre:"—", eff:"BFS 寻路（山地不可入），行军每格按地形扣组织", flows:["mil"]},
+  {btn:"续约 / 解约佣兵", loc:"军团详情", cost:[["res","军饷 / 免点"]],
+   pre:"佣兵团", eff:"续约+8季忠诚+5 ／ 解约即解散", flows:["mil"]},
+  {btn:"议和 concludePeace", loc:"战争·data-peace-war", cost:[["free","免点"]],
+   pre:"索地需战争分数≥25", eff:"索取目标领土/维持现状 → 20季停战期 + 解除占领", flows:["mil","relation"]},
+]},
+{ id:"struggle", name:"局势（百年战争）", ic:"🔥", tabs:"右下角浮窗·按阶段", ops:[
+  {btn:"提王位主张 press_claim", loc:"对峙阶段→declareWarOn", cost:[["free","免点"]],
+   pre:"无现存战争·非停战期", eff:"对当事对手开战，进入鏖战", flows:["mil","turn"]},
+  {btn:"决战集结 muster_battle", loc:"鏖战阶段→mobilizeArmy", cost:[["milpt","1 军事"]],
+   pre:"存在真实战争·有集结城市", eff:"在首都集结主力步兵", flows:["mil"]},
+  {btn:"有利停战 favorable_truce", loc:"停战阶段→concludePeace", cost:[["free","免点"]],
+   pre:"与对手有战争", eff:"索地(分数≥25)或维持现状议和", flows:["mil","relation"]},
+  {btn:"选边支持 pick_side", loc:"干涉者·任意阶段", cost:[["free","免点"]],
+   pre:"角色为干涉者", eff:"设阵营倾向 lean（归边法/英）", flows:["turn","relation"]},
+  {btn:"终局决议 ending_decision", loc:"终局阶段", cost:[["free","免点"]],
+   pre:"进入 resolution", eff:"决定性结局（永久后果）", flows:["turn"]},
+  {btn:"（自动）战争压力 warPressure", loc:"引擎自动", cost:[["free","自动"]],
+   pre:"备战态且压力≥8", eff:"压力累积(未停战+未收复争议地+边境张力)→重燃战争（节流）", flows:["turn","mil"]},
+]},
+{ id:"event", name:"裁断 / 事件", ic:"⚖️", tabs:"御前会议·必须二选一", ops:[
+  {btn:"财政危机（P1-2）", loc:"money≤0 触发", cost:[["free","裁断"]],
+   pre:"国库见底·冷却8季·至多1危机", eff:"举债:+45钱-6合法 ／ 增税:+28钱-3合法 ／ 削军费:+12钱-18军需", flows:["legit","mil"]},
+  {btn:"合法性危机（P2）", loc:"legitimacy≤10 触发", cost:[["free","裁断"]],
+   pre:"威信濒危·冷却8季", eff:"加冕大典:+16合法-25钱 ／ 大赦减税:+9合法-8钱（给坠落小国可选恢复）", flows:["legit"]},
+  {btn:"阶层冲突（P1-2）", loc:"最不满阶层≤-40 触发", cost:[["free","裁断"]],
+   pre:"冷却8季·至多1危机", eff:"让步:+6合法-25钱·该阶层满意+36 ／ 弹压:+3合法-10军需·该阶层-8", flows:["legit","estate"]},
+  {btn:"黑死病爆发", loc:"情势·turn≥12", cost:[["free","裁断"]],
+   pre:"黑死病进入爆发期", eff:"封城:-2合法-10粮 ／ 开市:+12钱-4合法；爆发期每4季人口损耗+救济成本", flows:["legit","pop","output"]},
+]},
+];
+
+const LOOPS = [
+  ["产出—维护取舍","扩军/铺建筑 → 维护费回扣产出净额，使「什么都不做净增近零」，逼出取舍。"],
+  ["王权守恒","王权↑ 压阶层权力与满意；王权↓ 阶层坐大。集权有代价，放权丢汲取率。"],
+  ["阶层满意惩罚","满意<-40 → 惩罚对应流：贵族→军需、商人→金钱、教士→合法性、平民→粮食。"],
+  ["价格革命","新大陆白银 → 物价指数↑ → 名义金钱产出↑，但平民满意↓。繁荣与动荡同源。"],
+  ["贸易—本土取舍","贸易政策 closed/open 在本土产出与对外分成间取舍。"],
+  ["资本再投资","贸易流 → 资本池 → developTile → 更大基底 → 更大产出流。"],
+  ["战争损耗回灌","战斗→破坏/人口↓→产出↓；战争疲惫→合法性↓。战争是持续成本。"],
+  ["附属忠诚","附属忠诚<25 → 自主权漂移上升（叛离风险）；宗主需 calm_subject 维系。"],
+  ["压力→转折→反作用","6维压力驱动纪元/情势/裁断 → 改变基底与可用机制 → 世界翻篇。"],
+  ["裁断压力阀（P1-2）","钱/合法性/阶层触底 → 必须二选一裁断 → 资源与满意回灌闭环。"],
+];
+
+// ---- render ----
+const flowTag = f => { const [name,v]=FLOWS[f]; const c=getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  return `<span class="fl" data-flow="${f}" style="color:${c};border-color:${c}55;background:${c}14">${name}</span>`; };
+const costChip = ([t,txt]) => `<span class="cost ${COSTS[t].cls}" data-cost="${t}">${txt}</span>`;
+
+document.getElementById("turnflow").innerHTML = TURN.map((s,i)=>
+  `<div class="step ${i!==1?'auto':''}"><div class="n">${i+1}</div><h4>${s[0]}</h4><p>${s[1]}</p></div>`).join("");
+
+document.getElementById("grid").innerHTML = SYS.map(sys=>`
+  <div class="sys" data-sys="${sys.id}">
+    <div class="head"><span class="ic">${sys.ic}</span><h3>${sys.name}</h3><span class="tabs">${sys.tabs}</span></div>
+    <div class="ops">${sys.ops.map(op=>`
+      <div class="op ${op.cost.length===1&&op.cost[0][0]==='free'&&/自动|裁断/.test(op.cost[0][1])?'read':''}"
+           data-costs="${op.cost.map(c=>c[0]).join(' ')}" data-flows="${op.flows.join(' ')}">
+        <div class="btnrow"><span class="btn">${op.btn}</span><span class="loc">· ${op.loc}</span></div>
+        <div class="costs">${op.cost.map(costChip).join("")}</div>
+        ${op.pre&&op.pre!=='—'?`<div class="pre">${op.pre}</div>`:''}
+        <div class="eff">${op.eff}</div>
+        ${op.flows.length?`<div class="flows">${op.flows.map(flowTag).join("")}</div>`:''}
+      </div>`).join("")}
+    </div>
+  </div>`).join("");
+
+document.getElementById("loops").innerHTML = LOOPS.map(l=>`<div class="loop"><b>${l[0]}</b><p>${l[1]}</p></div>`).join("");
+
+// filters
+const activeCost = new Set(Object.keys(COSTS));
+const activeFlow = new Set(); // empty = no highlight
+const cf = document.getElementById("costFilters"), ff = document.getElementById("flowFilters");
+cf.innerHTML = Object.entries(COSTS).map(([k,v])=>`<span class="chip cost-${v.cls}" data-cost="${k}"><span class="dot" style="background:var(--${v.cls})"></span>${v.label}</span>`).join("");
+ff.innerHTML = Object.entries(FLOWS).map(([k,v])=>{const c=getComputedStyle(document.documentElement).getPropertyValue(v[1]).trim();
+  return `<span class="chip off" data-flow="${k}"><span class="dot" style="background:${c}"></span>${v[0]}</span>`;}).join("");
+
+function apply(){
+  document.querySelectorAll(".op").forEach(op=>{
+    const costs=(op.dataset.costs||"").split(" ").filter(Boolean);
+    const show = costs.some(c=>activeCost.has(c));
+    op.classList.toggle("dim", !show);
+    const flows=(op.dataset.flows||"").split(" ").filter(Boolean);
+    const hot = activeFlow.size>0 && flows.some(f=>activeFlow.has(f));
+    op.style.outline = hot?"2px solid var(--gold)":"";
+    op.style.background = hot?"#1f2a22":"";
+    if(activeFlow.size>0 && show) op.style.opacity = hot?"1":".4"; else op.style.opacity="";
+  });
+  // hide empty systems
+  document.querySelectorAll(".sys").forEach(s=>{
+    const any=[...s.querySelectorAll(".op")].some(o=>!o.classList.contains("dim"));
+    s.style.display=any?"":"none";
+  });
+}
+cf.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{const k=ch.dataset.cost;
+  if(activeCost.has(k)){activeCost.delete(k);ch.classList.add("off");}else{activeCost.add(k);ch.classList.remove("off");}apply();});
+ff.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{const k=ch.dataset.flow;
+  if(activeFlow.has(k)){activeFlow.delete(k);ch.classList.add("off");}else{activeFlow.add(k);ch.classList.remove("off");}apply();});
+document.getElementById("reset").onclick=()=>{activeCost.clear();Object.keys(COSTS).forEach(k=>activeCost.add(k));activeFlow.clear();
+  cf.querySelectorAll(".chip").forEach(c=>c.classList.remove("off"));ff.querySelectorAll(".chip").forEach(c=>c.classList.add("off"));apply();};
+apply();
+</script>
+</body>
+</html>
