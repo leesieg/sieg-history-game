@@ -234,6 +234,76 @@
   }
 
   const clampSatisfaction = value => Math.max(-100, Math.min(100, value));
+  const clampPercent = value => Math.max(0, Math.min(100, value));
+
+  const coerciveEstates = ["nobles", "peasants", "warriors", "clans", "princes", "court", "orders", "port_nobles"];
+  const capitalEstates = ["merchants", "companies", "citizens", "oligarchs", "guilds", "cities", "governors", "bureaucrats"];
+
+  function estatePowerShare(country, keys) {
+    const total = Object.values(country.estates || {}).reduce((sum, estate) => sum + (estate.power || 0), 0);
+    if (!total) return 0;
+    const selected = keys.reduce((sum, key) => sum + (country.estates[key]?.power || 0), 0);
+    return selected / total;
+  }
+
+  function lowSatisfactionCount(country) {
+    return Object.values(country.estates || {}).filter(estate => (estate.satisfaction || 0) < -20).length;
+  }
+
+  function activeWarPressure(world, polity) {
+    const wars = world.diplomacy?.wars || [];
+    return wars.filter(war =>
+      (war.attackers || []).includes(polity)
+      || (war.defenders || []).includes(polity)
+      || war.attacker === polity
+      || war.defender === polity
+    ).length * 25;
+  }
+
+  function neighborThreatIndex(world, polity) {
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    if (!diplomacy?.relationView) return 0;
+    return Object.keys(world.countries)
+      .filter(name => name !== polity)
+      .reduce((max, target) => Math.max(max, diplomacy.relationView(world, polity, target).threat || 0), 0);
+  }
+
+  function assemblyPowerCap(government) {
+    const type = government.institutions?.assembly?.type || "none";
+    return institutions?.assembly?.[type]?.powerCap || 100;
+  }
+
+  function driftCentralization(world, polity) {
+    const country = world.countries[polity];
+    if (!country?.government || !country.estates) return 0;
+    syncGovernmentDerived(country.government);
+    const current = clampPercent(country.government.centralPower ?? country.government.institutions?.centralization ?? 60);
+    const internal = clampPercent(
+      (country.unrest || 0)
+      + lowSatisfactionCount(country) * 8
+      + Math.max(0, 40 - (country.legitimacy ?? 50))
+    );
+    const external = clampPercent(activeWarPressure(world, polity) + neighborThreatIndex(world, polity));
+    const coercion = estatePowerShare(country, coerciveEstates);
+    const capital = estatePowerShare(country, capitalEstates);
+    const internalDelta = internal >= 12 ? Math.min(1.4, internal * 0.035) : 0;
+    const externalDelta = external >= 18 ? Math.min(1.2, external * 0.03) * (coercion >= capital ? 1 : -1) : 0;
+    const cap = assemblyPowerCap(country.government);
+    const next = clampPercent(Math.min(cap, current + internalDelta + externalDelta));
+    const delta = Math.round((next - current) * 10) / 10;
+    if (delta) {
+      country.government.centralPower = Math.round(next * 10) / 10;
+      syncGovernmentDerived(country.government);
+    }
+    country.government.lastCentralizationDrift = {
+      internal: Math.round(internal),
+      external: Math.round(external),
+      coercion: Math.round(coercion * 100),
+      capital: Math.round(capital * 100),
+      delta,
+    };
+    return delta;
+  }
 
   function setLaw(world, polity, category, value) {
     const country = world.countries[polity];
@@ -413,6 +483,7 @@
       if (powerDrift) estate.power = Math.max(0, Math.min(100, (estate.power || 0) + powerDrift));
     }
     country.unrest = Math.max(0, Math.round((country.unrest || 0) * .85 + unrest));
+    driftCentralization(world, polity);
     return country.unrest;
   }
 
@@ -439,6 +510,7 @@
     holdAssembly,
     lawEffects,
     lawOptions,
+    driftCentralization,
     setLaw,
   };
 })();

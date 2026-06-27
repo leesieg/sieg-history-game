@@ -150,6 +150,33 @@ france.estates.nobles.power = 50;
 politics.processEstates(world, "法兰西王国");
 assert.ok(france.estates.nobles.power < 50, "高王权必须压低阶层权力");
 
+// 王权压力漂移：内压推动集权，并同步到制度模块
+france.government.centralPower = 50;
+france.legitimacy = 18;
+france.unrest = 8;
+for (const estate of Object.values(france.estates)) estate.satisfaction = 0;
+const centralBeforeInternal = france.government.centralPower;
+politics.processEstates(world, "法兰西王国");
+assert.ok(france.government.centralPower > centralBeforeInternal, "低合法性与内乱必须推动王权集权");
+assert.equal(france.government.institutions.centralization, france.government.centralPower, "王权漂移必须同步制度中央化轴");
+assert.ok(france.government.lastCentralizationDrift.internal > 0, "必须记录内压来源");
+
+// 王权压力漂移：资本阶层主导时，外部战争压力推动让权
+venice.government.centralPower = 50;
+venice.unrest = 0;
+venice.legitimacy = 70;
+for (const estate of Object.values(venice.estates)) {
+  estate.satisfaction = 0;
+  estate.power = 10;
+}
+venice.estates.companies.power = 70;
+venice.estates.oligarchs.power = 60;
+world.diplomacy = { wars: [{ attackers: ["威尼斯共和国"], defenders: ["法兰西王国"] }] };
+const centralBeforeExternal = venice.government.centralPower;
+politics.processEstates(world, "威尼斯共和国");
+assert.ok(venice.government.centralPower < centralBeforeExternal, "资本阶层主导时外部战争压力必须推动让权");
+assert.ok(venice.government.lastCentralizationDrift.capital > venice.government.lastCentralizationDrift.coercion, "必须识别资本阶层主导");
+
 // 纪元改规则：绝对主义财政路线只在绝对主义纪元后开放
 vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/history.js"), "utf8"), context);
 france.government.reforms.fiscal = 3;
