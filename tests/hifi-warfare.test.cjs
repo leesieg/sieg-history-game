@@ -214,6 +214,38 @@ warfare.mobilizeArmy(levyWorld, "法兰西王国", 0, "infantry");
 const levyDrain = popBeforeLevy - levyWorld.tiles[0].population;
 assert.ok(levyDrain < limitedDrain, "征召兵役必须比有限动员更省人口流");
 
+// 军事制度模块必须直接影响动员，不再只是政体展示字段
+const moduleWorld = worldEngine.createWorld([
+  { id: 0, isSea: false, polity: "法兰西王国", population: 30, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
+]);
+warfare.initializeWarfare(moduleWorld);
+const moduleCountry = moduleWorld.countries["法兰西王国"];
+moduleCountry.actionPoints.military = 5;
+moduleCountry.military = 100;
+moduleCountry.government.institutions = { military: "feudal_levy" };
+const popBeforeFeudal = moduleWorld.tiles[0].population;
+const feudalArmy = warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry");
+const feudalDrain = popBeforeFeudal - moduleWorld.tiles[0].population;
+assert.equal(feudalArmy.units[0].serviceType, "levy", "封建征召必须生成征召兵");
+moduleCountry.government.institutions.military = "nation_in_arms";
+const popBeforeNation = moduleWorld.tiles[0].population;
+warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry");
+const nationDrain = popBeforeNation - moduleWorld.tiles[0].population;
+assert.ok(nationDrain < feudalDrain, "全民皆兵必须降低人口流成本");
+moduleCountry.government.institutions.military = "standing_army";
+const popBeforeStanding = moduleWorld.tiles[0].population;
+const militaryBeforeStanding = moduleCountry.military;
+const standingArmy = warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry");
+assert.equal(standingArmy.units[0].serviceType, "standing", "常备军制度必须生成常备单位");
+assert.equal(moduleWorld.tiles[0].population, popBeforeStanding, "常备军不应直接消耗地块人口");
+assert.ok(moduleCountry.military < militaryBeforeStanding, "常备军动员必须消耗军需");
+moduleCountry.government.institutions.military = "mercenary_state";
+moduleCountry.money = 100;
+const moneyBeforeMercenaryState = moduleCountry.money;
+const mercenary = warfare.hireMercenary(moduleWorld, "法兰西王国", 0);
+assert.ok(moneyBeforeMercenaryState - moduleCountry.money < 40, "雇佣立国必须降低雇佣兵签约成本");
+assert.ok(mercenary.mercenaryWage < 20, "雇佣立国必须降低佣兵工资");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const mapSource = fs.readFileSync(path.join(root, "ui", "map.js"), "utf8");
 const drawerSource = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");

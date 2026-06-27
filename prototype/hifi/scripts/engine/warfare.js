@@ -3,6 +3,25 @@
 
   const combatTypes = new Set(["infantry", "cavalry", "artillery"]);
   const serviceTypes = new Set(["guard", "professional", "standing", "levy", "mercenary"]);
+  const MILITARY_EFFECTS = {
+    feudal_levy: { serviceType: "levy", levyCostFactor: 1, soldierFactor: 1 },
+    standing_army: { serviceType: "standing", levyCostFactor: 0, soldierFactor: .8, militaryCost: 12 },
+    nation_in_arms: { serviceType: "levy", levyCostFactor: .3, soldierFactor: 1.15 },
+    mercenary_state: { serviceType: "professional", levyCostFactor: .2, soldierFactor: .9, militaryCost: 8, mercenaryCostFactor: .7 },
+  };
+
+  function militaryKey(country) {
+    const institutions = country.government?.institutions;
+    if (institutions?.military) return institutions.military;
+    const mobilization = country.government?.laws?.mobilization;
+    if (mobilization === "standing") return "standing_army";
+    return null;
+  }
+
+  function militaryEffect(country) {
+    const key = militaryKey(country);
+    return key ? MILITARY_EFFECTS[key] || null : null;
+  }
 
   function initializeWarfare(world) {
     world.warfare = {
@@ -234,17 +253,23 @@
       });
     }
     if (tile.population < 2) throw new Error("地块人口不足以征召");
-    const soldiers = combatType === "cavalry" ? 500 : 1200;
+    const effect = militaryEffect(country);
+    const baseSoldiers = combatType === "cavalry" ? 500 : 1200;
+    const soldiers = Math.round(baseSoldiers * (effect?.soldierFactor || 1));
+    const militaryCost = effect?.militaryCost || 0;
+    if (militaryCost && country.military < militaryCost) throw new Error("军需不足");
     country.actionPoints.military -= 1;
-    // 动员法律调节征召的人口流成本（核心循环：法律→人口流→军队）
+    if (militaryCost) country.military -= militaryCost;
+    // 军事制度调节人口流与兵源类型；旧动员法只在制度模块未初始化时兼容。
     const mobLaw = country.government?.laws?.mobilization;
-    const levyCostFactor = window.HIFI_POLITICS_ENGINE?.lawEffects?.mobilization?.[mobLaw]?.levyCostFactor ?? 1;
+    const lawCost = window.HIFI_POLITICS_ENGINE?.lawEffects?.mobilization?.[mobLaw]?.levyCostFactor ?? 1;
+    const levyCostFactor = effect?.levyCostFactor ?? lawCost;
     tile.population = Math.max(1, tile.population - soldiers / 1000 * levyCostFactor);
     return createArmy(world, {
       owner: polity,
       tileId,
       name: `${tile.city || tile.region}征召军`,
-      units: [{ combatType, serviceType: "levy", soldiers, sourceTileId: tileId }],
+      units: [{ combatType, serviceType: effect?.serviceType || "levy", soldiers, sourceTileId: tileId }],
     });
   }
 
@@ -252,14 +277,16 @@
     const country = world.countries[polity];
     const tile = world.tiles.find(item => item.id === tileId);
     if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能在己方陆地雇佣兵团");
-    if (country.money < 40) throw new Error("雇佣兵需要 40 金钱");
-    country.money -= 40;
+    const costFactor = militaryEffect(country)?.mercenaryCostFactor || 1;
+    const cost = Math.round(40 * costFactor);
+    if (country.money < cost) throw new Error(`雇佣兵需要 ${cost} 金钱`);
+    country.money -= cost;
     return createArmy(world, {
       owner: polity,
       tileId,
       name: "自由佣兵团",
       mercenaryLoyalty: 70,
-      mercenaryWage: 20,
+      mercenaryWage: Math.round(20 * costFactor),
       contractEndsTurn: world.turn + 8,
       units: [
         { combatType: "infantry", serviceType: "mercenary", soldiers: 1500 },
@@ -592,6 +619,7 @@
     hireMercenary,
     initializeWarfare,
     mergeArmies,
+    militaryEffect,
     mobilizeArmy,
     neighbors,
     planArmyRoute,
