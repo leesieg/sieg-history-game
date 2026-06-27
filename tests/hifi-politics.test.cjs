@@ -177,6 +177,34 @@ politics.processEstates(world, "威尼斯共和国");
 assert.ok(venice.government.centralPower < centralBeforeExternal, "资本阶层主导时外部战争压力必须推动让权");
 assert.ok(venice.government.lastCentralizationDrift.capital > venice.government.lastCentralizationDrift.coercion, "必须识别资本阶层主导");
 
+// 制度抉择：财政压力触发直接征税，选择后必须写入制度模块而非只改旧法律
+world.playerPolity = "法兰西王国";
+world.playerEvents = [];
+world.historyNextId = 1;
+france.government.institutions.fiscal = "demesne";
+france.government.laws.taxation = "customary";
+france.government.centralPower = 60;
+france.money = 20;
+france.pressures = { fiscal: 50 };
+const fiscalFork = politics.processInstitutionForks(world, "法兰西王国");
+assert.ok(fiscalFork && fiscalFork.institutionFork === "direct_taxation", "财政压力必须触发直接征税制度抉择");
+fiscalFork.choices.find(choice => choice.id === "adopt").apply(world, france);
+assert.equal(france.government.institutions.fiscal, "direct", "制度抉择必须改财政模块");
+assert.equal(france.government.laws.taxation, "uniform", "财政模块改动必须同步兼容旧税法");
+
+// 制度抉择：外部战争压力 + 常备军科技触发常备军制度
+world.playerEvents = [];
+world.diplomacy = { wars: [{ attackers: ["法兰西王国"], defenders: ["英格兰王国"] }] };
+france.technology = { standingArmy: true };
+france.government.institutions.military = "feudal_levy";
+france.government.laws.mobilization = "limited";
+france.military = 100;
+const militaryFork = politics.processInstitutionForks(world, "法兰西王国");
+assert.ok(militaryFork && militaryFork.institutionFork === "standing_army", "外部压力必须触发常备军制度抉择");
+militaryFork.choices.find(choice => choice.id === "adopt").apply(world, france);
+assert.equal(france.government.institutions.military, "standing_army", "制度抉择必须改军事模块");
+assert.equal(france.government.laws.mobilization, "standing", "军事模块改动必须同步兼容旧动员法");
+
 // 纪元改规则：绝对主义财政路线只在绝对主义纪元后开放
 vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/history.js"), "utf8"), context);
 france.government.reforms.fiscal = 3;

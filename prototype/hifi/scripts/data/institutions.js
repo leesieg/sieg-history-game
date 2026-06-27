@@ -118,8 +118,8 @@
 
   function deriveGovernment(type, government) {
     const institutions = {
-      ...(government?.institutions || {}),
       ...fromLegacyGovernment(type, government),
+      ...(government?.institutions || {}),
     };
     institutions.centralization = clamp(government?.centralPower ?? institutions.centralization ?? 60);
     const derived = archetypeFor(institutions, type);

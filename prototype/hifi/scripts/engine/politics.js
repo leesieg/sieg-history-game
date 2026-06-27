@@ -52,6 +52,26 @@
     return country.displayName;
   }
 
+  function setInstitution(country, axis, value) {
+    country.government.institutions ||= {};
+    if (axis === "fiscal") {
+      country.government.institutions.fiscal = value;
+      const taxation = { demesne: "customary", tax_farming: "estate_exemptions", direct: "uniform", commercial: "customary", nomadic: "customary" }[value];
+      if (taxation) country.government.laws.taxation = taxation;
+    } else if (axis === "military") {
+      country.government.institutions.military = value;
+      const mobilization = { feudal_levy: "limited", standing_army: "standing", nation_in_arms: "levy", mercenary_state: "limited" }[value];
+      if (mobilization) country.government.laws.mobilization = mobilization;
+    } else if (axis === "assembly") {
+      const current = country.government.institutions.assembly || {};
+      country.government.institutions.assembly = { ...current, type: value };
+      country.government.assembly.unlocked = value !== "none";
+      country.government.assembly.type = value === "parliamentary" ? "议会" : value === "estates_general" ? "等级会议" : "无议会";
+      if (value === "parliamentary") country.government.laws.authority = "constitutional";
+    }
+    syncCountryDisplayName(country, true);
+  }
+
   function createEstates(type) {
     return Object.fromEntries(data.governments[type].estates.map(key => {
       const [label, power, satisfaction, privileges] = data.estates[key];
@@ -233,6 +253,11 @@
     return entry;
   }
 
+  function ensureEventQueue(world) {
+    world.playerEvents ||= [];
+    world.historyNextId ||= 1;
+  }
+
   const clampSatisfaction = value => Math.max(-100, Math.min(100, value));
   const clampPercent = value => Math.max(0, Math.min(100, value));
 
@@ -305,6 +330,83 @@
     return delta;
   }
 
+  function hasInstitutionFork(world, key) {
+    return (world.playerEvents || []).some(event => event.institutionFork === key);
+  }
+
+  function pushInstitutionFork(world, country, fork) {
+    ensureEventQueue(world);
+    if (hasInstitutionFork(world, fork.key)) return null;
+    const event = {
+      id: `event-${world.historyNextId++}`,
+      title: fork.title,
+      crisis: true,
+      institutionFork: fork.key,
+      choices: fork.choices.map(choice => ({
+        id: choice.id,
+        label: choice.label,
+        effect: choice.effect || {},
+        apply: choice.apply,
+      })),
+    };
+    world.playerEvents.push(event);
+    country.decisionLedger ||= [];
+    recordDecision(world, country.name, `fork:${fork.key}`, `出现制度抉择：${fork.title}`);
+    return event;
+  }
+
+  function processInstitutionForks(world, polity = world.playerPolity) {
+    const country = world.countries[polity];
+    if (!country?.government) return null;
+    ensureEventQueue(world);
+    if (world.playerEvents.length) return null;
+    syncGovernmentDerived(country.government);
+    const fiscal = country.government.institutions?.fiscal;
+    const military = country.government.institutions?.military;
+    const central = country.government.centralPower ?? 60;
+    const fiscalPressure = country.pressures?.fiscal || 0;
+    const externalPressure = activeWarPressure(world, polity) + neighborThreatIndex(world, polity);
+    if (fiscal !== "direct" && central >= 50 && (fiscalPressure >= 35 || country.money < 40)) {
+      return pushInstitutionFork(world, country, {
+        key: "direct_taxation",
+        title: "财政制度抉择：直接征税",
+        choices: [
+          {
+            id: "adopt",
+            label: "建立直接征税",
+            effect: { legitimacy: -3 },
+            apply: (w, c) => {
+              setInstitution(c, "fiscal", "direct");
+              for (const key of ["nobles", "patricians", "port_nobles"]) {
+                if (c.estates?.[key]) c.estates[key].satisfaction = clampSatisfaction(c.estates[key].satisfaction - 8);
+              }
+            },
+          },
+          { id: "delay", label: "维持旧有税制", effect: { legitimacy: 2 } },
+        ],
+      });
+    }
+    if (military !== "standing_army" && country.technology?.standingArmy && externalPressure >= 25) {
+      return pushInstitutionFork(world, country, {
+        key: "standing_army",
+        title: "军事制度抉择：常备军",
+        choices: [
+          {
+            id: "adopt",
+            label: "建立常备军制度",
+            effect: { money: -20 },
+            apply: (w, c) => {
+              setInstitution(c, "military", "standing_army");
+              c.military = Math.max(0, c.military - 10);
+            },
+          },
+          { id: "delay", label: "继续依赖征召军", effect: { legitimacy: 2 } },
+        ],
+      });
+    }
+    return null;
+  }
+
   function setLaw(world, polity, category, value) {
     const country = world.countries[polity];
     if (!lawOptions[category]?.includes(value)) throw new Error("未知法律");
@@ -323,6 +425,16 @@
       if (effect.legitimacy) country.legitimacy = Math.min(100, country.legitimacy + effect.legitimacy);
       if (effect.power) country.government.centralPower = Math.min(100, country.government.centralPower + effect.power);
       if (effect.powerCap) country.government.centralPower = Math.min(country.government.centralPower, effect.powerCap);
+    }
+    if (category === "taxation") {
+      const fiscal = value === "uniform" ? "direct" : value === "estate_exemptions" ? "tax_farming" : "demesne";
+      country.government.institutions ||= {};
+      country.government.institutions.fiscal = fiscal;
+    }
+    if (category === "mobilization") {
+      const military = value === "standing" ? "standing_army" : "feudal_levy";
+      country.government.institutions ||= {};
+      country.government.institutions.military = military;
     }
     syncCountryDisplayName(country, true);
     recordDecision(world, polity, `law:${category}:${value}`, `颁布${category}法律：${value}`);
@@ -511,6 +623,8 @@
     lawEffects,
     lawOptions,
     driftCentralization,
+    processInstitutionForks,
     setLaw,
+    setInstitution,
   };
 })();

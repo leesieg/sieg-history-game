@@ -28,6 +28,7 @@
         window.HIFI_POLITICS_ENGINE.processEstates(world, polity);
         if (!world.pendingElection) window.HIFI_POLITICS_ENGINE.processLeadership(world, polity);
       }
+      window.HIFI_POLITICS_ENGINE.processInstitutionForks?.(world, world.playerPolity);
     }
     if (window.HIFI_HISTORY_ENGINE) window.HIFI_HISTORY_ENGINE.processHistory(world);
     if (window.HIFI_STRATEGY_ENGINE) window.HIFI_STRATEGY_ENGINE.processAI(world);

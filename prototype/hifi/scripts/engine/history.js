@@ -391,6 +391,7 @@
     for (const [resource, amount] of Object.entries(choice.effect || {})) {
       country[resource] += amount;
     }
+    if (typeof choice.apply === "function") choice.apply(world, country, event);
     // 阶层裁断回灌满意度流：让步平息怨气（升满意，脱离再触发区间），弹压只压一时（小升、留隐患）
     if (event.estateKey && country.estates?.[event.estateKey]) {
       const delta = choice.id === "concede" ? 36 : choice.id === "repress" ? -8 : 0;

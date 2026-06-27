@@ -106,6 +106,19 @@ assert.equal(history.blockingIssues(world).length, 1);
 history.resolvePlayerEvent(world, "event-1", "accept");
 assert.equal(world.playerEvents.length, 0);
 
+world.playerEvents.push({
+  id: "event-apply",
+  title: "制度抉择函数效果",
+  choices: [{
+    id: "apply",
+    label: "执行",
+    effect: { legitimacy: 1 },
+    apply: (w, country) => { country.customInstitutionApplied = true; },
+  }],
+});
+history.resolvePlayerEvent(world, "event-apply", "apply");
+assert.equal(world.countries["法兰西王国"].customInstitutionApplied, true, "事件选项必须支持结构性 apply 效果");
+
 const council = history.councilSummary(world, "法兰西王国");
 assert.ok(council.warnings.length);
 assert.ok(council.advisors.length);
