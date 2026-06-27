@@ -39,6 +39,16 @@ assert.deepEqual(
   "完全占领的地块不能继续为原政权产出"
 );
 
+// 财政制度模块必须直接影响产出流，不再只是政体展示字段
+country.government.institutions = { fiscal: "demesne" };
+const demesneMoney = economy.tileOutput(tiles[0], country).money;
+country.government.institutions.fiscal = "direct";
+assert.ok(economy.tileOutput(tiles[0], country).money > demesneMoney, "直接征税财政制度必须提高金钱产出");
+country.government.institutions.fiscal = "nomadic";
+assert.ok(economy.tileOutput(tiles[0], country).food < healthy.food, "游牧无税必须压低定居粮食产出");
+assert.ok(economy.tileOutput(tiles[0], country).money < demesneMoney, "游牧无税必须压低定居金钱产出");
+country.government.institutions = null;
+
 const before = { food: country.food, money: country.money, military: country.military };
 const report = economy.settleCountry(world, "法兰西王国");
 assert.ok(country.food > before.food);
@@ -119,6 +129,22 @@ assert.equal(country.agenda, "fiscal", "未达门槛时议程不应被清空");
 assert.equal(country.legitimacy, legitimacyBeforeAgendaMiss, "未完成议程不应发放奖励");
 country.agenda = null;
 assert.ok(country.capital > capitalBeforeTrade, "开放贸易必须积累资本");
+
+// 商业关税财政制度必须放大开放贸易收益，而不是只改地块显示名
+const tradeWorld = worldEngine.createWorld([
+  { id: 11, isSea: false, polity: "威尼斯共和国", population: 20, control: 100, good: "fish", buildings: ["market", "port"], city: "威尼斯", devastation: 0 },
+]);
+economy.initializeEconomy(tradeWorld);
+const venice = tradeWorld.countries["威尼斯共和国"];
+venice.tradePolicy = "open";
+venice.government.institutions = { fiscal: "demesne" };
+economy.settleCountry(tradeWorld, "威尼斯共和国");
+const demesneTrade = venice.lastReport.trade;
+venice.money = 0;
+venice.capital = 0;
+venice.government.institutions.fiscal = "commercial";
+economy.settleCountry(tradeWorld, "威尼斯共和国");
+assert.ok(venice.lastReport.trade > demesneTrade, "商业关税必须提高开放贸易收益");
 
 // 贸易路线投资：点击商路现在有真实后果（流量加成），不再是只写不读的死字段
 vm.runInNewContext(fs.readFileSync(path.join(root, "data/trade.js"), "utf8"), context);

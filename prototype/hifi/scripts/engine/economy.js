@@ -11,6 +11,28 @@
     building: 3,      // 每栋建筑每季消耗的金钱（行政维护）
   };
 
+  const FISCAL_EFFECTS = {
+    demesne: { money: .9 },
+    tax_farming: { money: 1.05 },
+    direct: { money: 1.2 },
+    commercial: { money: 1, portMoney: 1.15, tradeShare: 1.2 },
+    nomadic: { money: .2, food: .5 },
+  };
+
+  function fiscalKey(country) {
+    const institutions = country.government?.institutions;
+    if (institutions?.fiscal) return institutions.fiscal;
+    const taxLaw = country.government?.laws?.taxation;
+    if (taxLaw === "uniform") return "direct";
+    if (taxLaw === "estate_exemptions") return "tax_farming";
+    return null;
+  }
+
+  function fiscalEffect(country) {
+    const key = fiscalKey(country);
+    return key ? FISCAL_EFFECTS[key] || null : null;
+  }
+
   function initializeEconomy(world) {
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
@@ -53,10 +75,17 @@
     }
     if (country.technology.accounting) money *= 1.1;
     if (country.technology.standingArmy) military *= 1.2;
-    // 税收法律调节金钱产出流（核心循环：法律→产出流）
-    const taxLaw = country.government?.laws?.taxation;
-    const taxMultiplier = window.HIFI_POLITICS_ENGINE?.lawEffects?.taxation?.[taxLaw]?.moneyMultiplier;
-    if (taxMultiplier) money *= taxMultiplier;
+    // 财政制度调节地块产出流；旧税法只在制度模块未初始化时作为兼容来源。
+    const fiscal = fiscalEffect(country);
+    if (fiscal) {
+      if (fiscal.food) food *= fiscal.food;
+      if (fiscal.money) money *= fiscal.money;
+      if (fiscal.portMoney && tile.buildings.includes("port")) money *= fiscal.portMoney;
+    } else {
+      const taxLaw = country.government?.laws?.taxation;
+      const taxMultiplier = window.HIFI_POLITICS_ENGINE?.lawEffects?.taxation?.[taxLaw]?.moneyMultiplier;
+      if (taxMultiplier) money *= taxMultiplier;
+    }
     // 改革槽每级加成：财政→金钱产出流、军事→军需产出流（核心循环：改革→产出流）
     const reforms = country.government?.reforms;
     if (reforms) {
@@ -115,7 +144,8 @@
     country.money += moneyProd - maintenance.money;
     country.military += Math.round(report.military * central) - maintenance.military;
     if (country.tradePolicy === "open") {
-      const trade = Math.max(2, Math.round(report.money * .12));
+      const tradeShare = fiscalEffect(country)?.tradeShare || 1;
+      const trade = Math.max(2, Math.round(report.money * .12 * tradeShare));
       country.money += trade;
       country.capital += Math.max(1, Math.round(trade * .2));
       report.trade = trade;
@@ -259,6 +289,7 @@
     enactEdict,
     initializeEconomy,
     integrateTile,
+    fiscalEffect,
     MAINTENANCE,
     setAgenda,
     setTradePolicy,
