@@ -76,7 +76,7 @@ const mapSourceStruct = fs.readFileSync(path.join(root, "scripts", "ui", "map.js
 assert.ok(mapSourceStruct.includes("data-open-system"), "地块动作（按归属生成）必须接入现有系统");
 assert.ok(mainSource.includes('classList.add("system-open")'));
 assert.ok(mainSource.includes('classList.remove("system-open")'));
-assert.ok(mainSource.includes('setAttribute("aria-label", `查看${country.name}`)'));
+assert.ok(mainSource.includes('setAttribute("aria-label", `查看${country.displayName || country.name}`)'));
 assert.ok(mainSource.includes("portrait-placeholder"));
 
 const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");

@@ -622,8 +622,8 @@
     const preview = document.getElementById("countryChoicePreview");
 
     function renderCountryModal(polity = store.getState().playerPolity) {
-      const country = store.getState().countries[polity];
-      document.getElementById("countryModalTitle").textContent = country.name;
+    const country = store.getState().countries[polity];
+    document.getElementById("countryModalTitle").textContent = country.displayName || country.name;
       document.getElementById("countryModalSubtitle").textContent = `${country.leader.title}${country.leader.name} · ${country.leader.dynasty}`;
       document.getElementById("countryModalBody").innerHTML = countryDetailHtml(country);
       openLayer("countryModal");
@@ -631,7 +631,7 @@
 
     function renderChoicePreview() {
       const country = store.getState().countries[selectedPolity];
-      preview.innerHTML = `<h3>${country.name}</h3><p>${country.introduction}</p>
+      preview.innerHTML = `<h3>${country.displayName || country.name}</h3><p>${country.introduction}</p>
         <div class="state-grid">${countryRows(country).slice(0, 4).map(([label, value]) => `<div class="state-stat"><small>${label}</small><strong>${value}</strong></div>`).join("")}</div>`;
       strip.querySelectorAll(".country-choice").forEach(button => button.classList.toggle("active", button.dataset.polity === selectedPolity));
     }
@@ -640,13 +640,13 @@
       const query = filter.trim().toLowerCase();
       const playerPolity = store.getState().playerPolity;
       const countries = Object.values(store.getState().countries).filter(country =>
-        !query || country.name.toLowerCase().includes(query) || country.government.typeLabel.includes(query)
+        !query || country.name.toLowerCase().includes(query) || (country.displayName || "").toLowerCase().includes(query) || country.government.typeLabel.includes(query)
       );
       strip.innerHTML = countries.map(country => {
         const mark = governmentMarks[country.government.type] || "◆";
         const isCurrent = country.name === playerPolity;
         return `<button class="country-choice${isCurrent ? " selected" : ""}" data-polity="${country.name}">
-          <span class="country-choice-mark" aria-hidden="true">${mark}</span>${country.name}<br><small>${country.government.typeLabel}</small>
+          <span class="country-choice-mark" aria-hidden="true">${mark}</span>${country.displayName || country.name}<br><small>${country.government.typeLabel}</small>
         </button>`;
       }).join("");
       strip.querySelectorAll(".country-choice").forEach(button => {

@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
-  "data/rules.js", "data/trade.js", "data/countries.js",
+  "data/rules.js", "data/trade.js", "data/countries.js", "data/institutions.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
   "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
   "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",

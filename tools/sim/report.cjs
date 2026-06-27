@@ -30,8 +30,8 @@ function renderReport(metrics, title = "hifi 批量模拟评测报告") {
   }));
   return `# ${title}
 
-> 来源：\`tools/sim\`  
-> 生成时间：${metrics.generatedAt}  
+> 来源：\`tools/sim\`
+> 生成时间：${metrics.generatedAt}
 > 样本：${metrics.runCount} 局 × ${metrics.quarters} 季
 
 ## 1. 稳定性

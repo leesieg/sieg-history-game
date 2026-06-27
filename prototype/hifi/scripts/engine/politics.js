@@ -2,6 +2,7 @@
   "use strict";
 
   const data = window.HIFI_COUNTRY_DATA;
+  const institutions = window.HIFI_INSTITUTIONS;
 
   function turnForYear(year) {
     return (year - 1337) * 4 + 1;
@@ -10,7 +11,7 @@
   function createGovernment(type) {
     const config = data.governments[type];
     if (!config) throw new Error(`未知政体：${type}`);
-    return {
+    const government = {
       type,
       typeLabel: config.label,
       powerName: config.powerName,
@@ -24,6 +25,31 @@
         authority: type === "republic" || type === "merchant_republic" ? "civic" : "dynastic",
       },
     };
+    return syncGovernmentDerived(government);
+  }
+
+  function syncGovernmentDerived(government) {
+    if (!institutions) return government;
+    const derived = institutions.deriveGovernment(government.type, government);
+    government.institutions = derived.institutions;
+    government.archetype = derived.archetype;
+    government.archetypeLabel = derived.archetypeLabel;
+    government.typeLabel = derived.typeLabel;
+    government.powerName = derived.powerName;
+    government.title = derived.title;
+    government.suffix = derived.suffix;
+    government.estateKeys = derived.estateKeys;
+    government.institutionLabels = derived.institutionLabels;
+    return government;
+  }
+
+  function syncCountryDisplayName(country, rename = false) {
+    syncGovernmentDerived(country.government);
+    if (!country.displayName) country.displayName = country.name;
+    if (rename && institutions) {
+      country.displayName = institutions.displayNameFor(country.name, country.government.suffix || country.government.typeLabel);
+    }
+    return country.displayName;
   }
 
   function createEstates(type) {
@@ -66,6 +92,7 @@
       }
       country.government = createGovernment(governmentType);
       country.estates = createEstates(governmentType);
+      syncCountryDisplayName(country, false);
       country.decisionLedger = country.decisionLedger || [];
       country.introduction = data.introductions[polity] || `${polity}正处在 1337 年欧洲秩序重组的十字路口。`;
     }
@@ -143,6 +170,7 @@
         country.government.assembly.unlocked = true;
         country.government.assembly.type = "等级会议";
         country.government.assembly.support = 42;
+        syncCountryDisplayName(country, true);
       },
     },
     fiscal_parliament: {
@@ -153,6 +181,7 @@
         country.government.laws.taxation = "uniform";
         country.government.laws.authority = "constitutional";
         country.government.centralPower = Math.max(25, country.government.centralPower - 8);
+        syncCountryDisplayName(country, true);
       },
     },
     fiscal_absolutism: {
@@ -163,6 +192,7 @@
         country.government.laws.taxation = "uniform";
         country.government.laws.authority = "absolute";
         country.government.centralPower = Math.min(100, country.government.centralPower + 10);
+        syncCountryDisplayName(country, true);
       },
     },
     convert_reformed: {
@@ -183,6 +213,7 @@
       apply: country => {
         country.government.laws.authority = "constitutional";
         country.government.centralPower = 45;
+        syncCountryDisplayName(country, true);
       },
     },
     civic_republic: {
@@ -223,6 +254,7 @@
       if (effect.power) country.government.centralPower = Math.min(100, country.government.centralPower + effect.power);
       if (effect.powerCap) country.government.centralPower = Math.min(country.government.centralPower, effect.powerCap);
     }
+    syncCountryDisplayName(country, true);
     recordDecision(world, polity, `law:${category}:${value}`, `颁布${category}法律：${value}`);
     return value;
   }
@@ -247,6 +279,7 @@
     }
     const passed = support >= 50;
     if (passed) country.legitimacy = Math.min(100, country.legitimacy + 3);
+    syncCountryDisplayName(country, true);
     recordDecision(world, polity, `assembly:${agenda}`, `${assembly.type}表决${agenda}：${passed ? "通过" : "否决"}`);
     return { passed, support };
   }
@@ -273,6 +306,7 @@
       country[cost[0]] -= cost[1];
     }
     country.government.reforms[key] = Math.min(5, country.government.reforms[key] + 1);
+    syncGovernmentDerived(country.government);
     return country.government.reforms[key];
   }
 
@@ -281,7 +315,8 @@
     country.government = createGovernment(type);
     country.estates = createEstates(type);
     const config = data.governments[type];
-    country.leader.title = config.title;
+    syncCountryDisplayName(country, true);
+    country.leader.title = country.government.title || config.title;
     country.leader.succession = config.succession;
     country.leader.termYears = config.termYears || null;
     country.leader.termEndsAtTurn = config.termYears ? world.turn + config.termYears * 4 : null;
@@ -353,6 +388,7 @@
   function processEstates(world, polity) {
     const country = world.countries[polity];
     if (!country.estates) return 0;
+    syncGovernmentDerived(country.government);
     // 王权 ↔ 阶层权力此消彼长：高王权压低阶层权力，低王权放任坐大（核心循环：王权守恒）
     const power = country.government?.centralPower ?? 60;
     const powerDrift = power >= 60 ? -.5 : power <= 30 ? .5 : 0;

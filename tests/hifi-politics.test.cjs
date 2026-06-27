@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..", "prototype", "hifi");
 const context = { window: {} };
 for (const file of [
   "scripts/data/countries.js",
+  "scripts/data/institutions.js",
   "scripts/engine/world.js",
   "scripts/engine/politics.js",
 ]) {
@@ -29,6 +30,12 @@ politics.initializePolitics(world);
 const france = world.countries["法兰西王国"];
 assert.equal(france.leader.name, "腓力六世");
 assert.equal(france.government.type, "monarchy");
+assert.equal(france.name, "法兰西王国");
+assert.equal(france.displayName, "法兰西王国");
+assert.equal(france.government.institutions.succession, "hereditary");
+assert.equal(france.government.institutions.fiscal, "demesne");
+assert.equal(france.government.archetype, "feudal_monarchy");
+assert.ok(france.government.estateKeys.includes("nobles"));
 assert.ok(france.estates.nobles);
 assert.equal(france.government.assembly.unlocked, false);
 
@@ -47,12 +54,18 @@ assert.equal(france.money, moneyBeforeFullReform, "满级改革不能继续扣�
 
 politics.changeGovernment(world, "法兰西王国", "republic");
 assert.equal(france.government.type, "republic");
+assert.equal(france.name, "法兰西王国", "国家身份主键不能因政体变化而改变");
+assert.equal(france.displayName, "法兰西共和国", "展示名应随政体派生变化");
+assert.equal(france.government.institutions.succession, "republican_term");
+assert.equal(france.government.archetype, "republic");
 assert.equal(france.leader.title, "执政官");
 assert.equal(france.government.assembly.unlocked, true);
 assert.ok(france.estates.citizens);
 
 const venice = world.countries["威尼斯共和国"];
 assert.equal(venice.government.type, "merchant_republic");
+assert.equal(venice.government.archetype, "merchant_republic");
+assert.equal(venice.government.institutions.fiscal, "commercial");
 world.playerPolity = "威尼斯共和国";
 world.turn = 12;
 venice.leader.termEndsAtTurn = 12;
@@ -91,6 +104,7 @@ const noblesBefore = france.estates.nobles.satisfaction;
 politics.setLaw(world, "法兰西王国", "taxation", "uniform");
 assert.ok(economy.tileOutput(taxTile, france).money > moneyCustomary, "统一税制必须提高金钱产出流");
 assert.ok(france.estates.nobles.satisfaction < noblesBefore, "统一税制必须压低贵族满意度");
+assert.equal(france.government.institutions.fiscal, "direct", "统一税制必须同步派生为直接征税财政模块");
 assert.throws(() => politics.setLaw(world, "法兰西王国", "taxation", "uniform"), /已是当前法律/);
 // 前置条件：常备军制需财政改革 ≥2（france 当前 fiscal=1）
 france.actionPoints.administrative = 3;

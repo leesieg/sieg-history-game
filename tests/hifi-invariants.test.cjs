@@ -9,6 +9,7 @@ const context = { window: {}, console };
 for (const file of [
   "data/geography.js",
   "data/countries.js",
+  "data/institutions.js",
   "data/codex.js",
   "data/rules.js",
   "data/trade.js",
@@ -76,6 +77,9 @@ function assertInvariants(world, previousTurn) {
 
   for (const [polity, country] of Object.entries(world.countries)) {
     assert.ok(country.government?.assembly, `${polity} 必须有完整议会结构`);
+    assert.ok(country.government?.institutions, `${polity} 必须有制度模块`);
+    assert.ok(country.government?.archetype, `${polity} 必须有派生政体原型`);
+    assert.ok(country.displayName, `${polity} 必须有展示国名`);
     assert.ok(country.leader?.abilities, `${polity} 必须有领导人能力`);
     for (const key of ["food", "money", "military", "legitimacy"]) {
       assert.ok(Number.isFinite(country[key]), `${polity}.${key} 必须是有限数`);

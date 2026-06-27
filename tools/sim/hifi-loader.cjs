@@ -8,6 +8,7 @@ const SCRIPT_ROOT = path.join(ROOT, "prototype", "hifi", "scripts");
 const ENGINE_FILES = [
   "data/geography.js",
   "data/countries.js",
+  "data/institutions.js",
   "data/codex.js",
   "data/rules.js",
   "data/trade.js",

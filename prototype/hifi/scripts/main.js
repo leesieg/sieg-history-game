@@ -110,12 +110,12 @@
       tribal: "◇",
     };
     const mark = governmentMarks[country.government.type] || "◆";
-    rulerPlaque.setAttribute("aria-label", `查看${country.name}`);
+    rulerPlaque.setAttribute("aria-label", `查看${country.displayName || country.name}`);
     rulerPortrait.setAttribute("alt", country.leader.name);
     rulerPortrait.hidden = country.leader.name !== "腓力六世";
     rulerPlaque.classList.toggle("portrait-placeholder", rulerPortrait.hidden);
     rulerPlaque.dataset.monogram = country.leader.name.slice(0, 1);
-    countryShield.setAttribute("aria-label", `${country.name}盾徽`);
+    countryShield.setAttribute("aria-label", `${country.displayName || country.name}盾徽`);
     countryShield.querySelectorAll("span").forEach(item => { item.textContent = mark; });
     document.getElementById("dateMain").textContent = window.HIFI_WORLD_ENGINE.calendarLabel(current.turn);
     document.getElementById("dateEra").textContent = `${window.HIFI_HISTORY_ENGINE.eras[current.eraIndex].label} · ${country.leader.dynasty}`;
@@ -237,7 +237,7 @@
     const ledger = window.HIFI_HISTORY_ENGINE.quarterLedger(current, current.playerPolity);
     document.getElementById("resourceLedgerTitle").textContent = `${label}账本`;
     document.getElementById("resourceLedgerSubtitle").textContent =
-      `${country.name} · ${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)} · ${subtitle}`;
+      `${country.displayName || country.name} · ${window.HIFI_WORLD_ENGINE.calendarLabel(current.turn)} · ${subtitle}`;
     document.getElementById("resourceLedgerBody").innerHTML = `
       <section class="state-section">
         <h3>本季明细</h3>
