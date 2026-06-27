@@ -1,0 +1,327 @@
+{
+  "generatedAt": "2026-06-27T15:33:41.137Z",
+  "sourceGeneratedAt": "2026-06-27T15:33:33.003Z",
+  "quarters": 40,
+  "runCount": 34,
+  "completed": 34,
+  "failed": 0,
+  "completionRate": 100,
+  "errors": [],
+  "stability": {
+    "wars": {
+      "min": 1,
+      "p25": 1,
+      "median": 1,
+      "p75": 1,
+      "max": 2,
+      "mean": 1.03
+    },
+    "events": {
+      "min": 10,
+      "p25": 21,
+      "median": 21,
+      "p75": 23,
+      "max": 26,
+      "mean": 21.76
+    },
+    "strugglePhaseKinds": [
+      "open_war"
+    ]
+  },
+  "resources": {
+    "score": {
+      "min": 268,
+      "p25": 357,
+      "median": 468,
+      "p75": 759,
+      "max": 2674,
+      "mean": 847.32
+    },
+    "food": {
+      "min": 0,
+      "p25": 92,
+      "median": 160,
+      "p75": 328,
+      "max": 2433,
+      "mean": 371.56
+    },
+    "money": {
+      "min": 0,
+      "p25": 8,
+      "median": 8,
+      "p75": 53,
+      "max": 1963,
+      "mean": 287.97
+    },
+    "military": {
+      "min": 18,
+      "p25": 78,
+      "median": 122,
+      "p75": 214,
+      "max": 1849,
+      "mean": 246.68
+    },
+    "legitimacy": {
+      "min": 0,
+      "p25": 4,
+      "median": 8,
+      "p75": 17,
+      "max": 60,
+      "mean": 18.12
+    },
+    "moneySpread": {
+      "min": 2286,
+      "p25": 2708,
+      "median": 2820,
+      "p75": 2946,
+      "max": 2960,
+      "mean": 2808
+    },
+    "militarySpread": {
+      "min": 1578,
+      "p25": 1578,
+      "median": 1578,
+      "p75": 1580,
+      "max": 1769,
+      "mean": 1592.21
+    },
+    "zeroLegitimacyRuns": 8,
+    "lowLegitimacyRuns": 26
+  },
+  "activity": {
+    "issues": {
+      "min": 1,
+      "p25": 4,
+      "median": 4,
+      "p75": 5,
+      "max": 6,
+      "mean": 4.15
+    },
+    "blockingIssues": {
+      "min": 0,
+      "p25": 0,
+      "median": 0,
+      "p75": 0,
+      "max": 0,
+      "mean": 0
+    },
+    "treaties": {
+      "min": 19,
+      "p25": 21,
+      "median": 21,
+      "p75": 21,
+      "max": 22,
+      "mean": 21
+    },
+    "subjects": {
+      "min": 3,
+      "p25": 5,
+      "median": 5,
+      "p75": 5,
+      "max": 6,
+      "mean": 4.88
+    },
+    "buildings": {
+      "min": 88,
+      "p25": 89,
+      "median": 90,
+      "p75": 90,
+      "max": 120,
+      "mean": 92.03
+    },
+    "techAdoptions": {
+      "min": 0,
+      "p25": 0,
+      "median": 0,
+      "p75": 0,
+      "max": 0,
+      "mean": 0
+    },
+    "missionsDone": {
+      "min": 11,
+      "p25": 11,
+      "median": 11,
+      "p75": 11,
+      "max": 11,
+      "mean": 11
+    }
+  },
+  "profiles": {
+    "balanced": {
+      "completed": 34,
+      "total": 34,
+      "score": {
+        "min": 268,
+        "p25": 357,
+        "median": 468,
+        "p75": 759,
+        "max": 2674,
+        "mean": 847.32
+      },
+      "money": {
+        "min": 0,
+        "p25": 8,
+        "median": 8,
+        "p75": 53,
+        "max": 1963,
+        "mean": 287.97
+      },
+      "legitimacy": {
+        "min": 0,
+        "p25": 4,
+        "median": 8,
+        "p75": 17,
+        "max": 60,
+        "mean": 18.12
+      },
+      "blockingIssues": {
+        "min": 0,
+        "p25": 0,
+        "median": 0,
+        "p75": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "subjects": {
+        "min": 3,
+        "p25": 5,
+        "median": 5,
+        "p75": 5,
+        "max": 6,
+        "mean": 4.88
+      }
+    }
+  },
+  "strongest": [
+    {
+      "player": "拜占庭帝国",
+      "profile": "balanced",
+      "score": 2674,
+      "money": 1913,
+      "legitimacy": 60,
+      "wars": 1
+    },
+    {
+      "player": "马穆鲁克苏丹国",
+      "profile": "balanced",
+      "score": 2574,
+      "money": 1015,
+      "legitimacy": 60,
+      "wars": 1
+    },
+    {
+      "player": "弗兰德斯伯国",
+      "profile": "balanced",
+      "score": 2571,
+      "money": 1963,
+      "legitimacy": 60,
+      "wars": 1
+    },
+    {
+      "player": "诺夫哥罗德共和国",
+      "profile": "balanced",
+      "score": 2412,
+      "money": 1805,
+      "legitimacy": 60,
+      "wars": 1
+    },
+    {
+      "player": "威尼斯共和国",
+      "profile": "balanced",
+      "score": 2091,
+      "money": 1509,
+      "legitimacy": 60,
+      "wars": 1
+    },
+    {
+      "player": "神圣罗马帝国",
+      "profile": "balanced",
+      "score": 2004,
+      "money": 40,
+      "legitimacy": 8,
+      "wars": 1
+    },
+    {
+      "player": "法兰西王国",
+      "profile": "balanced",
+      "score": 1506,
+      "money": 53,
+      "legitimacy": 17,
+      "wars": 1
+    },
+    {
+      "player": "条顿骑士团",
+      "profile": "balanced",
+      "score": 1057,
+      "money": 580,
+      "legitimacy": 44,
+      "wars": 1
+    }
+  ],
+  "weakest": [
+    {
+      "player": "纳瓦拉王国",
+      "profile": "balanced",
+      "score": 268,
+      "money": 0,
+      "legitimacy": 0,
+      "wars": 1
+    },
+    {
+      "player": "挪威王国",
+      "profile": "balanced",
+      "score": 278,
+      "money": 8,
+      "legitimacy": 0,
+      "wars": 1
+    },
+    {
+      "player": "丹麦王国",
+      "profile": "balanced",
+      "score": 322,
+      "money": 8,
+      "legitimacy": 8,
+      "wars": 1
+    },
+    {
+      "player": "格拉纳达酋长国",
+      "profile": "balanced",
+      "score": 324,
+      "money": 8,
+      "legitimacy": 0,
+      "wars": 1
+    },
+    {
+      "player": "波兰王国",
+      "profile": "balanced",
+      "score": 335,
+      "money": 8,
+      "legitimacy": 0,
+      "wars": 1
+    },
+    {
+      "player": "安纳托利亚诸贝伊国",
+      "profile": "balanced",
+      "score": 338,
+      "money": 8,
+      "legitimacy": 0,
+      "wars": 1
+    },
+    {
+      "player": "布列塔尼公国",
+      "profile": "balanced",
+      "score": 338,
+      "money": 11,
+      "legitimacy": 14,
+      "wars": 1
+    },
+    {
+      "player": "奥斯曼贝伊国",
+      "profile": "balanced",
+      "score": 352,
+      "money": 8,
+      "legitimacy": 8,
+      "wars": 2
+    }
+  ]
+}
