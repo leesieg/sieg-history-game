@@ -19,6 +19,32 @@
         "条顿骑士团": { role: "帝国修会", voteWeight: 1 },
       },
     },
+    papacy: {
+      id: "papacy",
+      type: "religious",
+      name: "教廷",
+      label: "教廷",
+      authorityLabel: "教廷权威",
+      head: "教皇国",
+      authority: 65,
+      confessions: ["catholic"],
+      memberRole: "天主教国",
+      electors: [],
+      members: {},
+    },
+    caliphate: {
+      id: "caliphate",
+      type: "religious",
+      name: "哈里发权威",
+      label: "哈里发",
+      authorityLabel: "哈里发权威",
+      head: "马穆鲁克苏丹国",
+      authority: 55,
+      confessions: ["sunni", "shia"],
+      memberRole: "穆斯林政权",
+      electors: [],
+      members: {},
+    },
   };
 
   window.HIFI_SUPRANATIONAL_DATA = { structures };

@@ -4,29 +4,50 @@
   const data = () => window.HIFI_SUPRANATIONAL_DATA.structures;
   const clamp = value => Math.max(0, Math.min(100, Math.round(value)));
 
+  function dynamicMembers(world, definition) {
+    const members = Object.fromEntries(Object.entries(definition.members || {})
+      .filter(([polity]) => world.countries[polity])
+      .map(([polity, member]) => [polity, { ...member }]));
+    if (!definition.confessions?.length) return members;
+    for (const [polity, country] of Object.entries(world.countries)) {
+      if (!definition.confessions.includes(country.stateConfession)) continue;
+      members[polity] ||= { role: definition.memberRole || "成员", voteWeight: 1 };
+    }
+    return members;
+  }
+
+  function initialAuthority(world, id, definition) {
+    return world.faith?.[id]?.authority ?? definition.authority;
+  }
+
+  function initialHead(world, id, definition) {
+    return world.faith?.[id]?.head || definition.head || definition.emperor;
+  }
+
   function initializeSupranational(world) {
     world.supranational ||= { structures: {} };
     for (const [id, definition] of Object.entries(data())) {
-      const members = Object.fromEntries(Object.entries(definition.members)
-        .filter(([polity]) => world.countries[polity])
-        .map(([polity, member]) => [polity, { ...member }]));
+      const members = dynamicMembers(world, definition);
       if (!Object.keys(members).length) continue;
-      const electors = definition.electors.filter(polity => world.countries[polity] && members[polity]);
+      const electors = (definition.electors || []).filter(polity => world.countries[polity] && members[polity]);
       world.supranational.structures[id] ||= {
         id,
         type: definition.type,
         name: definition.name,
         label: definition.label,
         authorityLabel: definition.authorityLabel,
-        authority: definition.authority,
+        authority: initialAuthority(world, id, definition),
+        head: initialHead(world, id, definition),
         emperor: world.countries[definition.emperor] ? definition.emperor : electors[0],
         electors,
+        confessions: definition.confessions ? [...definition.confessions] : undefined,
         members,
         lastDrift: null,
       };
     }
     syncDiplomacyOrganizations(world);
     syncCountryMemberships(world);
+    syncFaithAuthorities(world);
     return world;
   }
 
@@ -69,6 +90,17 @@
           authority: structure.cohesion,
         };
       }
+    }
+  }
+
+  function syncFaithAuthorities(world) {
+    if (!world.faith) return;
+    for (const id of ["papacy", "caliphate"]) {
+      const item = structure(world, id);
+      if (!item) continue;
+      world.faith[id] ||= {};
+      world.faith[id].head = item.head;
+      world.faith[id].authority = item.authority;
     }
   }
 
@@ -156,6 +188,26 @@
     const nonStateFaith = Object.keys(item.members)
       .filter(polity => world.countries[polity]?.stateConfession && world.countries[polity].stateConfession !== "catholic").length;
     if (nonStateFaith) parts.push(["信仰分裂", -nonStateFaith]);
+    const delta = Math.max(-4, Math.min(3, parts.reduce((sum, [, value]) => sum + value, 0)));
+    return { delta, parts };
+  }
+
+  function religiousAuthorityDrift(world, item) {
+    const parts = [];
+    const headExists = !item.head || world.countries[item.head];
+    parts.push(["权威中心", headExists ? 1 : -2]);
+    const members = Object.keys(item.members || {});
+    parts.push(["信徒国规模", members.length >= 3 ? 1 : members.length ? 0 : -2]);
+    const averagePiety = members
+      .map(polity => world.countries[polity]?.faith?.piety)
+      .filter(value => Number.isFinite(value));
+    if (averagePiety.length) {
+      const average = averagePiety.reduce((sum, value) => sum + value, 0) / averagePiety.length;
+      parts.push(["信仰虔诚", average >= 60 ? 1 : average < 40 ? -1 : 0]);
+    }
+    const wars = internalWars(world, item).length;
+    if (wars) parts.push(["信徒内战", -wars]);
+    if (item.id === "papacy" && world.flags?.reformation) parts.push(["宗教改革冲击", -2]);
     const delta = Math.max(-4, Math.min(3, parts.reduce((sum, [, value]) => sum + value, 0)));
     return { delta, parts };
   }
@@ -373,6 +425,13 @@
         if (item.cohesion <= 0) dissolveUnion(world, item.id);
         continue;
       }
+      if (item.type === "religious") {
+        item.members = dynamicMembers(world, data()[item.id]);
+        const drift = religiousAuthorityDrift(world, item);
+        item.authority = clamp(item.authority + drift.delta);
+        item.lastDrift = drift;
+        continue;
+      }
       const drift = authorityDrift(world, item.id);
       item.authority = clamp(item.authority + drift.delta);
       item.lastDrift = drift;
@@ -385,6 +444,7 @@
     }
     syncDiplomacyOrganizations(world);
     syncCountryMemberships(world);
+    syncFaithAuthorities(world);
     return world;
   }
 
