@@ -15,9 +15,10 @@
     demesne: { money: .9 },
     tax_farming: { money: 1.05 },
     direct: { money: 1.2 },
-    commercial: { money: 1, portMoney: 1.15, tradeShare: 1.2 },
+    commercial: { money: 1, portMoney: 1.15, tradeShare: 1.6 },
     nomadic: { money: .2, food: .5 },
   };
+  const SUBSISTENCE_FOOD = 0.75;
 
   function fiscalKey(country) {
     const institutions = country.government?.institutions;
@@ -58,6 +59,9 @@
       ensureResearchState(country);
       country.ideas = 20;
       country.tradePolicy = "normal";
+      country.priceIndex ||= 1;
+      country.goodsAccess ||= {};
+      country.famineSeasons ||= 0;
       country.agenda = null;
       country.ageProgress = 0;
       country.edictCooldowns = {};
@@ -67,6 +71,9 @@
       if (tile.isSea) continue;
       tile.devastation = tile.devastation || 0;
       tile.control = tile.control ?? 60;
+    }
+    for (const [polity, country] of Object.entries(world.countries)) {
+      country.hasHorseSource = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).some(tile => tile.good === "horses");
     }
     return world;
   }
@@ -114,18 +121,28 @@
   }
 
   function tileOutput(tile, country) {
-    if (tile.isSea) return { food: 0, money: 0, military: 0 };
+    if (tile.isSea) return { food: 0, money: 0, military: 0, market: 0, goods: {} };
     if (tile.occupier && tile.occupation >= 100) return { food: 0, money: 0, military: 0 };
     const population = Math.max(1, tile.population || 1);
     const control = Math.max(.2, (tile.control || 0) / 100);
     const devastation = Math.max(.15, 1 - (tile.devastation || 0) / 100);
     const occupation = Math.max(0, 1 - (tile.occupation || 0) / 100);
     const base = population * control * devastation * occupation;
-    const foodGoods = new Set(["grain", "fish", "dates", "wine"]);
-    const militaryGoods = new Set(["iron", "horses", "timber"]);
-    let food = foodGoods.has(tile.good) ? base * 1.25 : base * .45;
-    let money = base * .55;
-    let military = militaryGoods.has(tile.good) ? base * .75 : base * .3;
+    const goodKey = window.HIFI_GOODS?.aliases?.[tile.good] || tile.good;
+    const good = window.HIFI_GOODS?.goods?.[goodKey] || { label: tile.good, cat: "luxury", baseValue: 2, yield: .6 };
+    const terrainAffinity = !good.terrain?.length || good.terrain.includes(tile.terrain) ? 1 : .72;
+    const climate = good.climate?.[tile.climate] ?? 1;
+    const amount = base * (good.yield || .6) * terrainAffinity * climate;
+    const value = amount * (good.baseValue || 1) * (country.priceIndex || 1);
+    let food = ["food"].includes(good.cat) ? amount * 1.35 : base * .28;
+    let money = value * .42;
+    let military = ["military", "strategic"].includes(good.cat) ? amount * .72 : base * .22;
+    if (good.cat === "money_metal") {
+      money += value;
+      if (good.special === "inflation") country.priceIndex = Math.min(2.5, (country.priceIndex || 1) + .002);
+    }
+    if (["luxury", "manufactured", "raw_textile", "construction"].includes(good.cat)) money += value * .28;
+    if (good.chainFrom && country.goodsAccess?.[good.chainFrom]) money *= 1.18;
     if (tile.buildings.includes("farm")) food *= 1.35;
     if (tile.buildings.includes("market")) money *= 1.4;
     if (tile.buildings.includes("port")) money *= 1.25;
@@ -149,8 +166,55 @@
     }
     military *= militaryOutputFactor(country);
     // 物价指数推升名义金钱产出流（价格革命：白银流入→物价上行）
-    if (country.priceIndex) money *= country.priceIndex;
-    return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
+    return {
+      food: Math.round(food),
+      money: Math.round(money),
+      military: Math.round(military),
+      market: Math.round(value),
+      goods: { [goodKey]: Math.round(amount * 10) / 10 },
+    };
+  }
+
+  function mergeGoods(target, goods) {
+    for (const [key, value] of Object.entries(goods || {})) {
+      target[key] = Math.round(((target[key] || 0) + value) * 10) / 10;
+    }
+    return target;
+  }
+
+  function processPopulation(world, polity, report) {
+    const country = world.countries[polity];
+    const territory = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
+    const need = Math.round(territory.reduce((sum, tile) => sum + (tile.population || 0), 0) * SUBSISTENCE_FOOD);
+    const balance = report.food - need - report.maintenance.food;
+    report.population = { need, balance, growth: 0, famine: 0 };
+    if (balance > 0) {
+      const growthPool = Math.min(0.25, balance * 0.006);
+      for (const tile of territory) {
+        const cap = Math.max(tile.basePopulation || tile.population || 1, tile.population || 1);
+        tile.basePopulation = Math.round((cap + growthPool / Math.max(1, territory.length)) * 10) / 10;
+        if ((tile.population || 0) < tile.basePopulation) {
+          const gain = Math.min(0.08, tile.basePopulation - tile.population);
+          tile.population = Math.round((tile.population + gain) * 10) / 10;
+          report.population.growth = Math.round((report.population.growth + gain) * 10) / 10;
+        }
+      }
+      country.famineSeasons = 0;
+    } else if (balance < 0) {
+      country.famineSeasons = (country.famineSeasons || 0) + 1;
+      if (country.famineSeasons >= 2) {
+        const lossPool = Math.min(0.18, Math.abs(balance) * 0.004);
+        for (const tile of territory) {
+          const loss = Math.min(tile.population * .02, Math.max(0.1, lossPool / Math.max(1, territory.length)));
+          tile.population = Math.max(1, Math.round((tile.population - loss) * 10) / 10);
+          report.population.famine = Math.round((report.population.famine + loss) * 10) / 10;
+        }
+        country.legitimacy = Math.max(0, country.legitimacy - 1);
+      }
+    } else {
+      country.famineSeasons = 0;
+    }
+    return report.population;
   }
 
   function armyMaintenance(world, polity) {
@@ -180,8 +244,12 @@
       total.food += output.food;
       total.money += output.money;
       total.military += output.military;
+      total.market += output.market || 0;
+      mergeGoods(total.goods, output.goods);
       return total;
-    }, { food: 0, money: 0, military: 0, tiles: territory.length });
+    }, { food: 0, money: 0, military: 0, market: 0, goods: {}, tiles: territory.length });
+    country.goodsAccess = { ...report.goods };
+    country.hasHorseSource = (country.goodsAccess.horses || 0) > 0;
     // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     // 军团/建筑维护费回灌产出流：扩军/铺建筑必须从产出里扣，逼出取舍（核心循环：基底→维护→产出净额）
@@ -192,6 +260,7 @@
       money: buildingMaintenance(world, polity),
     };
     report.maintenance = maintenance;
+    processPopulation(world, polity, report);
 
     country.food += report.food - maintenance.food;
     // 封闭贸易牺牲对外商路、换取本土产出流加成（与下方 open 的对外收益互为取舍）
@@ -201,7 +270,7 @@
     country.military += Math.round(report.military * central) - maintenance.military;
     if (country.tradePolicy === "open") {
       const tradeShare = fiscalEffect(country)?.tradeShare || 1;
-      const trade = Math.max(2, Math.round(report.money * .12 * tradeShare));
+      const trade = Math.max(2, Math.round((report.market || report.money) * .12 * tradeShare));
       country.money += trade;
       country.capital += Math.max(1, Math.round(trade * .2));
       report.trade = trade;

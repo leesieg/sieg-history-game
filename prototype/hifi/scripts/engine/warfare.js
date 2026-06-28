@@ -251,6 +251,7 @@
     if (!tile || tile.polity !== polity || tile.isSea) throw new Error("只能在己方陆地动员");
     if (country.actionPoints.military < 1) throw new Error("军事点不足");
     if ((country.warfare?.warExhaustion || 0) >= 40) throw new Error("战争疲惫过高，难以继续征召");
+    if (combatType === "cavalry" && !canRecruitCombatType(world, polity, "cavalry")) throw new Error("缺少马匹来源，无法动员骑兵");
     if (combatType === "artillery") {
       if (!canRecruitCombatType(world, polity, "artillery")) throw new Error("尚未掌握火炮技术");
       if (country.military < 30) throw new Error("铸炮需要军需 30");
@@ -337,6 +338,10 @@
   }
 
   function canRecruitCombatType(world, polity, type) {
+    if (type === "cavalry") {
+      return !!world.countries[polity].hasHorseSource
+        || window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).some(tile => tile.good === "horses");
+    }
     return type !== "artillery" || !!world.countries[polity].technology?.artillery;
   }
 

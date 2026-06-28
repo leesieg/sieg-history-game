@@ -7,6 +7,7 @@ const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/goods.js",
   "data/rules.js",
   "engine/world.js",
   "engine/economy.js",
@@ -33,6 +34,7 @@ assert.ok(Object.keys(world.warfare.armies).length >= 2, "开局必须生成历�
 assert.ok(world.diplomacy.wars.length >= 1, "开局必须生成历史战争");
 assert.equal(world.countries["英格兰王国"].reputation, 60, "历史开局战争应有宣称，不应误扣声誉");
 world.diplomacy.wars = [];
+economy.initializeEconomy(world);
 
 const frenchArmy = warfare.createArmy(world, {
   owner: "法兰西王国",
@@ -51,6 +53,10 @@ const englishArmy = warfare.createArmy(world, {
 });
 assert.equal(warfare.armyTotalSoldiers(frenchArmy), 3800);
 assert.equal(warfare.canRecruitCombatType(world, "法兰西王国", "artillery"), false);
+assert.equal(warfare.canRecruitCombatType(world, "法兰西王国", "cavalry"), false, "无马匹来源时不能动员骑兵");
+tiles[1].good = "horses";
+world.countries["法兰西王国"].hasHorseSource = true;
+assert.equal(warfare.canRecruitCombatType(world, "法兰西王国", "cavalry"), true, "拥有马匹来源后可以动员骑兵");
 
 assert.ok(warfare.terrainMoveCost(tiles[1]) > warfare.terrainMoveCost(tiles[0]));
 tiles[1].terrain = "mountains";

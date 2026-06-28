@@ -8,6 +8,7 @@ const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const context = { window: {} };
 for (const file of [
   "data/techs.js",
+  "data/goods.js",
   "data/rules.js",
   "engine/world.js",
   "engine/economy.js",
@@ -22,6 +23,7 @@ assert.ok(rules.buildings.market);
 assert.ok(rules.technologies.printing);
 assert.equal(rules.technologies.printing.domain, "cultural");
 assert.equal(Object.keys(rules.techDomains).length, 5);
+assert.equal(Object.keys(context.window.HIFI_GOODS.goods).length, 30, "经济层必须定义 30 种历史物产");
 
 const tiles = [
   { id: 1, isSea: false, polity: "法兰西王国", population: 12, control: 80, good: "grain", buildings: ["farm", "market"], city: "巴黎", devastation: 0 },
@@ -35,6 +37,11 @@ const healthy = economy.tileOutput(tiles[0], country);
 const devastated = economy.tileOutput({ ...tiles[0], devastation: 60 }, country);
 assert.ok(healthy.food > devastated.food, "战争破坏必须降低地块产出");
 assert.ok(healthy.money > 0, "市场必须产生金钱");
+assert.ok(healthy.goods.grain > 0, "谷物地块必须记录具体物产产量");
+const horseOutput = economy.tileOutput({ ...tiles[0], good: "horses", terrain: "steppe" }, country);
+const ironOutput = economy.tileOutput({ ...tiles[0], good: "iron", terrain: "hills" }, country);
+assert.ok(horseOutput.goods.horses > 0 && ironOutput.goods.iron > 0, "马和铁必须作为不同物产记录");
+assert.ok(horseOutput.market !== ironOutput.market, "马和铁不能再是同一个抽象军事桶");
 const occupied = economy.tileOutput({ ...tiles[0], occupier: "英格兰王国", occupation: 100 }, country);
 assert.deepEqual(
   JSON.parse(JSON.stringify(occupied)),
@@ -55,6 +62,9 @@ country.government.institutions = null;
 const before = { food: country.food, money: country.money, military: country.military };
 const report = economy.settleCountry(world, "法兰西王国");
 assert.ok(country.food > before.food);
+assert.ok(report.market > 0, "结算报告必须记录物产市场价值");
+assert.ok(report.goods.grain > 0 && report.goods.iron > 0, "结算报告必须记录国家物产访问");
+assert.equal(country.hasHorseSource, false, "没有马匹地块时不能拥有马匹来源");
 // 结算已扣建筑维护费：money 账面变化应等于产出净额（可能小于产出本身），而非简单大于赛前值
 assert.equal(country.money - before.money, report.money - report.maintenance.money,
   "money 账面变化应等于产出减建筑维护");
@@ -66,6 +76,19 @@ country.money = 100;
 economy.constructBuilding(world, "法兰西王国", 2, "market");
 assert.ok(tiles[1].buildings.includes("market"));
 assert.equal(country.actionPoints.administrative, 2);
+
+// 粮食赤字连续发生时，人口必须缓慢真减员，而不是只扣抽象粮仓。
+const famineTiles = [
+  { id: 10, isSea: false, polity: "饥荒测试国", population: 10, basePopulation: 10, control: 80, good: "cloth", terrain: "plains", climate: "temperate", buildings: [], city: "测试城", devastation: 0 },
+];
+const famineWorld = worldEngine.createWorld(famineTiles, {}, "饥荒测试国");
+economy.initializeEconomy(famineWorld);
+const famineCountry = famineWorld.countries["饥荒测试国"];
+famineCountry.food = 0;
+economy.settleCountry(famineWorld, "饥荒测试国");
+const popBeforeFamine = famineTiles[0].population;
+economy.settleCountry(famineWorld, "饥荒测试国");
+assert.ok(famineTiles[0].population < popBeforeFamine, "连续粮食赤字必须造成 POP 缓慢减员");
 
 country.actionPoints.administrative = 3;
 country.money = 100;

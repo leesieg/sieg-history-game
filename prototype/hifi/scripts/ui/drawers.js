@@ -330,6 +330,8 @@
         <div class="drawer-row">${codexTerm("军需", "军需")}<span>${Math.round(country.military)}</span></div>
         <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
         <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
+        <div class="drawer-row">物产入市<span>${Math.round(country.lastReport?.market || 0)}</span></div>
+        <div class="drawer-row">口粮余额<span>${country.lastReport?.population?.balance ?? "—"}</span></div>
         <div class="drawer-subtitle">${codexTerm("贸易政策", "贸易政策")}</div><div class="ui-segmented">${policies}</div>
         <div class="drawer-subtitle">${codexTerm("关税", "关税")}</div><div class="ui-segmented">${tariffs}</div>
         <div class="drawer-subtitle">${codexTerm("国家敕令", "国家敕令")}</div>${edicts}
