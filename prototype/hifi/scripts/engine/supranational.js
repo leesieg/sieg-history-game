@@ -157,7 +157,7 @@
   }
 
   function relationTrust(world, viewer, target) {
-    if (!window.HIFI_DIPLOMACY_ENGINE || viewer === target) return 50;
+    if (!window.HIFI_DIPLOMACY_ENGINE?.relationView || viewer === target) return 50;
     return window.HIFI_DIPLOMACY_ENGINE.relationView(world, viewer, target).trust;
   }
 

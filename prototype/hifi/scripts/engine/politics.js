@@ -246,7 +246,19 @@
       why: "需要宗教改革浪潮出现",
       apply: (country, world) => {
         country.government.laws.religion = "reformed";
-        window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).forEach(tile => { tile.religion = "新教"; });
+        country.stateConfession = "lutheran";
+        country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
+        country.faith.secularized = true;
+        window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).forEach(tile => {
+          tile.confession = "lutheran";
+          tile.religion = window.HIFI_FAITH_ENGINE?.confessionLabel?.("lutheran") || "路德宗";
+          tile.faithStrength = 45;
+        });
+        const hre = window.HIFI_SUPRANATIONAL_ENGINE?.structure?.(world, "hre");
+        if (hre?.members?.[country.name]) hre.authority = Math.max(0, hre.authority - 6);
+        const papacy = window.HIFI_SUPRANATIONAL_ENGINE?.structure?.(world, "papacy");
+        if (papacy) papacy.authority = Math.max(0, papacy.authority - 3);
+        window.HIFI_SUPRANATIONAL_ENGINE?.processSupranational?.(world);
       },
     },
     constitutional_monarchy: {

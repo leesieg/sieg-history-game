@@ -26,7 +26,7 @@
     },
     reformation_split: {
       steps: ["宗教改革撕裂信仰统一", "新旧两派各执经文", "正统阶层与改革派对立", "信仰压力席卷宫廷"],
-      flags: { reformationSplit: true },
+      flags: { reformationSplit: true, reformation: true },
       transition: { title: "信仰分裂", sub: "一个基督教世界开始裂成两半" },
       effect(world) {
         for (const country of Object.values(world.countries)) {
@@ -35,6 +35,7 @@
             if (country.estates?.[key]) country.estates[key].satisfaction = Math.max(-100, country.estates[key].satisfaction - 8);
           }
         }
+        seedReformationInEmpire(world);
       },
     },
     price_revolution: {
@@ -74,6 +75,36 @@
   };
   // 纪元跨越时绑定触发的因果链（封建/发现/革命纪元无绑定链，保留通用转折）。
   const CHAIN_BY_ERA = { faith: "reformation_split", absolutism: "gunpowder_revolution", industrial: "industrial_takeoff" };
+
+  function seedReformationInEmpire(world) {
+    const supranational = window.HIFI_SUPRANATIONAL_ENGINE;
+    const hre = supranational?.structure?.(world, "hre");
+    if (!hre) return;
+    const reformers = ["萨克森选侯国", "波西米亚王国", "瑞士邦联", "弗兰德斯伯国"]
+      .filter(polity => hre.members?.[polity] && world.countries[polity]);
+    if (!reformers.length) return;
+    for (const polity of reformers) {
+      const country = world.countries[polity];
+      country.stateConfession = "lutheran";
+      country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
+      country.faith.secularized = true;
+      country.money += 20;
+      for (const key of ["church", "clergy", "imperial_church"]) {
+        if (country.estates?.[key]) country.estates[key].satisfaction = Math.max(-100, country.estates[key].satisfaction - 18);
+      }
+      for (const tile of window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)) {
+        if (!tile.city && tile.confession !== "catholic") continue;
+        tile.confession = "lutheran";
+        tile.religion = window.HIFI_FAITH_ENGINE?.confessionLabel?.("lutheran") || "路德宗";
+        tile.faithStrength = 45;
+      }
+      pushChronicle(world, polity, "religion", "宗教改革在本国扎根，教产被世俗化，帝国权威受到冲击");
+    }
+    hre.authority = Math.max(0, (hre.authority || 0) - reformers.length * 4);
+    const papacy = supranational.structure?.(world, "papacy");
+    if (papacy) papacy.authority = Math.max(0, (papacy.authority || 0) - 8);
+    supranational.processSupranational?.(world);
+  }
 
   const missionDefinitions = [
     { key: "secure_capital", label: "稳固首都", check: (world, country) => window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).some(tile => tile.city && tile.control >= 80), reward: { legitimacy: 3 } },

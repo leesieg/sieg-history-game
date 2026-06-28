@@ -8,7 +8,11 @@ const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
   "data/rules.js",
+  "data/faiths.js",
+  "data/supranational.js",
   "engine/world.js",
+  "engine/faith.js",
+  "engine/supranational.js",
   "engine/struggle.js",
   "engine/history.js",
 ]) {
@@ -279,12 +283,23 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   assert.ok(it.ideas >= 15 && it.money > moneyBefore, "工业起飞必须加速思想与金钱");
 
   // 纪元跨越自动触发绑定链：跨入信仰分裂纪元（1517）→ 触发 reformation_split
-  const cw5 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
+  const cw5 = worldEngine.createWorld([
+    { id: 0, isSea: false, polity: "巴伐利亚公国", population: 12, buildings: [], city: "慕尼黑", terrain: "plains", religion: "天主教", control: 80 },
+    { id: 1, isSea: false, polity: "萨克森选侯国", population: 10, buildings: [], city: "莱比锡", terrain: "forest", religion: "天主教", control: 75 },
+    { id: 2, isSea: false, polity: "波西米亚王国", population: 10, buildings: [], city: "布拉格", terrain: "hills", religion: "天主教", control: 75 },
+  ], undefined, "巴伐利亚公国");
   history.initializeHistory(cw5);
+  context.window.HIFI_FAITH_ENGINE.initializeFaith(cw5);
+  context.window.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(cw5);
+  const hreBeforeReformation = context.window.HIFI_SUPRANATIONAL_ENGINE.structure(cw5, "hre").authority;
   cw5.turn = (1517 - 1337) * 4 + 1; // year 1517
   const fired = history.checkEra(cw5);
   assert.equal(fired, true, "跨年应推进纪元");
+  assert.equal(cw5.flags.reformation, true, "宗教改革链应同步打开 reformation 窗口");
   assert.equal(cw5.flags.reformationSplit, true, "跨入信仰分裂纪元应自动触发宗教改革因果链");
+  assert.equal(cw5.countries["萨克森选侯国"].stateConfession, "lutheran", "宗教改革应在神罗诸侯中落地为国教变化");
+  assert.equal(cw5.tiles.find(tile => tile.city === "莱比锡").confession, "lutheran", "宗教改革应真实改变神罗地块 confession");
+  assert.ok(context.window.HIFI_SUPRANATIONAL_ENGINE.structure(cw5, "hre").authority < hreBeforeReformation, "神罗成员改宗应压低帝国权威");
   assert.ok(cw5.pendingTransition && cw5.pendingTransition.title === "信仰分裂", "纪元转折应使用因果链文案");
 
   // 流触发：新大陆白银航路开通 → processHistory 触发价格革命（仅一次）
