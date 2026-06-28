@@ -6,7 +6,7 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
-  "data/rules.js", "data/trade.js", "data/countries.js",
+  "data/techs.js", "data/rules.js", "data/trade.js", "data/countries.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
   "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
   "engine/history.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
@@ -59,8 +59,8 @@ while (world.turn < finalTurn) {
   world.playerEvents.splice(0);
   world.pendingTransition = null;
   const player = world.countries[world.playerPolity];
-  for (const [key, technology] of Object.entries(w.HIFI_RULES.technologies)) {
-    if (!player.technology[key] && player.ideas >= technology.cost && player.technologyAwareness[key] >= 25) {
+  for (const key of Object.keys(w.HIFI_RULES.technologies)) {
+    if (w.HIFI_ECONOMY_ENGINE.technologyReady(world, player, key).ready) {
       w.HIFI_ECONOMY_ENGINE.adoptTechnology(world, world.playerPolity, key);
     }
   }

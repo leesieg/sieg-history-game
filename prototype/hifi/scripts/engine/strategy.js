@@ -8,8 +8,9 @@
     return Object.entries(window.HIFI_RULES.technologies)
       .filter(([key, technology]) =>
         !country.technology[key]
-        && country.ideas >= technology.cost
-        && (country.technologyAwareness?.[key] || 0) >= 25
+        && (country.research?.[technology.domain || "cultural"] || 0) >= technology.cost
+        && (country.technologyAwareness?.[key] || 0) >= (technology.awarenessGate ?? 25)
+        && !(technology.requires || []).some(required => !country.technology[required])
       )
       .sort((a, b) => {
         const military = (country.pressures?.military || 0) >= 55;
@@ -22,6 +23,7 @@
     if (polity === world.playerPolity) return;
     const country = world.countries[polity];
     if (!country?.leader?.abilities || !country.actionPoints || !country.government?.assembly) return;
+    chooseResearchFocus(country);
     const technology = affordableTechnology(country);
     if (technology) window.HIFI_ECONOMY_ENGINE.adoptTechnology(world, polity, technology[0]);
     if ((country.pressures?.fiscal || 0) >= 60 && country.tariff !== 25) {
@@ -40,6 +42,15 @@
     }
     pursueDiplomacy(world, polity);
     pursueWar(world, polity);
+  }
+
+  function chooseResearchFocus(country) {
+    const pressure = country.pressures || {};
+    if ((pressure.military || 0) >= 55) country.researchFocus = "military";
+    else if ((pressure.exploration || 0) >= 45) country.researchFocus = "naval";
+    else if ((pressure.trade || 0) + (pressure.fiscal || 0) >= 90) country.researchFocus = "economic";
+    else if ((pressure.faith || 0) >= 45) country.researchFocus = "cultural";
+    country.researchFocus ||= "cultural";
   }
 
   // AI 主动外交：与友好国缔结贸易协定，或向戒备的强邻派使节缓和（每季至多一项，防御式）

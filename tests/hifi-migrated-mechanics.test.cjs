@@ -6,9 +6,11 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/techs.js",
   "data/rules.js",
   "data/trade.js",
   "data/countries.js",
+  "data/institutions.js",
   "engine/world.js",
   "engine/politics.js",
   "engine/economy.js",
@@ -35,7 +37,7 @@ w.HIFI_HISTORY_ENGINE.initializeHistory(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 
 const france = world.countries["法兰西王国"];
-france.government.reforms.political = 2;
+france.government.institutions.assembly.type = "none";
 w.HIFI_POLITICS_ENGINE.enactDecision(world, france.name, "estates_general");
 assert.equal(france.government.assembly.unlocked, true);
 assert.ok(france.decisionLedger.length);
@@ -63,6 +65,7 @@ w.HIFI_TRADE_ENGINE.processTrade(world);
 assert.ok(world.trade.routes.levant.cost > oldCost);
 
 france.technologyAwareness.printing = 100;
+france.technology.universities = true;
 france.ideas = 100;
 world.turn = (1450 - 1337) * 4 + 1;
 w.HIFI_ECONOMY_ENGINE.adoptTechnology(world, france.name, "printing");

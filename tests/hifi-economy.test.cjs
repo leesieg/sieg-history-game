@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const context = { window: {} };
 for (const file of [
+  "data/techs.js",
   "data/rules.js",
   "engine/world.js",
   "engine/economy.js",
@@ -19,6 +20,8 @@ const worldEngine = context.window.HIFI_WORLD_ENGINE;
 const economy = context.window.HIFI_ECONOMY_ENGINE;
 assert.ok(rules.buildings.market);
 assert.ok(rules.technologies.printing);
+assert.equal(rules.technologies.printing.domain, "cultural");
+assert.equal(Object.keys(rules.techDomains).length, 5);
 
 const tiles = [
   { id: 1, isSea: false, polity: "法兰西王国", population: 12, control: 80, good: "grain", buildings: ["farm", "market"], city: "巴黎", devastation: 0 },
@@ -76,10 +79,23 @@ assert.throws(() => economy.integrateTile(world, "法兰西王国", 2), /已完�
 country.ideas = 100;
 world.turn = (1450 - 1337) * 4 + 1;
 country.technologyAwareness.printing = 100;
+country.technology.universities = true;
 economy.adoptTechnology(world, "法兰西王国", "printing");
 assert.equal(country.technology.printing, true);
 assert.ok(country.ideas < 100);
 assert.ok(country.ageProgress > 0, "采纳科技必须推进时代进度");
+
+country.technology.accounting = false;
+country.technology.codifiedLaw = false;
+country.technology.threeFieldSystem = true;
+country.technologyAwareness.accounting = 100;
+country.research.economic = 100;
+world.turn = (1400 - 1337) * 4 + 1;
+assert.throws(() => economy.adoptTechnology(world, "法兰西王国", "accounting"), /成文法典/, "科技树前置必须生效");
+country.technology.codifiedLaw = true;
+economy.adoptTechnology(world, "法兰西王国", "accounting");
+assert.equal(country.technology.accounting, true);
+assert.ok(country.research.economic < 100, "经济科技必须消耗经济领域研究");
 
 country.actionPoints.administrative = 3;
 const foodBeforeEdict = country.food;

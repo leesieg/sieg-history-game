@@ -55,6 +55,7 @@
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
       country.technologyAwareness = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, 0]));
+      ensureResearchState(country);
       country.ideas = 20;
       country.tradePolicy = "normal";
       country.agenda = null;
@@ -68,6 +69,48 @@
       tile.control = tile.control ?? 60;
     }
     return world;
+  }
+
+  function techDomains() {
+    const domains = rules.techDomains && Object.keys(rules.techDomains).length
+      ? rules.techDomains
+      : { administrative: {}, military: {}, economic: {}, naval: {}, cultural: {} };
+    return Object.keys(domains);
+  }
+
+  function ensureResearchState(country) {
+    const domains = techDomains();
+    country.research ||= {};
+    domains.forEach(domain => { country.research[domain] ??= 0; });
+    if (country.ideas !== undefined) {
+      country.research.cultural = Math.max(country.research.cultural || 0, country.ideas || 0);
+    }
+    country.researchFocus ||= "cultural";
+    if (!domains.includes(country.researchFocus)) country.researchFocus = domains[0] || "cultural";
+    return country.research;
+  }
+
+  function addResearch(country, domain, amount) {
+    ensureResearchState(country);
+    country.research[domain] = Math.round((country.research[domain] + amount) * 10) / 10;
+    if (domain === "cultural") country.ideas = Math.max(country.ideas || 0, Math.round(country.research[domain]));
+    return country.research[domain];
+  }
+
+  function technologyReady(world, country, key) {
+    const technology = rules.technologies[key];
+    if (!technology) return { ready: false, reason: "未知科技" };
+    if (country.technology[key]) return { ready: false, reason: "科技已经采纳" };
+    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    if (year < technology.year) return { ready: false, reason: `${technology.label}尚未进入可用年代` };
+    const missing = (technology.requires || []).find(required => !country.technology[required]);
+    if (missing) return { ready: false, reason: `需要先完成${rules.technologies[missing]?.label || missing}` };
+    const gate = technology.awarenessGate ?? 25;
+    if ((country.technologyAwareness[key] || 0) < gate) return { ready: false, reason: `${technology.label}传播度不足` };
+    ensureResearchState(country);
+    const domain = technology.domain || "cultural";
+    if ((country.research[domain] || 0) < technology.cost) return { ready: false, reason: `${rules.techDomains?.[domain]?.label || domain}研究不足` };
+    return { ready: true, technology };
   }
 
   function tileOutput(tile, country) {
@@ -246,12 +289,11 @@
     const country = world.countries[polity];
     const technology = rules.technologies[key];
     if (!technology) throw new Error("未知科技");
-    if (country.technology[key]) throw new Error("科技已经采纳");
-    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
-    if (year < technology.year) throw new Error(`${technology.label}尚未进入可用年代`);
-    if ((country.technologyAwareness[key] || 0) < 25) throw new Error(`${technology.label}传播度不足`);
-    if (country.ideas < technology.cost) throw new Error("思想点不足");
-    country.ideas -= technology.cost;
+    const ready = technologyReady(world, country, key);
+    if (!ready.ready) throw new Error(ready.reason);
+    const domain = technology.domain || "cultural";
+    country.research[domain] -= technology.cost;
+    if (domain === "cultural") country.ideas = Math.max(0, Math.round(country.research[domain]));
     country.technology[key] = true;
     country.ageProgress = Math.round(
       Object.values(country.technology).filter(Boolean).length
@@ -293,6 +335,7 @@
 
   window.HIFI_ECONOMY_ENGINE = {
     adoptTechnology,
+    addResearch,
     armyMaintenance,
     buildingMaintenance,
     constructBuilding,
@@ -300,8 +343,10 @@
     enactEdict,
     initializeEconomy,
     integrateTile,
+    ensureResearchState,
     fiscalEffect,
     integrationGain,
+    technologyReady,
     MAINTENANCE,
     setAgenda,
     setTradePolicy,

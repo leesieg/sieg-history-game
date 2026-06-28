@@ -358,6 +358,14 @@
   function renderDevelopment(country, world) {
     const tab = currentTab("发展");
     const bar = tabBar("发展");
+    const domains = window.HIFI_RULES.techDomains || {};
+    window.HIFI_ECONOMY_ENGINE?.ensureResearchState?.(country);
+    const researchRows = Object.entries(domains).map(([domain, info]) => {
+      const value = Math.round(country.research?.[domain] || 0);
+      const label = info.label || domain;
+      const detail = `${value} 研究${country.researchFocus === domain ? " · 当前焦点" : ""}`;
+      return actionButton("data-research-focus", domain, label, detail, country.researchFocus === domain, country.researchFocus === domain ? "当前已是研究焦点" : false);
+    }).join("");
 
     if (tab === "概览") {
       const missions = window.HIFI_HISTORY_ENGINE.missions(world).map(mission => {
@@ -366,7 +374,7 @@
       }).join("");
       const tutorial = window.HIFI_HISTORY_ENGINE.tutorialTask(world);
       return `${bar}
-        <div class="drawer-row">${codexTerm("思想点", "思想点")}<span>${Math.round(country.ideas)}</span></div>
+        <div class="drawer-subtitle">领域研究</div>${researchRows}
         <div class="drawer-row">${codexTerm("时代进度", "时代进度")}<span>${wd().meter(country.ageProgress, 100, { tone: "blue" })} ${country.ageProgress}%</span></div>
         <div class="drawer-row">${codexTerm("探索点", "探索点")}<span>${country.exploration.points}${country.exploration.colonial ? " · 殖民" : ""}</span></div>
         <div class="drawer-subtitle">${codexTerm("时代使命", "时代使命")}</div>${missions}
@@ -377,21 +385,28 @@
     const currentYear = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
     const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) => {
       const awareness = country.technologyAwareness[key] || 0;
+      const gate = technology.awarenessGate ?? 25;
+      const domain = technology.domain || "cultural";
+      const domainLabel = domains[domain]?.label || domain;
+      const research = country.research?.[domain] || 0;
+      const missing = (technology.requires || []).filter(required => !country.technology[required]);
       const unmet = [];
       if (currentYear < technology.year) unmet.push(`年代 ${currentYear}/${technology.year}`);
-      if (awareness < 25) unmet.push(`传播 ${awareness}%/25%`);
-      if (country.ideas < technology.cost) unmet.push(`思想点 ${Math.round(country.ideas)}/${technology.cost}`);
+      if (missing.length) unmet.push(`前置 ${missing.map(item => window.HIFI_RULES.technologies[item]?.label || item).join("、")}`);
+      if (awareness < gate) unmet.push(`传播 ${awareness}%/${gate}%`);
+      if (research < technology.cost) unmet.push(`${domainLabel}研究 ${Math.round(research)}/${technology.cost}`);
       const detail = country.technology[key]
         ? `已采纳 · ${technology.effect}`
         : `${wd().checklist([
             { label: `年代 ${technology.year}`, met: currentYear >= technology.year },
-            { label: `传播 ${awareness}%≥25`, met: awareness >= 25 },
-            { label: `思想 ${technology.cost}`, met: country.ideas >= technology.cost },
+            { label: `前置科技`, met: missing.length === 0 },
+            { label: `传播 ${awareness}%≥${gate}`, met: awareness >= gate },
+            { label: `${domainLabel}研究 ${technology.cost}`, met: research >= technology.cost },
           ])} ${technology.effect}`;
       const disabled = country.technology[key] ? "科技已经采纳" : unmet.length ? `尚不满足：${unmet.join("，")}` : false;
       return actionButton("data-technology", key, technology.label, detail, country.technology[key], disabled);
     }).join("");
-    return `${bar}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
+    return `${bar}<div class="drawer-subtitle">领域研究</div>${researchRows}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
   }
 
   function renderMilitary(country, world) {

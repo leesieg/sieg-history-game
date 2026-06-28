@@ -104,6 +104,7 @@
       country.pressures = { trade: 0, military: 0, fiscal: 0, exploration: 0 };
       country.priceIndex = 1;
       country.technologyAwareness = Object.fromEntries(Object.keys(window.HIFI_RULES.technologies).map(key => [key, 0]));
+      window.HIFI_ECONOMY_ENGINE?.ensureResearchState?.(country);
       country.exploration = { points: 0, milestones: [] };
       country.missionsDone = [];
     }
@@ -111,16 +112,41 @@
     return world;
   }
 
+  function domainResearchIncome(world, country, domain) {
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name);
+    const cities = tiles.filter(tile => tile.city).length;
+    const markets = tiles.filter(tile => tile.buildings?.includes("market")).length;
+    const ports = tiles.filter(tile => tile.buildings?.includes("port")).length;
+    const forts = tiles.filter(tile => tile.buildings?.includes("fort")).length;
+    const workshops = tiles.filter(tile => tile.buildings?.includes("workshop")).length;
+    const atWar = world.diplomacy?.wars?.some(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
+    const central = Math.max(0, Math.min(100, country.government?.institutions?.centralization ?? country.government?.centralPower ?? 60));
+    const sources = {
+      administrative: 1 + central / 80 + cities * .25,
+      military: 1 + forts * .45 + (atWar ? 1.25 : 0) + ((country.government?.institutions?.military === "standing_army") ? .6 : 0),
+      economic: 1 + markets * .45 + workshops * .35 + (world.trade?.lastIncome?.[country.name] || 0) / 35,
+      naval: 1 + ports * .65 + (country.pressures?.exploration || 0) / 45,
+      cultural: 1 + (country.technology?.printing ? 1 : 0) + Math.max(0, country.legitimacy || 0) / 100,
+    };
+    return Math.max(.5, sources[domain] || 1);
+  }
+
   function spreadTechnology(world) {
     const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
     for (const country of Object.values(world.countries)) {
-      country.ideas += 1 + (country.technology.printing ? 1 : 0);
+      window.HIFI_ECONOMY_ENGINE?.ensureResearchState?.(country);
+      for (const domain of Object.keys(window.HIFI_RULES.techDomains || {})) {
+        const focus = country.researchFocus === domain ? 1.5 : .85;
+        window.HIFI_ECONOMY_ENGINE?.addResearch?.(country, domain, domainResearchIncome(world, country, domain) * focus);
+      }
+      country.ideas = Math.round(country.research?.cultural || country.ideas || 0);
       for (const [key, technology] of Object.entries(window.HIFI_RULES.technologies)) {
         if (year < technology.year) continue;
         const neighborsKnown = Object.values(world.countries).filter(other => other.technology?.[key]).length;
         const printing = country.technology.printing ? 2 : 0;
         const ideasBoost = Math.floor((country.pressures?.ideas || 0) / 40); // 思想压力加速科技扩散流
-        country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + printing + ideasBoost);
+        const laggardBoost = country.technology?.[key] ? 0 : Math.min(3, neighborsKnown);
+        country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + laggardBoost + printing + ideasBoost);
       }
       if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += 1;
       if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {

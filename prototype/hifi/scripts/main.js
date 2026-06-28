@@ -357,6 +357,11 @@
         window.HIFI_ECONOMY_ENGINE.adoptTechnology(current, current.playerPolity, button.dataset.technology)
       , button));
     });
+    drawerBody.querySelectorAll("[data-research-focus]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        current.countries[current.playerPolity].researchFocus = button.dataset.researchFocus;
+      }, button));
+    });
     drawerBody.querySelectorAll("[data-diplomatic-target]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         current.diplomacy.selectedTarget = button.dataset.diplomaticTarget;
