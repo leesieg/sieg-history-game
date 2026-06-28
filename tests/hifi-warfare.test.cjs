@@ -84,6 +84,50 @@ assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
 warfare.executeNavalMovementPhase(navalWorld);
 assert.equal(fleet.tileId, 14);
 
+const amphibiousTiles = [
+  { id: 30, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 31, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 40, y: 0, control: 85, devastation: 0 },
+  { id: 32, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
+  { id: 33, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 30, y: 0, control: 0 },
+];
+const amphibiousWorld = worldEngine.createWorld(amphibiousTiles, {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(amphibiousWorld);
+warfare.initializeWarfare(amphibiousWorld);
+amphibiousWorld.diplomacy.wars = [];
+const transportFleet = warfare.createFleet(amphibiousWorld, {
+  owner: "威尼斯共和国",
+  tileId: 32,
+  name: "亚得里亚运输舰队",
+  units: [{ shipType: "galley", ships: 4 }],
+});
+const landingArmy = warfare.createArmy(amphibiousWorld, {
+  owner: "威尼斯共和国",
+  tileId: 30,
+  name: "登陆军团",
+  units: [{ combatType: "infantry", serviceType: "professional", soldiers: 1200 }],
+});
+const oversizedArmy = warfare.createArmy(amphibiousWorld, {
+  owner: "威尼斯共和国",
+  tileId: 30,
+  name: "超载测试军团",
+  units: [{ combatType: "infantry", serviceType: "levy", soldiers: 3000 }],
+});
+assert.equal(warfare.fleetTransportCapacity(transportFleet), 2000, "舰队运载容量应由舰种和舰船数决定");
+assert.throws(() => warfare.embarkArmy(amphibiousWorld, oversizedArmy.id, transportFleet.id), /运载容量/, "舰队不能超载运兵");
+delete amphibiousWorld.warfare.armies[oversizedArmy.id];
+warfare.embarkArmy(amphibiousWorld, landingArmy.id, transportFleet.id);
+assert.equal(landingArmy.status, "embarked", "军团应能从相邻海岸登上本国舰队");
+assert.equal(warfare.fleetTransportLoad(amphibiousWorld, transportFleet.id), 1200, "舰队应记录已装载兵力");
+warfare.planFleetRoute(amphibiousWorld, transportFleet.id, 33);
+warfare.executeNavalMovementPhase(amphibiousWorld);
+assert.equal(transportFleet.tileId, 33, "运输舰队应能把登船军团带到目标海域");
+warfare.declareWar(amphibiousWorld, "威尼斯共和国", "热那亚共和国", 31, "利古里亚登陆战");
+warfare.disembarkArmy(amphibiousWorld, landingArmy.id, 31);
+assert.equal(landingArmy.status, "ready", "军团应能在交战敌岸登陆");
+assert.equal(landingArmy.tileId, 31, "登陆后军团位置必须变为目标陆地");
+warfare.advanceOccupation(amphibiousWorld, landingArmy.id);
+assert.equal(amphibiousTiles[1].occupier, "威尼斯共和国", "登陆军团应能继续执行占领");
+
 const navalBattleTiles = [
   { id: 20, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
   { id: 21, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 30, y: 0, control: 85, devastation: 0 },

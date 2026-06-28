@@ -4,9 +4,9 @@
   const combatTypes = new Set(["infantry", "cavalry", "artillery"]);
   const serviceTypes = new Set(["guard", "professional", "standing", "levy", "mercenary"]);
   const shipTypes = {
-    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal" },
-    cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal" },
-    carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips" },
+    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", transport: 500 },
+    cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal", transport: 900 },
+    carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips", transport: 1300 },
   };
   const MILITARY_EFFECTS = {
     feudal_levy: { serviceType: "levy", levyCostFactor: 1, soldierFactor: 1 },
@@ -122,6 +122,16 @@
 
   function fleetTotalShips(fleet) {
     return fleet.units.reduce((sum, unit) => sum + unit.ships, 0);
+  }
+
+  function fleetTransportCapacity(fleet) {
+    return fleet.units.reduce((sum, unit) => sum + unit.ships * (shipTypes[unit.shipType]?.transport || 0), 0);
+  }
+
+  function fleetTransportLoad(world, fleetId) {
+    return Object.values(world.warfare.armies || {})
+      .filter(army => army.status === "embarked" && army.transportFleetId === fleetId)
+      .reduce((sum, army) => sum + armyTotalSoldiers(army), 0);
   }
 
   function createFleet(world, config) {
@@ -405,6 +415,20 @@
       .sort((a, b) => a.distance - b.distance)[0]?.tile || null;
   }
 
+  function coastalSeaAccess(world, landTileId, seaTileId) {
+    const land = world.tiles.find(tile => tile.id === landTileId && !tile.isSea);
+    const sea = world.tiles.find(tile => tile.id === seaTileId && tile.isSea);
+    if (!land || !sea) return false;
+    const seaDistances = world.tiles
+      .filter(tile => tile.isSea)
+      .map(tile => ({ id: tile.id, distance: Math.hypot((tile.x || 0) - (land.x || 0), (tile.y || 0) - (land.y || 0)) }))
+      .sort((a, b) => a.distance - b.distance);
+    const nearest = seaDistances[0]?.distance;
+    if (!Number.isFinite(nearest)) return false;
+    const current = seaDistances.find(item => item.id === seaTileId)?.distance;
+    return current <= nearest * 1.25;
+  }
+
   function canBuildShipType(world, polity, shipType) {
     const definition = shipTypes[shipType];
     if (!definition) return { ok: false, reason: "未知舰种" };
@@ -502,6 +526,43 @@
       }
     }
     throw new Error("目标不可达");
+  }
+
+  function embarkArmy(world, armyId, fleetId) {
+    const army = world.warfare.armies[armyId];
+    const fleet = world.warfare.fleets[fleetId];
+    if (!army || !fleet) throw new Error("军团或舰队不存在");
+    if (army.owner !== fleet.owner) throw new Error("只能登上本国舰队");
+    if (army.status !== "ready" || fleet.status !== "ready") throw new Error("只有待命军团和舰队可以执行运兵");
+    if (!coastalSeaAccess(world, army.tileId, fleet.tileId)) throw new Error("军团必须位于舰队相邻海岸");
+    const loadAfter = fleetTransportLoad(world, fleetId) + armyTotalSoldiers(army);
+    if (loadAfter > fleetTransportCapacity(fleet)) throw new Error("舰队运载容量不足");
+    army.status = "embarked";
+    army.transportFleetId = fleetId;
+    army.order = "transport";
+    army.plannedPath = [];
+    army.organization = Math.max(20, army.organization - 10);
+    return army;
+  }
+
+  function disembarkArmy(world, armyId, targetTileId) {
+    const army = world.warfare.armies[armyId];
+    if (!army || army.status !== "embarked") throw new Error("军团未处于运兵状态");
+    const fleet = world.warfare.fleets[army.transportFleetId];
+    const target = world.tiles.find(tile => tile.id === targetTileId);
+    if (!fleet || !target || target.isSea) throw new Error("登陆目标无效");
+    if (!coastalSeaAccess(world, targetTileId, fleet.tileId)) throw new Error("目标必须是舰队相邻海岸");
+    if (target.polity !== army.owner && !areAtWar(world, army.owner, target.polity)) {
+      throw new Error("不能登陆非交战国家领土");
+    }
+    army.tileId = targetTileId;
+    army.status = "ready";
+    army.order = "hold";
+    army.plannedPath = [];
+    delete army.transportFleetId;
+    army.organization = Math.max(15, army.organization - 20);
+    if (target.polity !== army.owner) target.devastation = Math.min(100, (target.devastation || 0) + 4);
+    return army;
   }
 
   function underTruce(world, a, b) {
@@ -677,7 +738,12 @@
       fleet.units = fleet.units.filter(unit => unit.ships > 0);
       fleet.morale = Math.max(0, fleet.morale - 18);
       fleet.organization = Math.max(0, fleet.organization - 20);
-      if (!fleet.units.length) delete world.warfare.fleets[id];
+      if (!fleet.units.length) {
+        for (const army of Object.values(world.warfare.armies || {})) {
+          if (army.transportFleetId === id) delete world.warfare.armies[army.id];
+        }
+        delete world.warfare.fleets[id];
+      }
     }
   }
 
@@ -970,12 +1036,16 @@
     demobilizeLevies,
     declareWar,
     declareWarOn,
+    disembarkArmy,
+    embarkArmy,
     underTruce,
     executeMovementPhase,
     executeNavalMovementPhase,
     buildFleet,
     dismissGeneral,
     fleetTotalShips,
+    fleetTransportCapacity,
+    fleetTransportLoad,
     applyNavalCasualties,
     hireMercenary,
     initializeWarfare,
