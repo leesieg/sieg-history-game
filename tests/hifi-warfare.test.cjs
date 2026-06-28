@@ -58,6 +58,32 @@ tiles[1].good = "horses";
 world.countries["法兰西王国"].hasHorseSource = true;
 assert.equal(warfare.canRecruitCombatType(world, "法兰西王国", "cavalry"), true, "拥有马匹来源后可以动员骑兵");
 
+const navalTiles = [
+  { id: 10, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "fish", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 11, isSea: false, polity: "威尼斯共和国", population: 6, buildings: [], city: "", terrain: "forest", good: "timber", x: 0, y: 10, control: 80, devastation: 0 },
+  { id: 12, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
+  { id: 13, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 25, y: 0, control: 0 },
+  { id: 14, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 40, y: 0, control: 0 },
+];
+const navalWorld = worldEngine.createWorld(navalTiles, {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(navalWorld);
+warfare.initializeWarfare(navalWorld);
+economy.initializeEconomy(navalWorld);
+navalWorld.countries["威尼斯共和国"].money = 200;
+navalWorld.countries["威尼斯共和国"].military = 100;
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galley").ok, true, "港口国家有木材时可建基础舰队");
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, false, "卡拉克必须先有远洋帆装");
+navalWorld.countries["威尼斯共和国"].technology.oceanGoingShips = true;
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, true, "远洋帆装应解锁卡拉克");
+const fleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galley");
+assert.equal(fleet.tileId, 12, "舰队必须生成在港口附近海域");
+assert.equal(warfare.fleetTotalShips(fleet), 4);
+assert.deepEqual(warfare.planFleetRoute(navalWorld, fleet.id, 14), [13, 14], "舰队必须沿海域邻接寻路");
+warfare.executeNavalMovementPhase(navalWorld);
+assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
+warfare.executeNavalMovementPhase(navalWorld);
+assert.equal(fleet.tileId, 14);
+
 assert.ok(warfare.terrainMoveCost(tiles[1]) > warfare.terrainMoveCost(tiles[0]));
 tiles[1].terrain = "mountains";
 assert.equal(warfare.terrainMoveCost(tiles[1]), Infinity);
