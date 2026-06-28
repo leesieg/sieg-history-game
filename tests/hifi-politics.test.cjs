@@ -185,6 +185,8 @@ france.government.institutions.fiscal = "demesne";
 france.government.laws.taxation = "customary";
 france.government.centralPower = 60;
 france.money = 20;
+france.legitimacy = 70;
+france.unrest = 0;
 france.pressures = { fiscal: 50 };
 const fiscalFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(fiscalFork && fiscalFork.institutionFork === "direct_taxation", "财政压力必须触发直接征税制度抉择");
@@ -204,6 +206,56 @@ assert.ok(militaryFork && militaryFork.institutionFork === "standing_army", "外
 militaryFork.choices.find(choice => choice.id === "adopt").apply(world, france);
 assert.equal(france.government.institutions.military, "standing_army", "制度抉择必须改军事模块");
 assert.equal(france.government.laws.mobilization, "standing", "军事模块改动必须同步兼容旧动员法");
+
+// 制度抉择：合法性压力触发等级会议
+world.playerEvents = [];
+world.diplomacy = { wars: [] };
+france.government = politics.createGovernment("monarchy");
+france.estates = politics.createEstates("monarchy");
+france.displayName = france.name;
+france.legitimacy = 45;
+france.unrest = 0;
+france.money = 100;
+france.pressures = { fiscal: 0 };
+const estatesFork = politics.processInstitutionForks(world, "法兰西王国");
+assert.ok(estatesFork && estatesFork.institutionFork === "estates_general", "合法性压力必须触发等级会议抉择");
+estatesFork.choices.find(choice => choice.id === "adopt").apply(world, france);
+assert.equal(france.government.institutions.assembly.type, "estates_general", "等级会议必须写入立法模块");
+assert.equal(france.government.assembly.unlocked, true, "等级会议必须兼容旧 assembly 字段");
+
+// 制度抉择：资本阶层主导 + 外压触发议会主权，并派生议会君主国
+world.playerEvents = [];
+france.government.institutions.assembly.type = "estates_general";
+france.government.assembly.unlocked = true;
+france.government.centralPower = 65;
+france.estates.nobles.power = 10;
+france.estates.merchants.power = 80;
+france.estates.bureaucrats.power = 60;
+world.diplomacy = { wars: [{ attackers: ["法兰西王国"], defenders: ["英格兰王国"] }] };
+const parliamentFork = politics.processInstitutionForks(world, "法兰西王国");
+assert.ok(parliamentFork && parliamentFork.institutionFork === "parliamentary_sovereignty", "资本阶层主导的外压必须触发议会主权");
+parliamentFork.choices.find(choice => choice.id === "adopt").apply(world, france);
+assert.equal(france.government.institutions.assembly.type, "parliamentary", "议会主权必须写入立法模块");
+assert.ok(france.government.centralPower <= 55, "议会主权必须压低王权上限");
+assert.equal(france.government.archetype, "parliamentary_monarchy", "议会主权必须派生议会君主国");
+
+// 制度抉择：内压 + 强制阶层主导触发绝对主义，并派生绝对君主国
+world.playerEvents = [];
+world.diplomacy = { wars: [] };
+france.government = politics.createGovernment("monarchy");
+france.estates = politics.createEstates("monarchy");
+france.government.institutions.fiscal = "direct";
+france.government.centralPower = 78;
+france.unrest = 25;
+france.legitimacy = 35;
+france.estates.nobles.power = 80;
+france.estates.merchants.power = 5;
+const absolutismFork = politics.processInstitutionForks(world, "法兰西王国");
+assert.ok(absolutismFork && absolutismFork.institutionFork === "absolutism", "内压和强制阶层主导必须触发绝对主义");
+absolutismFork.choices.find(choice => choice.id === "adopt").apply(world, france);
+assert.equal(france.government.laws.authority, "absolute", "绝对主义必须同步旧权威法律");
+assert.ok(france.government.centralPower >= 85, "绝对主义必须提高王权");
+assert.equal(france.government.archetype, "absolute_monarchy", "高王权必须派生绝对君主国");
 
 // 纪元改规则：绝对主义财政路线只在绝对主义纪元后开放
 vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/history.js"), "utf8"), context);

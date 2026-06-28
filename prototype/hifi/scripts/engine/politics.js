@@ -68,6 +68,7 @@
       country.government.assembly.unlocked = value !== "none";
       country.government.assembly.type = value === "parliamentary" ? "议会" : value === "estates_general" ? "等级会议" : "无议会";
       if (value === "parliamentary") country.government.laws.authority = "constitutional";
+      else if (value === "none" && country.government.laws.authority === "constitutional") country.government.laws.authority = "dynastic";
     }
     syncCountryDisplayName(country, true);
   }
@@ -363,9 +364,73 @@
     syncGovernmentDerived(country.government);
     const fiscal = country.government.institutions?.fiscal;
     const military = country.government.institutions?.military;
+    const assembly = country.government.institutions?.assembly?.type || "none";
     const central = country.government.centralPower ?? 60;
     const fiscalPressure = country.pressures?.fiscal || 0;
+    const internalPressure = clampPercent((country.unrest || 0) + Math.max(0, 40 - (country.legitimacy ?? 50)));
     const externalPressure = activeWarPressure(world, polity) + neighborThreatIndex(world, polity);
+    const coercion = estatePowerShare(country, coerciveEstates);
+    const capital = estatePowerShare(country, capitalEstates);
+    if (assembly !== "parliamentary" && central >= 70 && internalPressure >= 20 && coercion >= capital) {
+      return pushInstitutionFork(world, country, {
+        key: "absolutism",
+        title: "立法制度抉择：绝对主义",
+        choices: [
+          {
+            id: "adopt",
+            label: "集中绝对王权",
+            effect: { legitimacy: -4 },
+            apply: (w, c) => {
+              setInstitution(c, "assembly", "none");
+              c.government.laws.authority = "absolute";
+              c.government.centralPower = Math.max(c.government.centralPower, 85);
+              for (const key of ["nobles", "patricians", "port_nobles"]) {
+                if (c.estates?.[key]) c.estates[key].satisfaction = clampSatisfaction(c.estates[key].satisfaction - 8);
+              }
+              syncCountryDisplayName(c, true);
+            },
+          },
+          { id: "delay", label: "维持权力平衡", effect: { legitimacy: 3 } },
+        ],
+      });
+    }
+    if (assembly === "none" && country.government.institutions?.succession === "hereditary" && (country.legitimacy <= 50 || country.unrest >= 10)) {
+      return pushInstitutionFork(world, country, {
+        key: "estates_general",
+        title: "立法制度抉择：召开等级会议",
+        choices: [
+          {
+            id: "adopt",
+            label: "召集等级会议",
+            effect: { legitimacy: 5 },
+            apply: (w, c) => {
+              setInstitution(c, "assembly", "estates_general");
+              c.government.assembly.support = Math.max(c.government.assembly.support || 0, 42);
+            },
+          },
+          { id: "delay", label: "继续王室独断", effect: { legitimacy: -2 } },
+        ],
+      });
+    }
+    if (assembly === "estates_general" && capital > coercion && (externalPressure >= 20 || fiscalPressure >= 30)) {
+      return pushInstitutionFork(world, country, {
+        key: "parliamentary_sovereignty",
+        title: "立法制度抉择：议会主权",
+        choices: [
+          {
+            id: "adopt",
+            label: "承认议会主权",
+            effect: { legitimacy: 4 },
+            apply: (w, c) => {
+              setInstitution(c, "assembly", "parliamentary");
+              c.government.centralPower = Math.min(c.government.centralPower, 55);
+              syncCountryDisplayName(c, true);
+            },
+          },
+          { id: "delay", label: "维持等级会议", effect: { legitimacy: -2 } },
+        ],
+      });
+    }
     if (fiscal !== "direct" && central >= 50 && (fiscalPressure >= 35 || country.money < 40)) {
       return pushInstitutionFork(world, country, {
         key: "direct_taxation",
