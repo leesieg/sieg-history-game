@@ -102,7 +102,7 @@
 
   // 通用抽屉分 tab 机制（所有系统共用）
   const systemTabs = {
-    "国家": ["概览", "政制", "议会", "决议"],
+    "国家": ["概览", "政制", "议会", "信仰", "决议"],
     "经济": ["财政", "贸易", "建设"],
     "军事": ["概览", "军团", "战争"],
     "外交": ["邦交", "条约", "从属"],
@@ -124,7 +124,7 @@
   function drawerTabForSelector(system, selector) {
     if (!selector) return null;
     const rules = {
-      "国家": [[/data-law/, "政制"], [/data-assembly/, "议会"], [/data-decision|data-integrate/, "决议"]],
+      "国家": [[/data-law/, "政制"], [/data-assembly/, "议会"], [/data-faith-policy|data-missionary/, "信仰"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
       "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
       "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"]],
@@ -205,6 +205,31 @@
         : "";
       return `${bar}<div class="drawer-subtitle">${codexTerm("议会", "议会")}</div>${assembly}
         <div class="drawer-subtitle">${codexTerm("阶层", "阶层 · 权力分布（扇形）/ 满意（双向条）")}</div>${estatePie(country.estates)}${estates}${unrestRow}`;
+    }
+
+    if (activeCountryTab === "信仰") {
+      const faith = window.HIFI_FAITH_ENGINE;
+      const state = country.stateConfession || faith?.majorityConfession?.(world, country.name) || "catholic";
+      const unity = faith?.unity(world, country.name) ?? 100;
+      const pressure = faith?.pressure(world, country.name) ?? (country.pressures?.faith || 0);
+      const selected = world.tiles.find(candidate => candidate.id === world.selectedTile);
+      const target = selected && !selected.isSea && selected.polity === country.name && selected.confession !== state;
+      const policies = [
+        ["tolerance", "宽容政策", "少数信仰不满较低 · 统一速度慢"],
+        ["orthodoxy", "正统政策", "教士支持较高 · 温和推进统一"],
+        ["conversion", "强制传教", "统一速度快 · 少数信仰不满较高"],
+      ].map(([key, label, detail]) =>
+        actionButton("data-faith-policy", key, label, detail, country.faith?.policy === key, country.faith?.policy === key ? "当前已是该信仰政策" : false)
+      ).join("");
+      const missionary = target
+        ? actionButton("data-missionary", String(selected.id), `派遣传教士：${selected.city || selected.region}`, `1 外交点 + 10 金钱 · ${faith.confessionLabel(selected.confession)} → ${faith.confessionLabel(state)}`)
+        : '<div class="drawer-row">传教目标<span>请选择己方非国教地块</span></div>';
+      return `${bar}
+        <div class="drawer-row">${codexTerm("国教", "国教")}<span>${faith.confessionLabel(state)}</span></div>
+        <div class="drawer-row">${codexTerm("宗教统一", "宗教统一")}<span>${wd().meter(unity, 100, { tone: unity >= 70 ? "green" : "red" })} ${unity}%</span></div>
+        <div class="drawer-row">${codexTerm("信仰张力", "信仰张力")}<span>${wd().meter(pressure, 100, { tone: "red" })} ${pressure}</span></div>
+        <div class="drawer-subtitle">信仰政策</div><div class="ui-segmented">${policies}</div>
+        <div class="drawer-subtitle">传教行动</div>${missionary}`;
     }
 
     // 决议

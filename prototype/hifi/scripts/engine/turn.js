@@ -20,6 +20,7 @@
       }
     }
     if (window.HIFI_TRADE_ENGINE) window.HIFI_TRADE_ENGINE.processTrade(world);
+    if (window.HIFI_FAITH_ENGINE) window.HIFI_FAITH_ENGINE.spreadFaith(world);
     if (window.HIFI_DIPLOMACY_ENGINE) {
       window.HIFI_DIPLOMACY_ENGINE.processDiplomacy(world);
     }

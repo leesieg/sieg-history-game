@@ -52,13 +52,13 @@
       route.nodes.some(city => nodeTile(world, city)?.polity === polity)
     );
     const foreignTrade = routes.reduce((sum, route) => sum + route.flow, 0);
-    const averageFaith = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)
-      .filter(tile => tile.religion !== "天主教").length * 12;
     country.pressures.trade = clamp(foreignTrade / 3 + country.tariff);
     country.pressures.military = clamp(wars * 28 + (country.warfare?.warExhaustion || 0) * 4);
     country.pressures.fiscal = clamp(Math.max(0, 90 - country.money) + country.tariff);
     country.pressures.exploration = clamp((world.flags?.discoveryImpulse ? 28 : 0) + country.pressures.trade * .45);
-    country.pressures.faith = clamp(averageFaith + (world.flags?.reformation ? 32 : 0));
+    country.pressures.faith = window.HIFI_FAITH_ENGINE
+      ? window.HIFI_FAITH_ENGINE.pressure(world, polity)
+      : clamp(window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).filter(tile => tile.religion !== "天主教").length * 12 + (world.flags?.reformation ? 32 : 0));
     country.pressures.ideas = clamp((country.technology?.printing ? 24 : 0) + (country.ideas || 0) / 2);
     return country.pressures;
   }

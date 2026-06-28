@@ -424,7 +424,12 @@
   function tileActionsFor(tile, world) {
     const player = world.playerPolity;
     if (tile.isSea) return ["view"];
-    if (tile.polity === player) return ["build", "mobilize", "integrate", "garrison"];
+    if (tile.polity === player) {
+      const country = world.countries[player];
+      const actions = ["build", "mobilize", "integrate", "garrison"];
+      if (tile.confession && country?.stateConfession && tile.confession !== country.stateConfession) actions.push("missionary");
+      return actions;
+    }
     const atWar = window.HIFI_WARFARE_ENGINE?.areAtWar?.(world, player, tile.polity);
     return atWar
       ? ["advance", "siege", "viewWarGoal"]
@@ -436,6 +441,7 @@
     mobilize: { icon: "♞", label: "征兵", attrs: 'data-open-system="军事" data-focus-sel="[data-mobilize=\'infantry\']"' },
     integrate: { icon: "✜", label: "整合", attrs: 'data-open-system="国家" data-focus-sel="[data-integrate]"' },
     garrison: { icon: "⚑", label: "派驻", attrs: 'data-open-system="军事" data-focus-sel="[data-army-open]"' },
+    missionary: { icon: "✝", label: "传教", attrs: 'data-missionary data-open-system="国家" data-focus-sel="[data-missionary]"' },
     viewCountry: { icon: "⚜", label: "查看国家", attrs: "data-view-country" },
     diplomacy: { icon: "⚖", label: "外交", attrs: 'data-open-system="外交" data-mark-target' },
     declareWar: { icon: "⚔", label: "宣战", attrs: 'data-open-system="外交" data-focus-sel="[data-diplomatic-action=\'war:declare\']" data-mark-target' },

@@ -7,10 +7,10 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
-  "data/rules.js", "data/trade.js", "data/countries.js", "data/institutions.js",
+  "data/rules.js", "data/trade.js", "data/countries.js", "data/institutions.js", "data/faiths.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
   "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
-  "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
+  "engine/faith.js", "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
   "data/codex.js", "ui/widgets.js", "ui/drawers.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
@@ -29,6 +29,7 @@ w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
 w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
 w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
 w.HIFI_HISTORY_ENGINE.initializeHistory(world);
+w.HIFI_FAITH_ENGINE.initializeFaith(world);
 w.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 world.selectedTile = 0; // 选中己方地块，触发建设/整合等分支
@@ -38,7 +39,7 @@ const drawers = w.HIFI_DRAWERS;
 
 // 每个系统的每个 tab 都渲染一遍，断言不抛错、返回非空字符串。
 const systems = {
-  "国家": ["概览", "政制", "议会", "决议"],
+  "国家": ["概览", "政制", "议会", "信仰", "决议"],
   "经济": ["财政", "贸易", "建设"],
   "外交": ["邦交", "条约", "从属"],
   "军事": ["概览", "军团", "战争"],
@@ -60,6 +61,8 @@ assert.match(drawers.renderSystem("国家", world), /ui-radar-area/, "国家概�
 drawers.setDrawerTab("国家:政制");
 assert.match(drawers.renderSystem("国家", world), /制度模块/, "政制应渲染制度模块");
 assert.match(drawers.renderSystem("国家", world), /institution-row/, "政制应渲染制度模块行");
+drawers.setDrawerTab("国家:信仰");
+assert.match(drawers.renderSystem("国家", world), /宗教统一/, "国家信仰页应渲染宗教统一");
 drawers.setDrawerTab("经济:贸易");
 const econTrade = drawers.renderSystem("经济", world);
 assert.match(econTrade, /ui-radar-area/, "经济贸易应渲染压力雷达");

@@ -18,6 +18,7 @@
   window.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   window.HIFI_HISTORY_ENGINE.initializeHistory(world);
+  window.HIFI_FAITH_ENGINE.initializeFaith(world);
   window.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
   window.HIFI_TRADE_ENGINE.initializeTrade(world);
   const store = window.HIFI_STORE.createStore(world);
@@ -312,6 +313,16 @@
     drawerBody.querySelectorAll("[data-decision]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_POLITICS_ENGINE.enactDecision(current, current.playerPolity, button.dataset.decision)
+      , button));
+    });
+    drawerBody.querySelectorAll("[data-faith-policy]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_FAITH_ENGINE.setPolicy(current, current.playerPolity, button.dataset.faithPolicy)
+      , button));
+    });
+    drawerBody.querySelectorAll("[data-missionary]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_FAITH_ENGINE.sendMissionary(current, current.playerPolity, Number(button.dataset.missionary))
       , button));
     });
     drawerBody.querySelectorAll("[data-trade-policy]").forEach(button => {
