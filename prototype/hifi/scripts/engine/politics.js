@@ -16,7 +16,6 @@
       typeLabel: config.label,
       powerName: config.powerName,
       centralPower: type === "monarchy" ? 62 : 55,
-      reforms: { administrative: 1, fiscal: 1, military: 1, religious: 1, political: 1, maritime: 0 },
       assembly: { unlocked: config.assemblyUnlocked, type: config.assemblyType, support: config.assemblyUnlocked ? 46 : 0, agenda: "tax" },
       laws: {
         taxation: "customary",
@@ -584,21 +583,6 @@
     return decision;
   }
 
-  function advanceReform(world, polity, key) {
-    const country = world.countries[polity];
-    if (!country.government.reforms.hasOwnProperty(key)) throw new Error(`未知改革槽：${key}`);
-    if (country.government.reforms[key] >= 5) throw new Error("改革已满级");
-    const costs = { administrative: ["money", 10], military: ["military", 10], political: ["legitimacy", 4], maritime: ["money", 10] };
-    const cost = costs[key];
-    if (cost) {
-      if (country[cost[0]] < cost[1]) throw new Error("资源不足");
-      country[cost[0]] -= cost[1];
-    }
-    country.government.reforms[key] = Math.min(5, country.government.reforms[key] + 1);
-    syncGovernmentDerived(country.government);
-    return country.government.reforms[key];
-  }
-
   function changeGovernment(world, polity, type) {
     const country = world.countries[polity];
     country.government = createGovernment(type);
@@ -719,7 +703,6 @@
   }
 
   window.HIFI_POLITICS_ENGINE = {
-    advanceReform,
     changeGovernment,
     completeElection,
     createEstates,

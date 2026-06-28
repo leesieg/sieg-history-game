@@ -29,7 +29,6 @@ assert.equal(world.countries["法兰西王国"].reputation, 60);
 assert.deepEqual(world.countries["法兰西王国"].claims, []);
 assert.equal(diplomacy.freeEnvoys(world, "法兰西王国"), 2);
 world.countries["法兰西王国"].government = {
-  reforms: { political: 5 },
   institutions: { assembly: { type: "none" }, succession: "hereditary", fiscal: "demesne" },
 };
 const capacityWithoutInstitutions = diplomacy.capacity(world, "法兰西王国");
