@@ -122,11 +122,11 @@
     const atWar = world.diplomacy?.wars?.some(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
     const central = Math.max(0, Math.min(100, country.government?.institutions?.centralization ?? country.government?.centralPower ?? 60));
     const sources = {
-      administrative: 1 + central / 80 + cities * .25,
+      administrative: 1 + central / 80 + cities * .25 + (country.technology?.codifiedLaw ? .35 : 0),
       military: 1 + forts * .45 + (atWar ? 1.25 : 0) + ((country.government?.institutions?.military === "standing_army") ? .6 : 0),
-      economic: 1 + markets * .45 + workshops * .35 + (world.trade?.lastIncome?.[country.name] || 0) / 35,
-      naval: 1 + ports * .65 + (country.pressures?.exploration || 0) / 45,
-      cultural: 1 + (country.technology?.printing ? 1 : 0) + Math.max(0, country.legitimacy || 0) / 100,
+      economic: 1 + markets * .45 + workshops * .35 + (country.technology?.threeFieldSystem ? .25 : 0) + (world.trade?.lastIncome?.[country.name] || 0) / 35,
+      naval: 1 + ports * .65 + (country.technology?.compassCharts ? .25 : 0) + (country.pressures?.exploration || 0) / 45,
+      cultural: 1 + (country.technology?.universities ? .6 : 0) + (country.technology?.printing ? 1 : 0) + Math.max(0, country.legitimacy || 0) / 100,
     };
     return Math.max(.5, sources[domain] || 1);
   }

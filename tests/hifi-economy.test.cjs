@@ -46,6 +46,10 @@ const devastated = economy.tileOutput({ ...tiles[0], devastation: 60 }, country)
 assert.ok(healthy.food > devastated.food, "战争破坏必须降低地块产出");
 assert.ok(healthy.money > 0, "市场必须产生金钱");
 assert.ok(healthy.goods.grain > 0, "谷物地块必须记录具体物产产量");
+country.technology.threeFieldSystem = false;
+const grainBeforeThreeField = economy.tileOutput(tiles[0], country).food;
+country.technology.threeFieldSystem = true;
+assert.ok(economy.tileOutput(tiles[0], country).food > grainBeforeThreeField, "三圃制必须实际提高食物产出");
 const horseOutput = economy.tileOutput({ ...tiles[0], good: "horses", terrain: "steppe" }, country);
 const ironOutput = economy.tileOutput({ ...tiles[0], good: "iron", terrain: "hills" }, country);
 assert.ok(horseOutput.goods.horses > 0 && ironOutput.goods.iron > 0, "马和铁必须作为不同物产记录");
@@ -130,6 +134,21 @@ assert.ok(economy.frontierTechnologies(world, country, "economic").some(item => 
 economy.adoptTechnology(world, "法兰西王国", "accounting");
 assert.equal(country.technology.accounting, true);
 assert.ok(country.research.economic < 100, "经济科技必须消耗经济领域研究");
+
+world.turn = (1550 - 1337) * 4 + 1;
+Object.assign(country.technology, { artillery: true, accounting: true, standingArmy: false });
+country.technologyAwareness.standingArmy = 100;
+country.research.military = 100;
+economy.adoptTechnology(world, "法兰西王国", "standingArmy");
+assert.equal(country.unlockedInstitutions.military.standing_army, true, "常备军操典必须解锁常备军制度能力");
+
+const industryTile = { ...tiles[0], good: "cloth", buildings: ["workshop"], terrain: "plains", climate: "temperate" };
+country.technology.steamEngine = false;
+const workshopBeforeSteam = economy.tileOutput(industryTile, country).money;
+country.technology.steamEngine = true;
+assert.ok(economy.tileOutput(industryTile, country).money > workshopBeforeSteam, "蒸汽动力必须提高工坊产出");
+country.technology.railways = true;
+assert.ok(economy.tileOutput(industryTile, country).military > economy.tileOutput({ ...industryTile, buildings: [] }, country).military, "铁路时代的工坊与陆上连接必须继续回灌产出");
 
 const autoTechWorld = worldEngine.createWorld([
   { id: 30, isSea: false, polity: "自动科研国", population: 10, control: 100, good: "grain", buildings: [], city: "学城", devastation: 0 },

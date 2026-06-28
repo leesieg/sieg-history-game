@@ -4,18 +4,25 @@
   // 每季全局 AI 新开战争上限，防止"全图同时开战"。优先离玩家近/强国之间的冲突先占额度。
   const AI_WAR_BUDGET = 2;
 
-  function affordableTechnology(country) {
-    return Object.entries(window.HIFI_RULES.technologies)
-      .filter(([key, technology]) =>
-        !country.technology[key]
+  function affordableTechnology(world, country) {
+    const economy = window.HIFI_ECONOMY_ENGINE;
+    const ready = (key, technology) => economy?.technologyReady
+      ? economy.technologyReady(world, country, key).ready
+      : !country.technology[key]
         && (country.research?.[technology.domain || "cultural"] || 0) >= technology.cost
         && (country.technologyAwareness?.[key] || 0) >= (technology.awarenessGate ?? 25)
-        && !(technology.requires || []).some(required => !country.technology[required])
-      )
+        && !(technology.requires || []).some(required => !country.technology[required]);
+    const cost = (key, technology) => economy?.effectiveTechnologyCost
+      ? economy.effectiveTechnologyCost(country, key)
+      : technology.cost;
+    return Object.entries(window.HIFI_RULES.technologies)
+      .filter(([key, technology]) => ready(key, technology))
       .sort((a, b) => {
         const military = (country.pressures?.military || 0) >= 55;
         const score = ([key]) => military && ["artillery", "standingArmy", "bastions"].includes(key) ? 0 : 1;
-        return score(a) - score(b) || a[1].cost - b[1].cost;
+        const costA = cost(a[0], a[1]);
+        const costB = cost(b[0], b[1]);
+        return score(a) - score(b) || costA - costB;
       })[0];
   }
 
@@ -24,8 +31,8 @@
     const country = world.countries[polity];
     if (!country?.leader?.abilities || !country.actionPoints || !country.government?.assembly) return;
     chooseResearchFocus(country);
-    const technology = affordableTechnology(country);
-    if (technology) window.HIFI_ECONOMY_ENGINE.adoptTechnology(world, polity, technology[0]);
+    const technology = affordableTechnology(world, country);
+    if (technology && window.HIFI_ECONOMY_ENGINE?.adoptTechnology) window.HIFI_ECONOMY_ENGINE.adoptTechnology(world, polity, technology[0]);
     if ((country.pressures?.fiscal || 0) >= 60 && country.tariff !== 25) {
       window.HIFI_TRADE_ENGINE.setTariff(world, polity, 25);
     } else if ((country.pressures?.trade || 0) >= 55 && country.tariff !== 0) {

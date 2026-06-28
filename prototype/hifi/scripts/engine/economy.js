@@ -169,6 +169,29 @@
     return adopted;
   }
 
+  function applyTechnologyEffect(world, country, key, technology) {
+    if (technology.unlockInstitution) {
+      const [axis, value] = technology.unlockInstitution;
+      country.unlockedInstitutions ||= {};
+      country.unlockedInstitutions[axis] ||= {};
+      country.unlockedInstitutions[axis][value] = true;
+    }
+    const effectNotes = {
+      codifiedLaw: "国家整合效率提高",
+      threeFieldSystem: "粮食产出提高",
+      compassCharts: "港口与航海研究提高",
+      universities: "文化研究提高",
+      steamEngine: "工坊产出提高",
+      railways: "陆上市场连接提高",
+      artillery: "可动员炮兵",
+      oceanGoingShips: "可进入远洋航线",
+      triangleTrade: "跨洋商路解锁",
+      bastions: "堡垒防御效率提高",
+    };
+    country.lastTechnologyEffect = effectNotes[key] || technology.effect || "科技能力已解锁";
+    return country.lastTechnologyEffect;
+  }
+
   function tileOutput(tile, country) {
     if (tile.isSea) return { food: 0, money: 0, military: 0, market: 0, goods: {} };
     if (tile.occupier && tile.occupation >= 100) return { food: 0, money: 0, military: 0 };
@@ -200,8 +223,17 @@
       money *= 1.2;
       military *= 1.2;
     }
+    if (country.technology.threeFieldSystem && good.cat === "food") food *= 1.08;
     if (country.technology.accounting) money *= 1.1;
     if (country.technology.standingArmy) military *= 1.2;
+    if (country.technology.steamEngine && tile.buildings.includes("workshop")) {
+      money *= 1.35;
+      military *= 1.15;
+    }
+    if (country.technology.railways) {
+      money *= 1.08;
+      military *= 1.08;
+    }
     // 财政制度调节地块产出流；旧税法只在制度模块未初始化时作为兼容来源。
     const fiscal = fiscalEffect(country);
     if (fiscal) {
@@ -415,6 +447,7 @@
     country.research[domain] -= effectiveTechnologyCost(country, key);
     if (domain === "cultural") country.ideas = Math.max(0, Math.round(country.research[domain]));
     country.technology[key] = true;
+    applyTechnologyEffect(world, country, key, technology);
     country.ageProgress = Math.round(
       Object.values(country.technology).filter(Boolean).length
         / Object.keys(rules.technologies).length
@@ -457,6 +490,7 @@
     adoptTechnology,
     addResearch,
     autoAdoptReadyTechnologies,
+    applyTechnologyEffect,
     armyMaintenance,
     buildingMaintenance,
     constructBuilding,
