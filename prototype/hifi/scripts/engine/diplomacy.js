@@ -56,6 +56,7 @@
       treaties: [],
       missions: [],
       subjects: [],
+      embargoes: [],
       wars: [],
       truces: [],
       selectedTarget: Object.keys(world.countries).find(name => name !== world.playerPolity) || null,
@@ -186,6 +187,19 @@
       treaty.parties.includes(a)
       && treaty.parties.includes(b)
       && (!type || treaty.type === type)
+    );
+  }
+
+  function embargoFrom(world, actor, target) {
+    return world.diplomacy.embargoes.find(item => item.actor === actor && item.target === target) || null;
+  }
+
+  function embargoBetween(world, a, b) {
+    return Boolean(
+      world.diplomacy.embargoes.find(item =>
+        item.actor === a && item.target === b
+        || item.actor === b && item.target === a
+      )
     );
   }
 
@@ -354,6 +368,33 @@
     return subject;
   }
 
+  function imposeEmbargo(world, actor, target) {
+    if (actor === target) throw new Error("不能禁运本国");
+    if (!world.countries[target]) throw new Error("目标国家不存在");
+    if (embargoFrom(world, actor, target)) throw new Error("已经对该国实施禁运");
+    spendDiplomaticPoints(world, actor, 1);
+    const embargo = {
+      id: `embargo-${world.diplomacy.nextId++}`,
+      actor,
+      target,
+      startedTurn: world.turn,
+    };
+    world.diplomacy.embargoes.push(embargo);
+    relationView(world, target, actor).trust = clamp(relationView(world, target, actor).trust - 7);
+    relationView(world, target, actor).territorialConflict = clamp(relationView(world, target, actor).territorialConflict + 4);
+    relationView(world, actor, target).strategicInterest = clamp(relationView(world, actor, target).strategicInterest + 3);
+    return embargo;
+  }
+
+  function liftEmbargo(world, actor, target) {
+    const embargo = embargoFrom(world, actor, target);
+    if (!embargo) throw new Error("没有正在执行的禁运");
+    spendDiplomaticPoints(world, actor, 1);
+    world.diplomacy.embargoes = world.diplomacy.embargoes.filter(item => item !== embargo);
+    relationView(world, target, actor).trust = clamp(relationView(world, target, actor).trust + 2);
+    return embargo;
+  }
+
   function adjustSubjectControl(world, actor, id, direction) {
     const subject = world.diplomacy.subjects.find(item => item.id === id && item.overlord === actor);
     if (!subject) throw new Error("从属关系不存在");
@@ -453,12 +494,16 @@
     claimsAgainst,
     diplomaticAttitude,
     evaluateProposal,
+    embargoBetween,
+    embargoFrom,
     freeEnvoys,
     initializeDiplomacy,
     hasClaimForWar,
     institutionalCapacityBonus,
     leaderRelationView,
+    liftEmbargo,
     performLeaderAction,
+    imposeEmbargo,
     processDiplomacy,
     proposeSubject,
     proposeTreaty,

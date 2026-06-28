@@ -24,6 +24,7 @@ const world = worldEngine.createWorld(tiles);
 diplomacy.initializeDiplomacy(world);
 
 assert.equal(world.countries["法兰西王国"].diplomacy.envoys, 2);
+assert.deepEqual(world.diplomacy.embargoes, []);
 assert.equal(world.countries["法兰西王国"].reputation, 60);
 assert.deepEqual(world.countries["法兰西王国"].claims, []);
 assert.equal(diplomacy.freeEnvoys(world, "法兰西王国"), 2);
@@ -114,6 +115,18 @@ const loyaltyBefore = subject.loyalty;
 diplomacy.adjustSubjectControl(world, "法兰西王国", subject.id, "tighten");
 assert.ok(subject.autonomy < autonomyBefore);
 assert.ok(subject.loyalty < loyaltyBefore);
+
+// 禁运：单边外交动作，消耗外交点，写入关系状态，可解除。
+world.countries["法兰西王国"].actionPoints.diplomatic = 5;
+diplomacy.relationView(world, "英格兰王国", "法兰西王国").trust = 50;
+const englishTrustBeforeEmbargo = diplomacy.relationView(world, "英格兰王国", "法兰西王国").trust;
+diplomacy.imposeEmbargo(world, "法兰西王国", "英格兰王国");
+assert.ok(diplomacy.embargoFrom(world, "法兰西王国", "英格兰王国"), "禁运必须记录单边来源");
+assert.equal(diplomacy.embargoBetween(world, "法兰西王国", "英格兰王国"), true, "禁运必须可按双边关系查询");
+assert.ok(diplomacy.relationView(world, "英格兰王国", "法兰西王国").trust < englishTrustBeforeEmbargo, "禁运必须损害目标对我方信任");
+assert.throws(() => diplomacy.imposeEmbargo(world, "法兰西王国", "英格兰王国"), /已经/);
+diplomacy.liftEmbargo(world, "法兰西王国", "英格兰王国");
+assert.equal(diplomacy.embargoBetween(world, "法兰西王国", "英格兰王国"), false, "解除后双边禁运应消失");
 
 // 关系随战争演化：交战逐季累积领土矛盾
 diplomacy.relationView(world, "法兰西王国", "英格兰王国").territorialConflict = 0;

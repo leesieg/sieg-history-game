@@ -331,6 +331,8 @@
         <div class="drawer-row">${codexTerm("资本池", "资本池")}<span>${Math.round(country.capital)}</span></div>
         <div class="drawer-row">${codexTerm("物价指数", "物价指数")}<span>${(country.priceIndex || 1).toFixed(2)}</span></div>
         <div class="drawer-row">物产入市<span>${Math.round(country.lastReport?.market || 0)}</span></div>
+        <div class="drawer-row">市场拆分<span>本地 ${Math.round((country.lastReport?.marketSplit?.local || 0) * 100)}% · 税收 ${Math.round((country.lastReport?.marketSplit?.tax || 0) * 100)}% · 外贸 ${Math.round((country.lastReport?.marketSplit?.trade || 0) * 100)}%</span></div>
+        <div class="drawer-row">禁运损耗<span>${Math.round((country.lastReport?.marketEmbargoPenalty || 0) * 100)}%</span></div>
         <div class="drawer-row">口粮余额<span>${country.lastReport?.population?.balance ?? "—"}</span></div>
         <div class="drawer-subtitle">${codexTerm("贸易政策", "贸易政策")}</div><div class="ui-segmented">${policies}</div>
         <div class="drawer-subtitle">${codexTerm("关税", "关税")}</div><div class="ui-segmented">${tariffs}</div>
@@ -560,6 +562,7 @@
         <div class="drawer-row">${codexTerm("信任", "信任")}<span>${wd().meter(relation.trust, 100, { tone: "green" })} ${relation.trust}</span></div>
         <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${wd().meter(relation.threat, 100, { tone: "red" })} ${relation.threat}</span></div>
         <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${wd().meter(relation.strategicInterest, 100, { tone: "blue" })} ${relation.strategicInterest}</span></div>
+        <div class="drawer-row">禁运状态<span>${engine.embargoBetween(world, country.name, target) ? "存在禁运" : "无禁运"}</span></div>
         <div class="drawer-row">战争理由<span>${claimHint}</span></div>
         <div class="drawer-subtitle">元首外交</div>${leaderActions}${warAction}`;
     }
@@ -572,7 +575,10 @@
         ["treaty:nonaggression", "互不侵犯", "1 外交点 · 短期止戈"],
         ["treaty:alliance", "防御同盟", "2 外交点 · 盟友被攻击自动参战"],
       ]);
-      return `${bar}${targetLine}${treaties}`;
+      const embargoAction = engine.embargoFrom(world, country.name, target)
+        ? actionButton("data-diplomatic-action", "embargo:lift", "解除禁运", "1 外交点 · 恢复市场往来")
+        : actionButton("data-diplomatic-action", "embargo:impose", "实施禁运", "1 外交点 · 降低双方商路收益 · 提高冲突");
+      return `${bar}${targetLine}${treaties}<div class="drawer-subtitle">经济外交</div>${embargoAction}`;
     }
 
     if (tab === "帝国") {

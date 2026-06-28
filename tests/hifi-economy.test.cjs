@@ -19,6 +19,14 @@ for (const file of [
 const rules = context.window.HIFI_RULES;
 const worldEngine = context.window.HIFI_WORLD_ENGINE;
 const economy = context.window.HIFI_ECONOMY_ENGINE;
+context.window.HIFI_DIPLOMACY_ENGINE = {
+  embargoBetween(world, a, b) {
+    return Boolean((world.diplomacy?.embargoes || []).find(item =>
+      item.actor === a && item.target === b
+      || item.actor === b && item.target === a
+    ));
+  },
+};
 assert.ok(rules.buildings.market);
 assert.ok(rules.technologies.printing);
 assert.equal(rules.technologies.printing.domain, "cultural");
@@ -147,7 +155,10 @@ const domesticMoneyBeforeAgenda = country.tradePolicy === "closed"
 const moneyProdBeforeAgenda = Math.round(domesticMoneyBeforeAgenda * centralBeforeAgenda);
 const buildingMaintenanceBeforeAgenda = economy.buildingMaintenance(world, "法兰西王国");
 const tradeBonusBeforeAgenda = country.tradePolicy === "open"
-  ? Math.max(2, Math.round(moneyOutputBeforeAgenda * .12))
+  ? Math.max(2, Math.round(territoryBeforeAgenda.reduce(
+    (sum, tile) => sum + economy.tileOutput(tile, country).market,
+    0
+  ) * economy.marketSplit(country).trade * .48))
   : 0;
 const netMoneyChange = moneyProdBeforeAgenda - buildingMaintenanceBeforeAgenda + tradeBonusBeforeAgenda;
 // 赛前 money = 门槛 - 本季净变化，使结算后 money 恰好等于门槛（边界值，而非留宽松余量）
@@ -174,6 +185,7 @@ const tradeWorld = worldEngine.createWorld([
   { id: 11, isSea: false, polity: "威尼斯共和国", population: 20, control: 100, good: "fish", buildings: ["market", "port"], city: "威尼斯", devastation: 0 },
 ]);
 economy.initializeEconomy(tradeWorld);
+tradeWorld.diplomacy = { embargoes: [] };
 const venice = tradeWorld.countries["威尼斯共和国"];
 venice.tradePolicy = "open";
 venice.government.institutions = { fiscal: "demesne" };
@@ -184,6 +196,23 @@ venice.capital = 0;
 venice.government.institutions.fiscal = "commercial";
 economy.settleCountry(tradeWorld, "威尼斯共和国");
 assert.ok(venice.lastReport.trade > demesneTrade, "商业关税必须提高开放贸易收益");
+assert.equal(venice.lastReport.marketSplit.trade, .4, "商业财政制度必须提高市场外贸占比");
+
+const embargoWorld = worldEngine.createWorld([
+  { id: 21, isSea: false, polity: "威尼斯共和国", population: 80, control: 100, good: "spices", terrain: "coast", climate: "mediterranean", buildings: ["market", "port"], city: "威尼斯", devastation: 0 },
+]);
+economy.initializeEconomy(embargoWorld);
+embargoWorld.diplomacy = { embargoes: [] };
+const embargoVenice = embargoWorld.countries["威尼斯共和国"];
+embargoVenice.tradePolicy = "open";
+economy.settleCountry(embargoWorld, "威尼斯共和国");
+const tradeWithoutEmbargo = embargoVenice.lastReport.trade;
+embargoVenice.money = 0;
+embargoVenice.capital = 0;
+embargoWorld.diplomacy.embargoes.push({ actor: "热那亚共和国", target: "威尼斯共和国", startedTurn: 1 });
+economy.settleCountry(embargoWorld, "威尼斯共和国");
+assert.ok(embargoVenice.lastReport.trade < tradeWithoutEmbargo, "被禁运必须降低开放贸易收益");
+assert.equal(embargoVenice.lastReport.marketEmbargoPenalty, .2, "单个禁运应产生 20% 市场外贸损耗");
 
 // 贸易路线投资：点击商路现在有真实后果（流量加成），不再是只写不读的死字段
 vm.runInNewContext(fs.readFileSync(path.join(root, "data/trade.js"), "utf8"), context);

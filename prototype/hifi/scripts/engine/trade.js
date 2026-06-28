@@ -31,6 +31,20 @@
     return world.tiles.find(tile => tile.city === city && !tile.isSea);
   }
 
+  function routeOwners(world, route) {
+    return [...new Set(route.nodes
+      .map(city => nodeTile(world, city)?.polity)
+      .filter(polity => polity && world.countries[polity]))];
+  }
+
+  function embargoBetween(world, a, b) {
+    return Boolean(window.HIFI_DIPLOMACY_ENGINE?.embargoBetween?.(world, a, b));
+  }
+
+  function hasRouteEmbargo(world, polity, owners) {
+    return owners.some(other => other !== polity && embargoBetween(world, polity, other));
+  }
+
   function routeCost(world, route) {
     let cost = 5;
     for (const city of route.nodes) {
@@ -40,6 +54,12 @@
       if (tile.occupation >= 100) cost += 14;
       const owner = world.countries[tile.polity];
       cost += (owner?.tariff || 0) * .08;
+    }
+    const owners = routeOwners(world, route);
+    for (let i = 0; i < owners.length; i++) {
+      for (let j = i + 1; j < owners.length; j++) {
+        if (embargoBetween(world, owners[i], owners[j])) cost += 10;
+      }
     }
     if (route.nodes.includes("君士坦丁堡") && world.flags?.constantinopleFallen) cost += 18;
     return Math.round(cost);
@@ -71,6 +91,7 @@
       route.flow = route.active ? Math.max(0, Math.round(route.value * (1 + (route.boost || 0)) * (1 - Math.min(.85, route.cost / 120)))) : 0;
       if (routeKey === "newWorld") world.trade.pools.silver += Math.round(route.flow * .08);
       const nodeShare = route.nodes.length ? route.flow / route.nodes.length : 0;
+      const owners = routeOwners(world, route);
       for (const city of route.nodes) {
         const polity = nodeTile(world, city)?.polity;
         if (!world.countries[polity]) continue;
@@ -78,7 +99,8 @@
         // 贸易政策调节对外商路分成（封闭 ×0.5 / 常规 ×1 / 开放 ×1.3，与本土产出互为取舍）
         const policy = world.countries[polity].tradePolicy;
         const policyFactor = policy === "closed" ? .5 : policy === "open" ? 1.3 : 1;
-        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff * policyFactor;
+        const embargoFactor = hasRouteEmbargo(world, polity, owners) ? .55 : 1;
+        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff * policyFactor * embargoFactor;
       }
     }
     // 白银累积推升物价（价格革命：白银流→物价指数）

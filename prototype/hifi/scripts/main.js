@@ -386,6 +386,11 @@
         if (group === "mission") return window.HIFI_DIPLOMACY_ENGINE.startMission(current, current.playerPolity, target, action);
         if (group === "leader") return window.HIFI_DIPLOMACY_ENGINE.performLeaderAction(current, current.playerPolity, target, action);
         if (group === "treaty") return window.HIFI_DIPLOMACY_ENGINE.proposeTreaty(current, current.playerPolity, target, action);
+        if (group === "embargo") {
+          return action === "impose"
+            ? window.HIFI_DIPLOMACY_ENGINE.imposeEmbargo(current, current.playerPolity, target)
+            : window.HIFI_DIPLOMACY_ENGINE.liftEmbargo(current, current.playerPolity, target);
+        }
         if (group === "war") return window.HIFI_WARFARE_ENGINE.declareWarOn(current, current.playerPolity, target);
         return window.HIFI_DIPLOMACY_ENGINE.proposeSubject(current, current.playerPolity, target, action);
       }, button));

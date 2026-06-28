@@ -18,6 +18,14 @@
     commercial: { money: 1, portMoney: 1.15, tradeShare: 1.6 },
     nomadic: { money: .2, food: .5 },
   };
+  const MARKET_SPLITS = {
+    demesne: { local: .5, tax: .25, trade: .25 },
+    tax_farming: { local: .4, tax: .38, trade: .22 },
+    direct: { local: .35, tax: .45, trade: .2 },
+    commercial: { local: .3, tax: .3, trade: .4 },
+    nomadic: { local: .75, tax: .1, trade: .15 },
+    default: { local: .45, tax: .3, trade: .25 },
+  };
   const SUBSISTENCE_FOOD = 0.75;
 
   function fiscalKey(country) {
@@ -32,6 +40,15 @@
   function fiscalEffect(country) {
     const key = fiscalKey(country);
     return key ? FISCAL_EFFECTS[key] || null : null;
+  }
+
+  function marketSplit(country) {
+    return MARKET_SPLITS[fiscalKey(country)] || MARKET_SPLITS.default;
+  }
+
+  function embargoPenalty(world, polity) {
+    const embargoes = world.diplomacy?.embargoes || [];
+    return Math.min(.6, embargoes.filter(item => item.actor === polity || item.target === polity).length * .2);
   }
 
   function militaryOutputFactor(country) {
@@ -250,6 +267,8 @@
     }, { food: 0, money: 0, military: 0, market: 0, goods: {}, tiles: territory.length });
     country.goodsAccess = { ...report.goods };
     country.hasHorseSource = (country.goodsAccess.horses || 0) > 0;
+    report.marketSplit = marketSplit(country);
+    report.marketEmbargoPenalty = embargoPenalty(world, polity);
     // 王权决定中央能从产出流里直接汲取多少（核心循环：王权→产出流分配阀）
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     // 军团/建筑维护费回灌产出流：扩军/铺建筑必须从产出里扣，逼出取舍（核心循环：基底→维护→产出净额）
@@ -270,7 +289,7 @@
     country.military += Math.round(report.military * central) - maintenance.military;
     if (country.tradePolicy === "open") {
       const tradeShare = fiscalEffect(country)?.tradeShare || 1;
-      const trade = Math.max(2, Math.round((report.market || report.money) * .12 * tradeShare));
+      const trade = Math.max(2, Math.round((report.market || report.money) * report.marketSplit.trade * .48 * tradeShare * (1 - report.marketEmbargoPenalty)));
       country.money += trade;
       country.capital += Math.max(1, Math.round(trade * .2));
       report.trade = trade;
@@ -414,6 +433,7 @@
     integrateTile,
     ensureResearchState,
     fiscalEffect,
+    marketSplit,
     integrationGain,
     technologyReady,
     MAINTENANCE,
