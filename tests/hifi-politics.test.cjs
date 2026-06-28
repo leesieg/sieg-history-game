@@ -39,6 +39,12 @@ assert.ok(france.government.estateKeys.includes("nobles"));
 assert.ok(france.estates.nobles);
 assert.equal(france.government.assembly.unlocked, false);
 
+politics.setInstitution(france, "fiscal", "commercial");
+assert.ok(france.estates.companies, "商业财政模块必须补入商社阶层");
+assert.ok(france.estates.oligarchs, "商业财政模块必须补入寡头家族阶层");
+assert.ok(france.estates.nobles, "制度回流不能删除既有核心阶层");
+politics.setInstitution(france, "fiscal", "demesne");
+
 const moneyBefore = france.money;
 politics.advanceReform(world, "法兰西王国", "administrative");
 assert.equal(france.government.reforms.administrative, 2);
@@ -238,6 +244,7 @@ parliamentFork.choices.find(choice => choice.id === "adopt").apply(world, france
 assert.equal(france.government.institutions.assembly.type, "parliamentary", "议会主权必须写入立法模块");
 assert.ok(france.government.centralPower <= 55, "议会主权必须压低王权上限");
 assert.equal(france.government.archetype, "parliamentary_monarchy", "议会主权必须派生议会君主国");
+assert.ok(france.estates.commons, "议会主权必须补入平民代表阶层");
 
 // 制度抉择：内压 + 强制阶层主导触发绝对主义，并派生绝对君主国
 world.playerEvents = [];

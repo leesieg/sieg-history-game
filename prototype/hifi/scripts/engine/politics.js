@@ -52,6 +52,22 @@
     return country.displayName;
   }
 
+  function estateFromKey(key, scale = 1) {
+    const [label, power, satisfaction, privileges] = data.estates[key];
+    return { label, power: Math.max(8, Math.round(power * scale)), satisfaction, privileges: [...privileges] };
+  }
+
+  function reconcileEstates(country) {
+    if (!country.estates) return country.estates;
+    syncGovernmentDerived(country.government);
+    const required = country.government.estateKeys || [];
+    for (const key of required) {
+      if (!country.estates[key]) country.estates[key] = estateFromKey(key, .55);
+    }
+    country.lastEstateReconciliation = required.filter(key => country.estates[key]);
+    return country.estates;
+  }
+
   function setInstitution(country, axis, value) {
     country.government.institutions ||= {};
     if (axis === "fiscal") {
@@ -71,13 +87,11 @@
       else if (value === "none" && country.government.laws.authority === "constitutional") country.government.laws.authority = "dynastic";
     }
     syncCountryDisplayName(country, true);
+    reconcileEstates(country);
   }
 
   function createEstates(type) {
-    return Object.fromEntries(data.governments[type].estates.map(key => {
-      const [label, power, satisfaction, privileges] = data.estates[key];
-      return [key, { label, power, satisfaction, privileges: [...privileges] }];
-    }));
+    return Object.fromEntries(data.governments[type].estates.map(key => [key, estateFromKey(key)]));
   }
 
   function leaderFromRecord(polity, record, historyIndex = 0) {
@@ -114,6 +128,7 @@
       country.government = createGovernment(governmentType);
       country.estates = createEstates(governmentType);
       syncCountryDisplayName(country, false);
+      reconcileEstates(country);
       country.decisionLedger = country.decisionLedger || [];
       country.introduction = data.introductions[polity] || `${polity}正处在 1337 年欧洲秩序重组的十字路口。`;
     }
@@ -563,6 +578,7 @@
     country.estates = createEstates(type);
     const config = data.governments[type];
     syncCountryDisplayName(country, true);
+    reconcileEstates(country);
     country.leader.title = country.government.title || config.title;
     country.leader.succession = config.succession;
     country.leader.termYears = config.termYears || null;
@@ -636,6 +652,7 @@
     const country = world.countries[polity];
     if (!country.estates) return 0;
     syncGovernmentDerived(country.government);
+    reconcileEstates(country);
     // 王权 ↔ 阶层权力此消彼长：高王权压低阶层权力，低王权放任坐大（核心循环：王权守恒）
     const power = country.government?.centralPower ?? 60;
     const powerDrift = power >= 60 ? -.5 : power <= 30 ? .5 : 0;
@@ -679,6 +696,7 @@
     completeElection,
     createEstates,
     createGovernment,
+    reconcileEstates,
     initializePolitics,
     processEstates,
     processLeadership,
