@@ -31,6 +31,7 @@ diplomacy.initializeDiplomacy(world);
 warfare.initializeWarfare(world);
 assert.ok(Object.keys(world.warfare.armies).length >= 2, "开局必须生成历史对峙军团");
 assert.ok(world.diplomacy.wars.length >= 1, "开局必须生成历史战争");
+assert.equal(world.countries["英格兰王国"].reputation, 60, "历史开局战争应有宣称，不应误扣声誉");
 world.diplomacy.wars = [];
 
 const frenchArmy = warfare.createArmy(world, {
@@ -76,6 +77,7 @@ const populationBefore = tiles[2].population;
 const battle = warfare.resolveBattle(world, 2, [frenchArmy.id], [englishArmy.id]);
 assert.ok(battle.casualties.attackers > 0);
 assert.ok(battle.casualties.defenders > 0);
+assert.notEqual(war.score, 0, "战斗胜负必须计入战争分数");
 assert.ok(tiles[2].devastation > 0, "战斗必须先造成地块破坏");
 assert.ok(tiles[2].population < populationBefore, "战斗伤亡必须减少地块 POP");
 
@@ -145,8 +147,11 @@ warfare.initializeWarfare(freshWorld);
 freshWorld.diplomacy.wars = [];
 freshWorld.diplomacy.truces = [];
 
+const reputationBeforeNoClaim = freshWorld.countries["法兰西王国"].reputation;
 const onWar = warfare.declareWarOn(freshWorld, "法兰西王国", "英格兰王国");
 assert.equal(onWar.primaryGoal.tileId, 1, "declareWarOn 必须以目标国首都为战争目标");
+assert.equal(onWar.cbMatched, false, "无宣称战争必须标记为无战争理由");
+assert.ok(freshWorld.countries["法兰西王国"].reputation < reputationBeforeNoClaim, "无宣称宣战必须损害声誉");
 assert.equal(warfare.areAtWar(freshWorld, "法兰西王国", "英格兰王国"), true);
 assert.throws(() => warfare.declareWarOn(freshWorld, "法兰西王国", "法兰西王国"), /本国/);
 
@@ -154,6 +159,16 @@ freshWorld.diplomacy.wars = [];
 freshWorld.diplomacy.truces.push({ parties: ["法兰西王国", "英格兰王国"], endsTurn: freshWorld.turn + 5 });
 assert.equal(warfare.underTruce(freshWorld, "法兰西王国", "英格兰王国"), true);
 assert.throws(() => warfare.declareWarOn(freshWorld, "法兰西王国", "英格兰王国"), /停战/);
+
+const claimedWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(claimedWorld);
+warfare.initializeWarfare(claimedWorld);
+claimedWorld.diplomacy.wars = [];
+diplomacy.addClaim(claimedWorld, "法兰西王国", "英格兰王国", "territorial", { tileId: 1 });
+const reputationBeforeClaim = claimedWorld.countries["法兰西王国"].reputation;
+const claimedWar = warfare.declareWarOn(claimedWorld, "法兰西王国", "英格兰王国");
+assert.equal(claimedWar.cbMatched, true, "匹配宣称的战争必须标记为有战争理由");
+assert.equal(claimedWorld.countries["法兰西王国"].reputation, reputationBeforeClaim, "有宣称宣战不应损害声誉");
 
 const fr = freshWorld.countries["法兰西王国"];
 fr.actionPoints.military = 2;

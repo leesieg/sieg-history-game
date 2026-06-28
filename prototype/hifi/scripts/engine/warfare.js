@@ -65,6 +65,7 @@
       if (!world.countries[attacker] || !world.countries[defender]) continue;
       const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, defender).find(tile => tile.city)
         || window.HIFI_WORLD_ENGINE.controlledTiles(world, defender)[0];
+      window.HIFI_DIPLOMACY_ENGINE?.addClaim?.(world, attacker, defender, "territorial", { tileId: target.id });
       declareWar(world, attacker, defender, target.id, name);
     }
     return world;
@@ -405,12 +406,15 @@
   function declareWar(world, attacker, defender, targetTileId, name = "边境战争") {
     const permission = canDeclareWar(world, attacker, defender);
     if (!permission.ok) throw new Error(permission.reason);
+    const cbMatched = !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
       name,
       attackers: [attacker],
       defenders: [defender],
       primaryGoal: { tileId: targetTileId, claimant: attacker },
+      goal: { type: "conquest", tileId: targetTileId },
+      cbMatched,
       score: 0,
       startedTurn: world.turn,
       participants: {
@@ -426,6 +430,13 @@
       if (underTruce(world, ally, attacker)) continue;
       war.defenders.push(ally);
       war.participants[ally] = { side: "defender", warWill: 70, contribution: 0 };
+    }
+    if (!cbMatched) {
+      const country = world.countries[attacker];
+      country.reputation = Math.max(0, (country.reputation ?? 60) - 8);
+      country.warfare.warExhaustion = (country.warfare?.warExhaustion || 0) + 3;
+      const defenderView = window.HIFI_DIPLOMACY_ENGINE?.relationView?.(world, defender, attacker);
+      if (defenderView) defenderView.threat = Math.min(100, (defenderView.threat || 0) + 10);
     }
     world.diplomacy.wars.push(war);
     return war;
@@ -505,6 +516,19 @@
       winner,
       casualties: { attackers: attackerLoss, defenders: defenderLoss },
     };
+    const involved = [...new Set([...attackers, ...defenders].map(id => world.warfare.armies[id]?.owner).filter(Boolean))];
+    const war = world.diplomacy.wars.find(item =>
+      item.attackers.some(polity => involved.includes(polity))
+      && item.defenders.some(polity => involved.includes(polity))
+    );
+    if (war) {
+      const attackerWon = winner === "attackers"
+        && attackers.some(id => war.attackers.includes(world.warfare.armies[id]?.owner));
+      const defenderWon = winner === "defenders"
+        && defenders.some(id => war.defenders.includes(world.warfare.armies[id]?.owner));
+      if (attackerWon) war.score = Math.min(100, (war.score || 0) + 8);
+      else if (defenderWon) war.score = Math.max(-100, (war.score || 0) - 8);
+    }
     world.warfare.battles.unshift(battle);
     return battle;
   }
@@ -536,6 +560,11 @@
         if (war.score < 25) throw new Error("战争分数不足");
         const tile = world.tiles.find(candidate => candidate.id === war.primaryGoal.tileId);
         tile.polity = war.primaryGoal.claimant;
+        if (!war.cbMatched) {
+          tile.control = Math.min(tile.control ?? 60, 45);
+          tile.devastation = Math.min(100, (tile.devastation || 0) + 10);
+          world.countries[war.primaryGoal.claimant].reputation = Math.max(0, (world.countries[war.primaryGoal.claimant].reputation ?? 60) - 6);
+        }
         if (
           tile.city === "君士坦丁堡"
           && war.primaryGoal.claimant === "奥斯曼贝伊国"

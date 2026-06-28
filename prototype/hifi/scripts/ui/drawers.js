@@ -517,8 +517,13 @@
           : actionButton("data-diplomatic-action", "war:declare", "宣战", "开启战争");
       const capUsed = engine.capacityUsed(world, country.name);
       const capTotal = engine.capacity(world, country.name);
+      const claims = engine.claimsAgainst(world, country.name, target);
+      const claimHint = claims.length
+        ? `${claims.map(claim => claim.type === "dynastic" ? "王朝" : "领土").join("、")}宣称`
+        : "无宣称，宣战将损害声誉";
       return `${bar}
         <div class="drawer-row">${codexTerm("外交点", "外交点")}<span>${country.actionPoints.diplomatic}</span></div>
+        <div class="drawer-row">国家声誉<span>${wd().meter(country.reputation ?? 60, 100, { tone: "blue" })} ${Math.round(country.reputation ?? 60)}</span></div>
         <div class="drawer-row">${codexTerm("使节", "使节")}<span>${engine.freeEnvoys(world, country.name)} / ${country.diplomacy.envoys}</span></div>
         <div class="drawer-row">${codexTerm("外交容量", "外交容量")}<span>${wd().meter(capUsed, capTotal, { tone: capUsed >= capTotal ? "red" : "gold" })} ${capUsed} / ${capTotal}</span></div>
         <div class="drawer-subtitle">外交对象</div>
@@ -528,6 +533,7 @@
         <div class="drawer-row">${codexTerm("信任", "信任")}<span>${wd().meter(relation.trust, 100, { tone: "green" })} ${relation.trust}</span></div>
         <div class="drawer-row">${codexTerm("威胁", "威胁")}<span>${wd().meter(relation.threat, 100, { tone: "red" })} ${relation.threat}</span></div>
         <div class="drawer-row">${codexTerm("战略利益", "战略利益")}<span>${wd().meter(relation.strategicInterest, 100, { tone: "blue" })} ${relation.strategicInterest}</span></div>
+        <div class="drawer-row">战争理由<span>${claimHint}</span></div>
         <div class="drawer-subtitle">元首外交</div>${leaderActions}${warAction}`;
     }
 

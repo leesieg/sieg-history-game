@@ -24,6 +24,8 @@ const world = worldEngine.createWorld(tiles);
 diplomacy.initializeDiplomacy(world);
 
 assert.equal(world.countries["法兰西王国"].diplomacy.envoys, 2);
+assert.equal(world.countries["法兰西王国"].reputation, 60);
+assert.deepEqual(world.countries["法兰西王国"].claims, []);
 assert.equal(diplomacy.freeEnvoys(world, "法兰西王国"), 2);
 world.countries["法兰西王国"].government = {
   reforms: { political: 5 },
@@ -69,6 +71,10 @@ Object.assign(englishView, {
 });
 const evaluation = diplomacy.evaluateProposal(world, "法兰西王国", "英格兰王国", "trade");
 assert.equal(evaluation.accepted, true);
+const acceptedScore = evaluation.score;
+world.countries["法兰西王国"].reputation = 10;
+assert.ok(diplomacy.evaluateProposal(world, "法兰西王国", "英格兰王国", "trade").score < acceptedScore, "低声誉必须压低外交提案接受度");
+world.countries["法兰西王国"].reputation = 60;
 diplomacy.proposeTreaty(world, "法兰西王国", "英格兰王国", "trade");
 assert.ok(diplomacy.treatyBetween(world, "法兰西王国", "英格兰王国", "trade"));
 assert.ok(diplomacy.capacityUsed(world, "法兰西王国") > 0);
@@ -131,6 +137,8 @@ diplomacy.leaderRelationView(world, "布列塔尼公国", "法兰西王国").fri
 world.countries["法兰西王国"].actionPoints.diplomatic = 5;
 diplomacy.proposeTreaty(world, "法兰西王国", "布列塔尼公国", "marriage");
 assert.equal(diplomacy.leaderRelationView(world, "法兰西王国", "布列塔尼公国").kinship, true, "联姻必须结成王朝纽带");
+assert.equal(diplomacy.hasClaimForWar(world, "法兰西王国", "布列塔尼公国"), true, "联姻必须生成王朝宣称");
+assert.equal(diplomacy.claimsAgainst(world, "布列塔尼公国", "法兰西王国")[0].type, "dynastic");
 
 // 共享商路抬升战略利益
 world.trade = { routes: { rhine: { active: true, nodes: ["巴黎", "伦敦"] } }, lastIncome: {} };

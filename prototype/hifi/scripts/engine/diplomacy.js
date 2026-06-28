@@ -68,8 +68,34 @@
     };
     for (const country of Object.values(world.countries)) {
       country.diplomacy = { envoys: 2 };
+      country.reputation ??= 60;
+      country.claims ||= [];
     }
     return world;
+  }
+
+  function addClaim(world, polity, target, type = "territorial", detail = {}) {
+    const country = world.countries[polity];
+    if (!country || !world.countries[target]) throw new Error("宣称国家不存在");
+    country.claims ||= [];
+    const same = claim => claim.target === target
+      && claim.type === type
+      && (claim.tileId || null) === (detail.tileId || null)
+      && (claim.region || null) === (detail.region || null);
+    if (country.claims.some(same)) return country.claims.find(same);
+    const claim = { target, type, sinceTurn: world.turn, ...detail };
+    country.claims.push(claim);
+    return claim;
+  }
+
+  function claimsAgainst(world, polity, target) {
+    return (world.countries[polity]?.claims || []).filter(claim => claim.target === target);
+  }
+
+  function hasClaimForWar(world, polity, target, tileId = null) {
+    return claimsAgainst(world, polity, target).some(claim =>
+      !claim.tileId || tileId === null || claim.tileId === tileId
+    );
   }
 
   function relationFor(world, a, b) {
@@ -252,6 +278,7 @@
     const threatWeight = type === "tributary" ? .19 : .38;
     const parts = [
       ["提案本身", definition.base],
+      ["国家声誉", Math.round(((world.countries[actor].reputation ?? 60) - 50) * .25)],
       ["国家信任", Math.round((relation.trust - 50) * .7)],
       ["战略利益", Math.round(relation.strategicInterest * .55)],
       ["领导人关系", Math.round(leader.friendship * .35 + leader.respect * .25 - leader.grudge * .4) + (leader.kinship ? 12 : 0)],
@@ -293,6 +320,8 @@
     if (type === "marriage") {
       leaderRelationView(world, actor, target).kinship = true;
       leaderRelationView(world, target, actor).kinship = true;
+      addClaim(world, actor, target, "dynastic");
+      addClaim(world, target, actor, "dynastic");
     }
     return treaty;
   }
@@ -408,6 +437,7 @@
       }
     }
     for (const polity of Object.keys(world.countries)) {
+      world.countries[polity].reputation = clamp((world.countries[polity].reputation ?? 60) + .25);
       if (capacityUsed(world, polity) <= capacity(world, polity)) continue;
       world.countries[polity].actionPoints.diplomatic = Math.max(0, world.countries[polity].actionPoints.diplomatic - 1);
     }
@@ -415,13 +445,16 @@
   }
 
   window.HIFI_DIPLOMACY_ENGINE = {
+    addClaim,
     adjustSubjectControl,
     capacity,
     capacityUsed,
+    claimsAgainst,
     diplomaticAttitude,
     evaluateProposal,
     freeEnvoys,
     initializeDiplomacy,
+    hasClaimForWar,
     institutionalCapacityBonus,
     leaderRelationView,
     performLeaderAction,
