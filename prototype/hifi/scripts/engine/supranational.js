@@ -168,6 +168,86 @@
       || ["monarchy", "empire"].includes(type);
   }
 
+  function successionCrisisActive(world, polity) {
+    const country = world.countries[polity];
+    if (!country?.leader || !canInherit(country)) return false;
+    if (unionFor(world, polity)) return false;
+    if (country.absorbedBy) return false;
+    const historicalDue = country.leader.historicalEndAtTurn !== null
+      && world.turn >= country.leader.historicalEndAtTurn;
+    const termDue = country.leader.termEndsAtTurn !== null
+      && world.turn >= country.leader.termEndsAtTurn
+      && canInherit(country);
+    return Boolean(country.successionCrisis || historicalDue || termDue);
+  }
+
+  function dynasticClaimants(world, junior) {
+    if (!window.HIFI_DIPLOMACY_ENGINE) return [];
+    return Object.keys(world.countries)
+      .filter(polity => polity !== junior && canInherit(world.countries[polity]))
+      .filter(polity => !world.countries[polity].union?.junior)
+      .map(polity => {
+        const claims = window.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, polity, junior);
+        const kinship = window.HIFI_DIPLOMACY_ENGINE.leaderRelationView(world, polity, junior)?.kinship
+          || window.HIFI_DIPLOMACY_ENGINE.leaderRelationView(world, junior, polity)?.kinship;
+        if (!claims.some(claim => claim.type === "dynastic") || !kinship) return null;
+        const relation = window.HIFI_DIPLOMACY_ENGINE.relationView(world, junior, polity);
+        const leader = world.countries[polity].leader?.abilities || {};
+        const score = Math.round((relation.trust || 45)
+          + (world.countries[polity].legitimacy || 50) * .35
+          + (leader.diplomatic || 3) * 6
+          + (leader.administrative || 3) * 2
+          - (relation.threat || 0) * .2);
+        return { polity, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score || a.polity.localeCompare(b.polity, "zh-Hans-CN"));
+  }
+
+  function successionWarExists(world, junior) {
+    return (world.diplomacy?.wars || []).some(war => war.goal?.type === "succession" && war.goal.target === junior);
+  }
+
+  function startSuccessionWar(world, claimant, rival, junior) {
+    if (!window.HIFI_WARFARE_ENGINE || successionWarExists(world, junior)) return null;
+    if (window.HIFI_WARFARE_ENGINE.areAtWar(world, claimant, rival)) return null;
+    world.countries[claimant].warfare ||= { warExhaustion: 0 };
+    world.countries[rival].warfare ||= { warExhaustion: 0 };
+    world.countries[junior].warfare ||= { warExhaustion: 0 };
+    const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, junior).find(tile => tile.city)
+      || window.HIFI_WORLD_ENGINE.controlledTiles(world, junior)[0];
+    if (!target) return null;
+    const war = window.HIFI_WARFARE_ENGINE.declareWar(
+      world,
+      claimant,
+      rival,
+      target.id,
+      `${junior}继承战争`,
+      { type: "succession", target: junior, tileId: target.id }
+    );
+    war.primaryGoal.successionTarget = junior;
+    war.participants[junior] = { side: "defender", warWill: 45, contribution: 0 };
+    world.countries[junior].successionCrisis = true;
+    world.countries[junior].log?.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：继承危机引发 ${claimant} 与 ${rival} 的王位战争。`);
+    return war;
+  }
+
+  function processDynasticSuccession(world) {
+    for (const polity of Object.keys(world.countries)) {
+      if (!successionCrisisActive(world, polity)) continue;
+      const claimants = dynasticClaimants(world, polity);
+      if (!claimants.length) continue;
+      const [first, second] = claimants;
+      if (!second || first.score >= second.score + 15) {
+        const item = createPersonalUnion(world, first.polity, polity, "继承危机");
+        world.countries[polity].successionCrisis = false;
+        world.countries[polity].log?.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：${first.polity}继承王冠，${polity}进入共主邦联。`);
+        continue;
+      }
+      startSuccessionWar(world, first.polity, second.polity, polity);
+    }
+  }
+
   function minTileDistance(world, a, b) {
     const left = window.HIFI_WORLD_ENGINE.controlledTiles(world, a);
     const right = window.HIFI_WORLD_ENGINE.controlledTiles(world, b);
@@ -455,6 +535,7 @@
 
   function processSupranational(world) {
     if (!world.supranational?.structures) return world;
+    processDynasticSuccession(world);
     for (const item of Object.values(world.supranational.structures)) {
       if (item.type === "dynastic") {
         const drift = cohesionDrift(world, item);
@@ -506,6 +587,7 @@
     isImperialOutlaw,
     isMember,
     processSupranational,
+    processDynasticSuccession,
     requestImperialMediation,
     structure,
     summary,

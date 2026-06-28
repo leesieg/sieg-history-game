@@ -19,6 +19,7 @@
     subjugation: { label: "附庸战", defaultTerms: ["subject", "reparations"] },
     plunder: { label: "劫掠战", defaultTerms: ["reparations"] },
     humiliation: { label: "霸权羞辱战", defaultTerms: ["reparations"] },
+    succession: { label: "继承战", defaultTerms: ["personal_union", "reparations"] },
   };
 
   function normalizeWarGoal(goal, targetTileId) {

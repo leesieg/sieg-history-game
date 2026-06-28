@@ -633,6 +633,7 @@
   function processLeadership(world, polity) {
     const country = world.countries[polity];
     if (!country?.leader) return null;
+    if (country.union?.junior) return null;
     const historicalDue = country.leader.historicalEndAtTurn !== null
       && world.turn >= country.leader.historicalEndAtTurn;
     const termDue = country.leader.termEndsAtTurn !== null
