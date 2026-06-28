@@ -79,6 +79,39 @@
         resolution: { label: "定局", next: null },
       },
     },
+    thirty_years_war: {
+      key: "thirty_years_war",
+      label: "三十年战争",
+      startYear: 1618,
+      endYear: 1648,
+      initialPhase: "standoff",
+      flipThreshold: 8,
+      principalAnchors: ["天主教联盟", "新教联盟"],
+      principalLabels: { catholic_league: "天主教联盟", protestant_league: "新教联盟" },
+      regionCities: ["维也纳", "慕尼黑", "布拉格", "莱比锡", "科隆", "第戎", "布鲁日", "米兰"],
+      parties: {
+        "巴伐利亚公国": { role: "principal", side: "catholic_league", lean: -1 },
+        "奥地利公国": { role: "principal", side: "catholic_league", lean: -1 },
+        "萨克森选侯国": { role: "principal", side: "protestant_league", lean: 1 },
+        "波西米亚王国": { role: "principal", side: "protestant_league", lean: 1 },
+        "弗兰德斯伯国": { role: "interloper", lean: 1 },
+        "勃艮第公国": { role: "interloper", lean: -1 },
+        "法兰西王国": { role: "interloper", lean: 1 },
+        "教皇国": { role: "interloper", lean: -1 },
+      },
+      phases: {
+        standoff: { label: "宗派对峙", next: "open_war" },
+        open_war: { label: "帝国鏖战", next: "truce" },
+        truce: { label: "疲惫议和", next: "standoff" },
+        resolution: { label: "威斯特法利亚", next: null },
+      },
+      endings: [
+        { key: "westphalia", label: "威斯特法利亚和约", hint: "诸侯主权确立，组内宗教战争失去法理" },
+        { key: "catholic_imperial_victory", label: "皇帝集权胜利", hint: "帝国权威维持，皇帝压制宗派分裂" },
+        { key: "protestant_princely_victory", label: "诸侯主权胜利", hint: "新教诸侯迫使皇帝承认高度自治" },
+      ],
+      endingResolver: "westphalia",
+    },
   };
 
   function definition(key) {
@@ -106,6 +139,8 @@
     if (!def) throw new Error(`未知局势：${key}`);
     world.struggles = world.struggles || [];
     if (world.struggles.some(item => item.key === key)) return null;
+    const year = window.HIFI_WORLD_ENGINE?.calendarForTurn?.(world.turn)?.year;
+    if (def.startYear && year != null && year < def.startYear) return null;
     // 当事国必须齐全，否则这局势不成立（最小测试夹具或缺国的世界直接跳过）。
     const principals = Object.entries(def.parties).filter(([, party]) => party.role === "principal");
     if (!principals.every(([name]) => world.countries[name])) return null;
@@ -194,11 +229,34 @@
     return Object.keys(struggle.parties).filter(name => struggle.parties[name].role === "principal");
   }
 
+  function principalSides(struggle) {
+    const sides = {};
+    for (const [name, party] of Object.entries(struggle.parties)) {
+      if (party.role !== "principal") continue;
+      const side = party.side || name;
+      (sides[side] ||= []).push(name);
+    }
+    return sides;
+  }
+
   function opponentOf(struggle, polity) {
+    const party = struggle.parties?.[polity];
+    if (party?.side) {
+      const labels = definition(struggle.key)?.principalLabels || {};
+      const enemySide = Object.keys(principalSides(struggle)).find(side => side !== party.side);
+      return labels[enemySide] || enemySide || "对手";
+    }
     return principalsOf(struggle).find(name => name !== polity) || "对手";
   }
 
   function principalWar(world, struggle) {
+    const sides = Object.values(principalSides(struggle));
+    if (sides.length >= 2) {
+      return (world.diplomacy?.wars || []).find(war =>
+        sides.some(side => side.some(name => war.attackers.includes(name) || war.defenders.includes(name)))
+        && sides.every(side => side.some(name => war.attackers.includes(name) || war.defenders.includes(name)))
+      ) || null;
+    }
     const principals = principalsOf(struggle);
     if (principals.length < 2) return null;
     return (world.diplomacy?.wars || []).find(war =>
@@ -274,6 +332,7 @@
 
   function updateWarPressure(world, struggle) {
     if (struggle.phase !== "standoff" || principalWar(world, struggle)) return;
+    if (struggle.key !== "hundred_years_war") return;
     struggle.warPressure ||= 0;
     if (!underPrincipalTruce(world, struggle)) struggle.warPressure += 1;
     if (!missionDone(world, "法兰西王国", "reclaim-disputed")) struggle.warPressure += 1;
@@ -342,6 +401,23 @@
 
   // 两大阵营：principal 各为锚，interloper 按 lean 归边（<0 法 / >0 英 / 0 中立）。供统一界面左右两侧展示。
   function campsFor(struggle) {
+    if (struggle.key === "thirty_years_war") {
+      const catholic = [], protestant = [], neutral = [];
+      for (const [name, party] of Object.entries(struggle.parties)) {
+        if (party.role === "principal") continue;
+        const lean = party.lean || 0;
+        if (lean < 0) catholic.push(name);
+        else if (lean > 0) protestant.push(name);
+        else neutral.push(name);
+      }
+      return {
+        france: { anchor: "天主教联盟", members: catholic },
+        england: { anchor: "新教联盟", members: protestant },
+        catholic: { anchor: "天主教联盟", members: catholic },
+        protestant: { anchor: "新教联盟", members: protestant },
+        neutral,
+      };
+    }
     const france = [], england = [], neutral = [];
     for (const [name, party] of Object.entries(struggle.parties)) {
       if (party.role === "principal") continue;
@@ -401,14 +477,19 @@
     const def = definition(struggle.key);
     const role = involvement(world, polity, struggle);
     const principals = principalsOf(struggle);
-    const opponents = principals.filter(name => name !== polity);
+    const party = struggle.parties?.[polity];
+    const opponents = party?.side ? Object.entries(struggle.parties)
+      .filter(([, item]) => item.role === "principal" && item.side !== party.side)
+      .map(([name]) => name) : principals.filter(name => name !== polity);
     const war = principalWar(world, struggle);
     const ourArmy = strongestArmy(world, new Set([polity]));
-    const enemyThreat = strongestArmy(world, new Set(opponents));
     const calendarOf = window.HIFI_WORLD_ENGINE?.calendarForTurn;
     const year = calendarOf ? calendarOf(world.turn).year : null;
     let ourSide = "france";
-    if (role === "principal") ourSide = polity === "英格兰王国" ? "england" : "france";
+    if (struggle.key === "thirty_years_war") {
+      if (role === "principal") ourSide = party?.side === "protestant_league" ? "protestant" : "catholic";
+      else if (role === "interloper") ourSide = (struggle.parties[polity].lean || 0) > 0 ? "protestant" : "catholic";
+    } else if (role === "principal") ourSide = polity === "英格兰王国" ? "england" : "france";
     else if (role === "interloper") ourSide = (struggle.parties[polity].lean || 0) > 0 ? "england" : "france";
     return {
       key: struggle.key,
@@ -434,10 +515,10 @@
       war: war ? { name: war.name, score: war.score || 0, goalTile: tileLabel(world, war.primaryGoal?.tileId) } : null,
       warExhaustion: world.countries[polity]?.warfare?.warExhaustion || 0,
       ourArmy,
-      enemyThreat,
+      enemyThreat: strongestArmy(world, new Set(opponents)),
       actions: availableActions(struggle, role),
       decisions: decisionsFor(world, polity, struggle, role),
-      endings: ENDINGS,
+      endings: def.endings || ENDINGS,
       recommendations: recommendations(world, polity, struggle, { ourArmy }),
     };
   }
@@ -469,7 +550,11 @@
     if (party?.role !== "interloper") throw new Error("只有干涉者可以选边");
     party.lean = lean;
     addCatalyst(struggle, lean >= 0 ? "open_war" : "standoff", 2);
-    logStruggleEvent(world, `${polity}在${struggle.label}中选边支持${lean >= 0 ? "英格兰" : "法兰西"}`);
+    const labels = definition(struggle.key)?.principalLabels;
+    const support = labels
+      ? (lean >= 0 ? labels.protestant_league : labels.catholic_league)
+      : (lean >= 0 ? "英格兰" : "法兰西");
+    logStruggleEvent(world, `${polity}在${struggle.label}中选边支持${support}`);
     return struggle;
   }
 
@@ -500,6 +585,7 @@
 
   // 历史终点年（1453）拍板：决定性终局未触发时，按当时阶段判妥协 / 僵局。
   function decideEnding(world, struggle) {
+    if (definition(struggle.key)?.endingResolver === "westphalia") return decideWestphaliaEnding(world, struggle);
     const decisive = decisiveEnding(world);
     if (decisive) return decisive;
     // 谈判和平：当前无当事国战争，且历史上曾以停战收场（不只看瞬时阶段——
@@ -508,13 +594,48 @@
     return "stalemate";                                            // 长期僵局：均未达成
   }
 
+  function decideWestphaliaEnding(world, struggle) {
+    const hre = window.HIFI_SUPRANATIONAL_ENGINE?.structure?.(world, "hre");
+    const protestant = principalsOf(struggle)
+      .filter(polity => world.countries[polity]?.stateConfession && world.countries[polity].stateConfession !== "catholic").length;
+    if ((hre?.authority || 0) >= 65 && protestant <= 1) return "catholic_imperial_victory";
+    if ((hre?.authority || 0) <= 25 || protestant >= 2) return "protestant_princely_victory";
+    return "westphalia";
+  }
+
+  function applyWestphalia(world, struggle, ending) {
+    world.flags ||= {};
+    world.flags.westphalia = true;
+    world.flags.religiousSovereignty = true;
+    world.flags.intraChristianReligiousWarsDisabled = true;
+    const hre = window.HIFI_SUPRANATIONAL_ENGINE?.structure?.(world, "hre");
+    if (hre) {
+      hre.authority = ending === "catholic_imperial_victory"
+        ? Math.max(hre.authority || 0, 70)
+        : Math.min(hre.authority || 0, ending === "protestant_princely_victory" ? 18 : 28);
+      hre.westphaliaSettlement = ending;
+      for (const member of Object.values(hre.members || {})) {
+        member.sovereign = ending !== "catholic_imperial_victory";
+      }
+    }
+    for (const [polity, party] of Object.entries(struggle.parties)) {
+      const country = world.countries[polity];
+      if (!country) continue;
+      country.religiousSovereignty = true;
+      if (party.role === "principal") country.legitimacy = clamp((country.legitimacy || 50) + (ending === "westphalia" ? 4 : 2));
+      if (country.warfare) country.warfare.warExhaustion = Math.max(0, (country.warfare.warExhaustion || 0) - 8);
+    }
+  }
+
   function applyEnding(world, struggle, ending) {
     struggle.resolved = true;
     struggle.ending = ending;
     struggle.phase = "resolution";
     struggle.phaseSinceTurn = world.turn;
     const france = world.countries["法兰西王国"];
-    if (ending === "france_hegemony" && france) {
+    if (struggle.key === "thirty_years_war") {
+      applyWestphalia(world, struggle, ending);
+    } else if (ending === "france_hegemony" && france) {
       france.legitimacy = clamp((france.legitimacy || 0) + 10);              // 永久合法性加成
       france.struggleLegacy = { key: ending, outputBonus: 0.1 };             // 核心永久产出加成标记（供 economy 后续接入）
     } else if (ending === "england_claim" && france) {
@@ -531,9 +652,9 @@
         if (country?.warfare) country.warfare.warExhaustion = (country.warfare.warExhaustion || 0) + 5;
       }
     }
-    const endingLabel = ENDINGS.find(item => item.key === ending)?.label || ending;
+    const endingLabel = (definition(struggle.key)?.endings || ENDINGS).find(item => item.key === ending)?.label || ending;
     logStruggleEvent(world, `${struggle.label}迎来终局：${endingLabel}`);
-    const stages = window.HIFI_OBJECTIVES_ENGINE
+    const stages = struggle.key === "hundred_years_war" && window.HIFI_OBJECTIVES_ENGINE
       ? window.HIFI_OBJECTIVES_ENGINE.missionStages(world, "法兰西王国")
       : [];
     world.pendingStruggleEnding = { key: struggle.key, label: struggle.label, ending, endingLabel, stages };
@@ -545,7 +666,7 @@
   function settleStruggles(world) {
     const calendarOf = window.HIFI_WORLD_ENGINE?.calendarForTurn;
     for (const struggle of activeStruggles(world)) {
-      const decisive = decisiveEnding(world);
+      const decisive = struggle.key === "hundred_years_war" ? decisiveEnding(world) : null;
       if (decisive) { applyEnding(world, struggle, decisive); continue; } // 决定性终局：随时一锤定音
       const endYear = definition(struggle.key)?.endYear;
       const year = calendarOf ? calendarOf(world.turn).year : null;

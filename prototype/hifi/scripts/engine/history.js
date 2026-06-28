@@ -125,7 +125,7 @@
 
   function initializeHistory(world) {
     world.eraIndex = 0;
-    world.flags = { constantinopleFallen: false, discoveryImpulse: false, reformation: false, industrialization: false };
+    world.flags = { constantinopleFallen: false, discoveryImpulse: false, reformation: false, westphalia: false, industrialization: false };
     world.situations = [];
     world.playerEvents = [];
     world.pendingCouncil = null;
@@ -227,6 +227,15 @@
     if (year >= 1517 && !world.flags.reformation) {
       world.flags.reformation = true;
       pushWorldEvent(world, "宗教改革开始撼动西欧信仰秩序", "religion");
+    }
+    if (year >= 1618 && world.flags.reformation && !world.flags.westphalia && window.HIFI_STRUGGLE_ENGINE) {
+      const hre = window.HIFI_SUPRANATIONAL_ENGINE?.structure?.(world, "hre");
+      const splitMembers = Object.keys(hre?.members || {})
+        .filter(polity => world.countries[polity]?.stateConfession && world.countries[polity].stateConfession !== "catholic");
+      if (splitMembers.length >= 2 && !window.HIFI_STRUGGLE_ENGINE.struggleFor(world, "thirty_years_war")) {
+        const started = window.HIFI_STRUGGLE_ENGINE.startStruggle(world, "thirty_years_war");
+        if (started) pushWorldEvent(world, "神罗宗派冲突升级为三十年战争", "struggle");
+      }
     }
     if (year >= 1750 && Object.values(world.countries).some(country => country.technology.steamEngine)) {
       world.flags.industrialization = true;

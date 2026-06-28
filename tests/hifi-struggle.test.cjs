@@ -43,6 +43,28 @@ const lonely = worldEngine.createWorld(
 struggle.initializeStruggles(lonely);
 assert.equal(struggle.struggleFor(lonely, "hundred_years_war"), null, "缺当事国时不开局");
 
+const imperialTiles = [
+  { id: 10, isSea: false, polity: "巴伐利亚公国", population: 10, city: "慕尼黑" },
+  { id: 11, isSea: false, polity: "奥地利公国", population: 10, city: "维也纳" },
+  { id: 12, isSea: false, polity: "萨克森选侯国", population: 8, city: "莱比锡" },
+  { id: 13, isSea: false, polity: "波西米亚王国", population: 9, city: "布拉格" },
+  { id: 14, isSea: false, polity: "法兰西王国", population: 12, city: "巴黎" },
+];
+const earlyImperial = worldEngine.createWorld(imperialTiles, {}, "萨克森选侯国");
+struggle.initializeStruggles(earlyImperial);
+assert.equal(struggle.struggleFor(earlyImperial, "thirty_years_war"), null, "三十年战争不能早于 1618 自动出现");
+const imperialWorld = worldEngine.createWorld(imperialTiles, {}, "萨克森选侯国");
+imperialWorld.turn = (1618 - 1337) * 4 + 1;
+struggle.initializeStruggles(imperialWorld);
+const tyw = struggle.struggleFor(imperialWorld, "thirty_years_war");
+assert.ok(tyw, "1618 且双方诸侯存在时应可开启三十年战争局势");
+assert.equal(tyw.phase, "standoff", "三十年战争初始为宗派对峙");
+const tywSummary = struggle.struggleSummary(imperialWorld, "萨克森选侯国", "thirty_years_war");
+assert.equal(tywSummary.ourSide, "protestant", "萨克森应在新教联盟侧");
+assert.equal(tywSummary.camps.catholic.anchor, "天主教联盟", "摘要应展示天主教联盟");
+assert.equal(tywSummary.endYear, 1648, "三十年战争终点应为 1648");
+assert.ok(tywSummary.endings.some(item => item.key === "westphalia"), "三十年战争应预览威斯特法利亚结局");
+
 // 无真实战争时不再靠时间默认诱因流向 open_war，改为累计再开战压力
 const before = hyw.meters.open_war;
 struggle.processStruggles(world);

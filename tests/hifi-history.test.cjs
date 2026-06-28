@@ -302,6 +302,35 @@ assert.equal(ledger2.food.delta, 12, "季报粮食 delta 取自 lastReport.food"
   assert.ok(context.window.HIFI_SUPRANATIONAL_ENGINE.structure(cw5, "hre").authority < hreBeforeReformation, "神罗成员改宗应压低帝国权威");
   assert.ok(cw5.pendingTransition && cw5.pendingTransition.title === "信仰分裂", "纪元转折应使用因果链文案");
 
+  // 宗改后段：神罗宗派分裂 + 1618 → 三十年战争；1648 → 威斯特法利亚规则切换
+  const tywWorld = worldEngine.createWorld([
+    { id: 10, isSea: false, polity: "巴伐利亚公国", population: 12, buildings: [], city: "慕尼黑", terrain: "plains", religion: "天主教", control: 80 },
+    { id: 11, isSea: false, polity: "奥地利公国", population: 12, buildings: [], city: "维也纳", terrain: "plains", religion: "天主教", control: 80 },
+    { id: 12, isSea: false, polity: "萨克森选侯国", population: 10, buildings: [], city: "莱比锡", terrain: "forest", religion: "路德宗", control: 75 },
+    { id: 13, isSea: false, polity: "波西米亚王国", population: 10, buildings: [], city: "布拉格", terrain: "hills", religion: "路德宗", control: 75 },
+    { id: 14, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", religion: "天主教", control: 80 },
+  ], undefined, "萨克森选侯国");
+  history.initializeHistory(tywWorld);
+  context.window.HIFI_FAITH_ENGINE.initializeFaith(tywWorld);
+  context.window.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(tywWorld);
+  context.window.HIFI_STRUGGLE_ENGINE.initializeStruggles(tywWorld);
+  tywWorld.flags.reformation = true;
+  tywWorld.countries["萨克森选侯国"].stateConfession = "lutheran";
+  tywWorld.countries["波西米亚王国"].stateConfession = "lutheran";
+  tywWorld.turn = (1618 - 1337) * 4 + 1;
+  history.processHistory(tywWorld);
+  const tyw = context.window.HIFI_STRUGGLE_ENGINE.struggleFor(tywWorld, "thirty_years_war");
+  assert.ok(tyw, "宗改后的神罗应在 1618 开启三十年战争局势");
+  assert.equal(tyw.resolved, false, "三十年战争开启时不应立即结算");
+  tywWorld.turn = (1648 - 1337) * 4 + 1;
+  history.processHistory(tywWorld);
+  assert.equal(tyw.resolved, true, "1648 应结算三十年战争");
+  assert.equal(tyw.phase, "resolution", "三十年战争结算后进入威斯特法利亚阶段");
+  assert.equal(tywWorld.flags.westphalia, true, "威斯特法利亚结算应置位世界规则");
+  assert.equal(tywWorld.flags.intraChristianReligiousWarsDisabled, true, "威斯特法利亚后组内宗教战争应失去法理");
+  assert.ok(context.window.HIFI_SUPRANATIONAL_ENGINE.structure(tywWorld, "hre").authority <= 28, "威斯特法利亚应架空或压低帝国权威");
+  assert.equal(tywWorld.countries["萨克森选侯国"].religiousSovereignty, true, "诸侯应获得宗教主权标记");
+
   // 流触发：新大陆白银航路开通 → processHistory 触发价格革命（仅一次）
   const cw6 = worldEngine.createWorld([{ id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", control: 80 }]);
   history.initializeHistory(cw6);
