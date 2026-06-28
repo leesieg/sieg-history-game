@@ -201,7 +201,17 @@
     };
   }
 
-  // 招募非统治者将领：消耗 1 军事点，指挥力由军事改革 + 常备军科技决定。让将领系统不止"统治者领军"。
+  function institutionalCommandBonus(country) {
+    const institutions = country.government?.institutions || {};
+    let bonus = 0;
+    if (institutions.military === "standing_army") bonus += 2;
+    else if (["feudal_levy", "nation_in_arms", "mercenary_state"].includes(institutions.military)) bonus += 1;
+    if (institutions.assembly?.type === "parliamentary") bonus += 1;
+    if (country.technology?.standingArmy) bonus += 1;
+    return bonus;
+  }
+
+  // 招募非统治者将领：消耗 1 军事点，指挥力由军事制度 + 常备军科技决定。让将领系统不止"统治者领军"。
   function recruitGeneral(world, polity) {
     const country = world.countries[polity];
     if (!country) throw new Error("国家不存在");
@@ -209,7 +219,7 @@
     country.actionPoints.military -= 1;
     const seq = (world.warfare.nextGeneralId = (world.warfare.nextGeneralId || 0) + 1);
     const id = `general:${polity}:${seq}`;
-    const command = Math.min(6, 2 + (country.government?.reforms?.military || 0) + (country.technology?.standingArmy ? 1 : 0));
+    const command = Math.min(6, 2 + institutionalCommandBonus(country));
     const general = { id, owner: polity, name: `${polity}名将${seq}`, command, siege: Math.max(1, Math.floor(command / 2)), ruler: false };
     world.warfare.generals[id] = general;
     return general;
@@ -618,6 +628,7 @@
     dismissGeneral,
     hireMercenary,
     initializeWarfare,
+    institutionalCommandBonus,
     mergeArmies,
     militaryEffect,
     mobilizeArmy,

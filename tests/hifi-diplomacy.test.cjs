@@ -25,6 +25,17 @@ diplomacy.initializeDiplomacy(world);
 
 assert.equal(world.countries["法兰西王国"].diplomacy.envoys, 2);
 assert.equal(diplomacy.freeEnvoys(world, "法兰西王国"), 2);
+world.countries["法兰西王国"].government = {
+  reforms: { political: 5 },
+  institutions: { assembly: { type: "none" }, succession: "hereditary", fiscal: "demesne" },
+};
+const capacityWithoutInstitutions = diplomacy.capacity(world, "法兰西王国");
+world.countries["法兰西王国"].government.institutions.assembly.type = "parliamentary";
+world.countries["法兰西王国"].government.institutions.fiscal = "commercial";
+assert.ok(
+  diplomacy.capacity(world, "法兰西王国") > capacityWithoutInstitutions,
+  "外交容量必须由制度模块提高，而不是旧政治改革槽"
+);
 const frenchView = diplomacy.relationView(world, "法兰西王国", "英格兰王国");
 const englishView = diplomacy.relationView(world, "英格兰王国", "法兰西王国");
 frenchView.trust = 80;

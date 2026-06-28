@@ -289,14 +289,24 @@ assert.ok(mainSource.includes("declareWarOn"), "入口必须接通宣战操作")
   diplomacy.initializeDiplomacy(gw);
   warfare.initializeWarfare(gw);
   const army = warfare.createArmy(gw, { owner: "法兰西王国", tileId: 0, name: "王军", units: [{ combatType: "infantry", serviceType: "levy", soldiers: 1000 }] });
+  gw.countries["法兰西王国"].government.reforms = { military: 5 };
+  gw.countries["法兰西王国"].government.institutions = { military: "feudal_levy", assembly: { type: "none" } };
+  gw.countries["法兰西王国"].technology = {};
 
   const pointsBefore = gw.countries["法兰西王国"].actionPoints.military;
   const general = warfare.recruitGeneral(gw, "法兰西王国");
   assert.equal(general.ruler, false, "招募的应是非统治者将领");
   assert.equal(general.owner, "法兰西王国");
   assert.ok(general.command >= 2, "将领应有指挥力");
+  assert.equal(general.command, 3, "旧军事改革槽拉满也不应提高将领指挥力");
   assert.equal(gw.countries["法兰西王国"].actionPoints.military, pointsBefore - 1, "招募应消耗 1 军事点");
   assert.ok(gw.warfare.generals[general.id], "将领应进入将领池");
+
+  gw.countries["法兰西王国"].actionPoints.military = 5;
+  gw.countries["法兰西王国"].government.institutions = { military: "standing_army", assembly: { type: "parliamentary" } };
+  gw.countries["法兰西王国"].technology = { standingArmy: true };
+  const institutionalGeneral = warfare.recruitGeneral(gw, "法兰西王国");
+  assert.ok(institutionalGeneral.command > general.command, "军事制度、议会和常备军科技必须提高将领指挥力");
 
   warfare.assignGeneral(gw, army.id, general.id);
   assert.equal(gw.warfare.armies[army.id].generalId, general.id, "应能任命非统治者将领领军");

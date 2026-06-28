@@ -141,7 +141,18 @@
     const country = world.countries[polity];
     return 3
       + Math.floor(country.leader.abilities.diplomatic / 2)
-      + Math.floor((country.government.reforms?.political || 0) / 2);
+      + institutionalCapacityBonus(country);
+  }
+
+  function institutionalCapacityBonus(country) {
+    const institutions = country.government?.institutions || {};
+    const assembly = institutions.assembly?.type;
+    let bonus = 0;
+    if (assembly === "parliamentary") bonus += 2;
+    else if (assembly === "estates_general") bonus += 1;
+    if (institutions.succession === "republican_term") bonus += 1;
+    if (institutions.fiscal === "commercial") bonus += 1;
+    return bonus;
   }
 
   function treatyBetween(world, a, b, type = null) {
@@ -411,6 +422,7 @@
     evaluateProposal,
     freeEnvoys,
     initializeDiplomacy,
+    institutionalCapacityBonus,
     leaderRelationView,
     performLeaderAction,
     processDiplomacy,

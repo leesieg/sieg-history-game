@@ -162,8 +162,8 @@
       levy: { levyCostFactor: 0.7, estate: { peasants: -6, commons: -6, faithful: -6, sailors: -6, herders: -6 } },
       standing: {
         levyCostFactor: 1,
-        requires: country => (country.government.reforms.fiscal || 0) >= 2,
-        why: "需要财政改革 ≥ 2 才能维持常备军制",
+        requires: country => !!country.technology?.standingArmy || country.government.institutions?.military === "standing_army",
+        why: "需要常备军科技或已建立常备军制度",
         estate: {},
       },
     },
@@ -181,8 +181,8 @@
       civic: { estate: { merchants: 8, citizens: 8, companies: 6, guilds: 4 }, powerCap: 70 },
       constitutional: { estate: {}, legitimacy: 4, powerCap: 60 },
       absolute: {
-        requires: (country, world) => (country.government.reforms.fiscal || 0) >= 3 && eraReached(world, "absolutism"),
-        why: "需要绝对主义纪元与财政改革 ≥ 3 才能集中绝对权力",
+        requires: (country, world) => country.government.centralPower >= 70 && eraReached(world, "absolutism"),
+        why: "需要绝对主义纪元与王权 ≥ 70 才能集中绝对权力",
         estate: { nobles: -8, patricians: -8 },
         power: 8,
       },
@@ -200,41 +200,50 @@
   const decisions = {
     estates_general: {
       label: "召开等级会议",
-      can: country => country.government.type === "monarchy" && country.government.reforms.political >= 2,
-      why: "需要君主制与政治改革 2",
+      can: country => country.government.type === "monarchy" && country.government.institutions?.assembly?.type === "none",
+      why: "需要君主制且尚未建立议会制度",
       apply: country => {
         country.government.assembly.unlocked = true;
         country.government.assembly.type = "等级会议";
         country.government.assembly.support = 42;
+        country.government.institutions ||= {};
+        country.government.institutions.assembly = { type: "estates_general", cadence: 8 };
         syncCountryDisplayName(country, true);
+        reconcileEstates(country);
       },
     },
     fiscal_parliament: {
       label: "议会财政路线",
-      can: country => country.government.assembly.unlocked && country.government.reforms.fiscal >= 2,
-      why: "需要议会与财政改革 2",
+      can: country => country.government.assembly.unlocked && country.government.institutions?.assembly?.type !== "none",
+      why: "需要已建立议会制度",
       apply: country => {
         country.government.laws.taxation = "uniform";
         country.government.laws.authority = "constitutional";
+        country.government.institutions ||= {};
+        country.government.institutions.fiscal = "direct";
         country.government.centralPower = Math.max(25, country.government.centralPower - 8);
         syncCountryDisplayName(country, true);
+        reconcileEstates(country);
       },
     },
     fiscal_absolutism: {
       label: "绝对主义财政路线",
-      can: (country, world) => country.government.reforms.fiscal >= 3 && country.government.centralPower >= 60 && eraReached(world, "absolutism"),
-      why: "需要绝对主义纪元、财政改革 3 与权力 60",
+      can: (country, world) => country.government.centralPower >= 70 && eraReached(world, "absolutism"),
+      why: "需要绝对主义纪元与王权 70",
       apply: country => {
         country.government.laws.taxation = "uniform";
         country.government.laws.authority = "absolute";
+        country.government.institutions ||= {};
+        country.government.institutions.fiscal = "direct";
         country.government.centralPower = Math.min(100, country.government.centralPower + 10);
         syncCountryDisplayName(country, true);
+        reconcileEstates(country);
       },
     },
     convert_reformed: {
       label: "接纳宗教改革",
-      can: (country, world) => world.flags?.reformation && country.government.reforms.religious >= 2,
-      why: "需要宗教改革出现与宗教改革槽 2",
+      can: (country, world) => !!world.flags?.reformation,
+      why: "需要宗教改革浪潮出现",
       apply: (country, world) => {
         country.government.laws.religion = "reformed";
         window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).forEach(tile => { tile.religion = "新教"; });
@@ -244,21 +253,24 @@
       label: "建立君主立宪",
       can: country => country.government.type === "monarchy"
         && country.government.assembly.unlocked
-        && country.government.reforms.political >= 4,
-      why: "需要议会与政治改革 4",
+        && country.government.institutions?.assembly?.type === "estates_general",
+      why: "需要君主制与等级会议制度",
       apply: country => {
         country.government.laws.authority = "constitutional";
+        country.government.institutions ||= {};
+        country.government.institutions.assembly = { type: "parliamentary", cadence: 4 };
         country.government.centralPower = 45;
         syncCountryDisplayName(country, true);
+        reconcileEstates(country);
       },
     },
     civic_republic: {
       label: "建立公民共和国",
       can: (country, world) => ["monarchy", "merchant_republic"].includes(country.government.type)
         && country.government.assembly.unlocked
-        && country.government.reforms.political >= 5
+        && country.government.institutions?.assembly?.type === "parliamentary"
         && eraReached(world, "revolution"),
-      why: "需要革命纪元、议会与政治改革 5",
+      why: "需要革命纪元与议会主权制度",
       government: "republic",
     },
   };
@@ -530,9 +542,10 @@
     country.actionPoints.administrative -= 1;
     const averageSatisfaction = Object.values(country.estates)
       .reduce((sum, estate) => sum + estate.satisfaction, 0) / Math.max(1, Object.keys(country.estates).length);
-    const reform = country.government.reforms.political * 5;
+    const assemblyType = country.government.institutions?.assembly?.type;
+    const institutionalSupport = assemblyType === "parliamentary" ? 15 : assemblyType === "estates_general" ? 5 : 0;
     const concessionBonus = concession === "privilege" ? 15 : concession === "money" ? 10 : 0;
-    const support = Math.round(averageSatisfaction * .55 + reform + concessionBonus);
+    const support = Math.round(averageSatisfaction * .55 + institutionalSupport + concessionBonus);
     assembly.agenda = agenda;
     assembly.support = Math.min(100, support);
     if (concession === "money") country.money -= 12;
