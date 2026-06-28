@@ -398,6 +398,14 @@
         return window.HIFI_SUPRANATIONAL_ENGINE.requestImperialMediation(current, current.playerPolity);
       }, button));
     });
+    drawerBody.querySelectorAll("[data-union-action]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const [action, value] = button.dataset.unionAction.split(":");
+        if (action === "claim") return window.HIFI_SUPRANATIONAL_ENGINE.claimPersonalUnion(current, current.playerPolity, value);
+        if (action === "integrate") return window.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(current, current.playerPolity, value);
+        return window.HIFI_SUPRANATIONAL_ENGINE.dissolveUnion(current, value, "主邦解除共主");
+      }, button));
+    });
     drawerBody.querySelectorAll("[data-integrate]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_ECONOMY_ENGINE.integrateTile(current, current.playerPolity, Number(button.dataset.integrate))

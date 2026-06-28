@@ -43,7 +43,7 @@ const drawers = w.HIFI_DRAWERS;
 const systems = {
   "国家": ["概览", "政制", "议会", "信仰", "决议"],
   "经济": ["财政", "贸易", "建设"],
-  "外交": ["邦交", "条约", "从属", "帝国"],
+  "外交": ["邦交", "条约", "从属", "共主", "帝国"],
   "军事": ["概览", "军团", "战争"],
   "发展": ["概览", "科技"],
 };
@@ -73,6 +73,8 @@ drawers.setDrawerTab("外交:邦交");
 assert.match(drawers.renderSystem("外交", world), /ui-dot/, "外交对象应渲染态度色点");
 drawers.setDrawerTab("外交:帝国");
 assert.match(drawers.renderSystem("外交", world), /神圣罗马帝国/, "外交帝国页应渲染神罗结构");
+drawers.setDrawerTab("外交:共主");
+assert.match(drawers.renderSystem("外交", world), /共主邦联/, "外交共主页应渲染共主邦联入口");
 drawers.setDrawerTab("发展:科技");
 assert.match(drawers.renderSystem("发展", world), /ui-checklist/, "科技应渲染门槛清单");
 

@@ -105,7 +105,7 @@
     "国家": ["概览", "政制", "议会", "信仰", "决议"],
     "经济": ["财政", "贸易", "建设"],
     "军事": ["概览", "军团", "战争"],
-    "外交": ["邦交", "条约", "从属", "帝国"],
+    "外交": ["邦交", "条约", "从属", "共主", "帝国"],
     "发展": ["概览", "科技"],
   };
   const activeTab = {};
@@ -127,7 +127,7 @@
       "国家": [[/data-law/, "政制"], [/data-assembly/, "议会"], [/data-faith-policy|data-missionary/, "信仰"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
       "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
-      "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"], [/data-imperial-action/, "帝国"]],
+      "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"], [/data-union-action/, "共主"], [/data-imperial-action/, "帝国"]],
     };
     for (const [pattern, tab] of (rules[system] || [])) if (pattern.test(selector)) return `${system}:${tab}`;
     return null;
@@ -598,6 +598,46 @@
         ${drift}
         <div class="drawer-subtitle">选举形势</div>${election}
         <div class="drawer-subtitle">帝国行动</div>${action}`;
+    }
+
+    if (tab === "共主") {
+      const unionEngine = window.HIFI_SUPRANATIONAL_ENGINE;
+      const unions = unionEngine?.unionsFor(world, country.name) || [];
+      const targetClaims = engine.claimsAgainst(world, country.name, target);
+      const targetKinship = engine.leaderRelationView(world, country.name, target).kinship
+        || engine.leaderRelationView(world, target, country.name).kinship;
+      const canClaimUnion = targetCountry
+        && target !== country.name
+        && targetClaims.some(claim => claim.type === "dynastic")
+        && targetKinship
+        && !unionEngine?.unionFor(world, target);
+      const claimAction = canClaimUnion
+        ? actionButton("data-union-action", `claim:${target}`, `宣告继承 ${target}`, "2 外交点 · 建立共主邦联")
+        : `<div class="drawer-row">宣告继承<span>${targetKinship ? "需要王朝宣称且目标未在共主中" : "需要王朝纽带"}</span></div>`;
+      const unionRows = unions.length ? unions.map(item => {
+        const members = Object.keys(item.members);
+        const drift = item.lastDrift
+          ? `${item.lastDrift.delta > 0 ? "+" : ""}${item.lastDrift.delta} · ${item.lastDrift.parts.slice(0, 3).map(part => `${part[0]} ${part[1] > 0 ? "+" : ""}${part[1]}`).join(" / ")}`
+          : "尚未结算";
+        const memberRows = members.map(member => {
+          const progress = item.integration?.[member] || 0;
+          const integrate = item.head === country.name
+            ? actionButton("data-union-action", `integrate:${member}`, `整合 ${member}`, `进度 ${progress}% · 2 行政点 + 30 金钱`, false, item.cohesion < 70 ? "向心力不足" : false)
+            : "";
+          return `<div class="drawer-row"><span>${member}</span><span>整合 ${progress}%</span></div>${integrate}`;
+        }).join("");
+        const dissolve = item.head === country.name
+          ? actionButton("data-union-action", `dissolve:${item.id}`, "主动解除共主", "邦联解体 · 从邦恢复独立")
+          : "";
+        return `<div class="drawer-subtitle">${item.name}</div>
+          <div class="drawer-row">主邦<span>${item.head}</span></div>
+          <div class="drawer-row">向心力<span>${wd().meter(item.cohesion, 100, { tone: item.cohesion >= 50 ? "green" : "red" })} ${item.cohesion}</span></div>
+          <div class="drawer-row">本季漂移<span>${drift}</span></div>
+          ${memberRows}${dissolve}`;
+      }).join("") : '<div class="drawer-row">当前没有共主邦联<span>—</span></div>';
+      return `${bar}${targetLine}
+        <div class="drawer-subtitle">继承行动</div>${claimAction}
+        <div class="drawer-subtitle">共主邦联</div>${unionRows}`;
     }
 
     // 从属（34 号 P1-1）：每个类型按当前对象实算接受度与每季贡赋，标出"可签/会被拒"并对不可成立的提案禁用

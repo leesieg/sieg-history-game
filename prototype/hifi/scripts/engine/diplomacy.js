@@ -264,6 +264,7 @@
   function evaluateProposal(world, actor, target, type) {
     const definition = treatyTypes[type] || subjectTypes[type];
     if (!definition) throw new Error("未知外交提案");
+    if (world.countries[actor]?.union?.junior) return { available: false, accepted: false, reason: "共主从邦不能独立缔结外交关系", score: 0, threshold: 999 };
     if (actor === target) return { available: false, accepted: false, reason: "不能对本国提案", score: 0, threshold: 999 };
     if (treatyTypes[type] && treatyBetween(world, actor, target, type)) {
       return { available: false, accepted: false, reason: "契约已经存在", score: 0, threshold: 999 };

@@ -397,6 +397,7 @@
   function canDeclareWar(world, attacker, defender) {
     if (!world.countries[attacker]) return { ok: false, reason: "宣战国家不存在" };
     if (!world.countries[defender]) return { ok: false, reason: "目标国家不存在" };
+    if (world.countries[attacker]?.union?.junior) return { ok: false, reason: "共主从邦不能独立宣战" };
     if (attacker === defender) return { ok: false, reason: "不能对本国宣战" };
     if (areAtWar(world, attacker, defender)) return { ok: false, reason: "双方已经交战" };
     if (underTruce(world, attacker, defender)) return { ok: false, reason: "停战协定期内不能宣战" };
