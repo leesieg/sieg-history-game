@@ -23,7 +23,8 @@ const tile = (id, polity, city, x) => ({
 const world = w.HIFI_WORLD_ENGINE.createWorld([
   tile(0, "法兰西王国", "巴黎", 0),
   tile(1, "英格兰王国", "伦敦", 20),
-  tile(2, "神圣罗马帝国", "布拉格", 40),
+  tile(2, "巴伐利亚公国", "慕尼黑", 40),
+  tile(3, "萨克森选侯国", "莱比锡", 50),
 ], undefined, "法兰西王国");
 w.HIFI_POLITICS_ENGINE.initializePolitics(world);
 w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);

@@ -63,8 +63,8 @@
       organizations: [{
         id: "hre",
         name: "神圣罗马帝国",
-        leader: "神圣罗马帝国",
-        members: { "神圣罗马帝国": "皇帝" },
+        leader: "巴伐利亚公国",
+        members: { "巴伐利亚公国": "皇帝" },
       }],
     };
     for (const country of Object.values(world.countries)) {

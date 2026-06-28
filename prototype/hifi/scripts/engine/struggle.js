@@ -61,13 +61,13 @@
       // 争议区域（按城市名，与 objectives.CAMPAIGN_STAGES 的核心/收复城同源）：作战室「前线」与边境控制判定用
       regionCities: ["巴黎", "鲁昂", "奥尔良", "加斯科涅", "阿基坦", "波尔多", "加莱", "弗兰德斯", "诺曼底", "布列塔尼", "香槟", "勃艮第"],
       // 参与方（数据驱动）：lean<0 偏法 / >0 偏英 / 0 中立。历史站位——苏格兰/卡斯蒂利亚盟法，
-      // 勃艮第/弗兰德斯/神圣罗马帝国盟英，教皇国居中调停。缺席世界里不存在的国家会被 startStruggle 过滤。
+      // 勃艮第/弗兰德斯/巴伐利亚皇帝侧盟英，教皇国居中调停。缺席世界里不存在的国家会被 startStruggle 过滤。
       parties: {
         "法兰西王国": { role: "principal" },
         "英格兰王国": { role: "principal" },
         "勃艮第公国": { role: "interloper", lean: 1 },
         "弗兰德斯伯国": { role: "interloper", lean: 1 },
-        "神圣罗马帝国": { role: "interloper", lean: 1 },
+        "巴伐利亚公国": { role: "interloper", lean: 1 },
         "苏格兰王国": { role: "interloper", lean: -1 },
         "卡斯蒂利亚王国": { role: "interloper", lean: -1 },
         "教皇国": { role: "interloper", lean: 0 },
