@@ -68,7 +68,7 @@ country.actionPoints.administrative = 3;
 country.money = 100;
 const controlBeforeIntegrate = tiles[1].control;
 economy.integrateTile(world, "法兰西王国", 2);
-assert.equal(tiles[1].control, controlBeforeIntegrate + 20, "整合必须提升地块控制度");
+assert.equal(tiles[1].control, controlBeforeIntegrate + economy.integrationGain(country), "整合必须按制度能力提升地块控制度");
 assert.equal(country.actionPoints.administrative, 2, "整合必须消耗行政点");
 tiles[1].control = 100;
 assert.throws(() => economy.integrateTile(world, "法兰西王国", 2), /已完全整合/);
@@ -198,6 +198,14 @@ crown.priceIndex = 1;
 const moneyParPrice = economy.tileOutput(devTile, crown).money;
 crown.priceIndex = 1.5;
 assert.ok(economy.tileOutput(devTile, crown).money > moneyParPrice, "物价指数必须推升名义金钱产出流");
+// 军事制度提高军需产出；旧军事改革槽不再暗中放大产出流
+crown.priceIndex = 1;
+crown.government.institutions = { military: "feudal_levy" };
+crown.government.reforms = { military: 5 };
+const feudalMilitaryOutput = economy.tileOutput(devTile, crown).military;
+crown.government.institutions.military = "standing_army";
+assert.ok(economy.tileOutput(devTile, crown).military > feudalMilitaryOutput, "常备军制度必须提高军需产出流");
+
 // 殖民收入流（探索里程碑）
 crown.exploration = { colonial: true };
 crown.money = 0;

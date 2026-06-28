@@ -33,6 +33,24 @@
     return key ? FISCAL_EFFECTS[key] || null : null;
   }
 
+  function militaryOutputFactor(country) {
+    const key = country.government?.institutions?.military;
+    if (key === "standing_army") return 1.12;
+    if (key === "nation_in_arms") return 1.05;
+    if (key === "mercenary_state") return .92;
+    return 1;
+  }
+
+  function integrationGain(country) {
+    const central = Math.max(0, Math.min(100, country.government?.centralPower ?? 60));
+    const fiscal = fiscalKey(country);
+    const assembly = country.government?.institutions?.assembly?.type;
+    return 16
+      + Math.round(central / 20)
+      + (fiscal === "direct" ? 4 : 0)
+      + (assembly === "parliamentary" ? 2 : 0);
+  }
+
   function initializeEconomy(world) {
     for (const country of Object.values(world.countries)) {
       country.technology = Object.fromEntries(Object.keys(rules.technologies).map(key => [key, false]));
@@ -86,12 +104,7 @@
       const taxMultiplier = window.HIFI_POLITICS_ENGINE?.lawEffects?.taxation?.[taxLaw]?.moneyMultiplier;
       if (taxMultiplier) money *= taxMultiplier;
     }
-    // 改革槽每级加成：财政→金钱产出流、军事→军需产出流（核心循环：改革→产出流）
-    const reforms = country.government?.reforms;
-    if (reforms) {
-      money *= 1 + (reforms.fiscal || 0) * .03;
-      military *= 1 + (reforms.military || 0) * .03;
-    }
+    military *= militaryOutputFactor(country);
     // 物价指数推升名义金钱产出流（价格革命：白银流入→物价上行）
     if (country.priceIndex) money *= country.priceIndex;
     return { food: Math.round(food), money: Math.round(money), military: Math.round(military) };
@@ -211,9 +224,7 @@
     if (country.money < 20 || country.actionPoints.administrative < 1) throw new Error("整合资源不足");
     country.money -= 20;
     country.actionPoints.administrative -= 1;
-    // 行政改革提升整合效率（核心循环：改革→控制度，回头放大产出流）
-    const integrateGain = 20 + (country.government?.reforms?.administrative || 0) * 2;
-    tile.control = Math.min(100, (tile.control ?? 0) + integrateGain);
+    tile.control = Math.min(100, (tile.control ?? 0) + integrationGain(country));
     return tile;
   }
 
@@ -290,6 +301,7 @@
     initializeEconomy,
     integrateTile,
     fiscalEffect,
+    integrationGain,
     MAINTENANCE,
     setAgenda,
     setTradePolicy,

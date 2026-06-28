@@ -122,29 +122,37 @@ france.actionPoints.administrative = 3;
 assert.throws(() => politics.setLaw(world, "法兰西王国", "taxation", "uniform"), /王权/);
 assert.ok(context.window.HIFI_POLITICS_ENGINE.lawEffects.taxation.uniform.moneyMultiplier > 1, "法律效果表必须导出");
 
-// 改革槽每级加成：财政改革提高金钱产出流
+// 制度模块加成：财政制度提高金钱产出流，旧财政改革槽不再暗中放大产出
 france.government.laws.taxation = "customary";
+france.government.institutions.fiscal = "demesne";
 france.government.reforms.fiscal = 0;
-const moneyNoFiscal = economy.tileOutput(taxTile, france).money;
+const moneyDemesne = economy.tileOutput(taxTile, france).money;
 france.government.reforms.fiscal = 5;
-assert.ok(economy.tileOutput(taxTile, france).money > moneyNoFiscal, "财政改革必须提高金钱产出流");
-// 行政改革提高整合效率（无改革 +20，有改革更多）
+assert.equal(economy.tileOutput(taxTile, france).money, moneyDemesne, "旧财政改革槽不应再改变金钱产出流");
+france.government.institutions.fiscal = "direct";
+assert.ok(economy.tileOutput(taxTile, france).money > moneyDemesne, "直接征税财政模块必须提高金钱产出流");
+// 制度模块提高整合效率（中央化/直接征税/议会），旧行政改革槽不再暗中提速
 world.tiles.push({ id: 92, isSea: false, polity: "法兰西王国", control: 40, buildings: [] });
 world.tiles.push({ id: 93, isSea: false, polity: "法兰西王国", control: 40, buildings: [] });
 france.money = 200;
 france.actionPoints.administrative = 5;
 france.government.reforms.administrative = 0;
+france.government.centralPower = 40;
+france.government.institutions.fiscal = "demesne";
 economy.integrateTile(world, "法兰西王国", 92);
-assert.equal(world.tiles.find(t => t.id === 92).control, 60, "无行政改革时整合 +20 控制度");
+const lowInstitutionGain = world.tiles.find(t => t.id === 92).control - 40;
 france.government.reforms.administrative = 3;
+france.government.centralPower = 80;
+france.government.institutions.fiscal = "direct";
 economy.integrateTile(world, "法兰西王国", 93);
-assert.ok(world.tiles.find(t => t.id === 93).control > 60, "行政改革必须提高整合效率");
+assert.ok(world.tiles.find(t => t.id === 93).control - 40 > lowInstitutionGain, "制度能力必须提高整合效率");
 
 // 阶层满意度接入流：不满阶层每季惩罚关联资源流 + 累积不满 + 满意度向 0 回归
 france.estates.nobles.satisfaction = -60;
 france.estates.nobles.power = 42;
 france.military = 100;
 france.unrest = 0;
+france.government.centralPower = 50;
 politics.processEstates(world, "法兰西王国");
 assert.ok(france.military < 100, "不满的贵族必须惩罚军需流");
 assert.ok(france.unrest >= 1, "不满必须累积国内不满");
