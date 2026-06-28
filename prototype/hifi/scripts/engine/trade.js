@@ -37,6 +37,37 @@
       .filter(polity => polity && world.countries[polity]))];
   }
 
+  function blockadeAtNode(world, city) {
+    const tile = nodeTile(world, city);
+    if (!tile?.buildings?.includes("port")) return null;
+    return window.HIFI_WARFARE_ENGINE?.blockadeAtPort?.(world, tile.id) || null;
+  }
+
+  function privateersForRoute(world, key) {
+    return window.HIFI_WARFARE_ENGINE?.privateersOnRoute?.(world, key) || [];
+  }
+
+  function fleetShips(fleet) {
+    return (fleet.units || []).reduce((sum, unit) => sum + (unit.ships || 0), 0);
+  }
+
+  function privateeringRate(privateers, polity) {
+    const hostileShips = privateers
+      .filter(fleet => fleet.owner !== polity)
+      .reduce((sum, fleet) => sum + fleetShips(fleet), 0);
+    return Math.min(.45, hostileShips * .04);
+  }
+
+  function distributePrivateerLoot(world, privateers, victim, amount) {
+    const eligible = privateers.filter(fleet => fleet.owner !== victim && world.countries[fleet.owner]);
+    const ships = eligible.reduce((sum, fleet) => sum + fleetShips(fleet), 0);
+    if (!ships || amount <= 0) return;
+    for (const fleet of eligible) {
+      const share = amount * fleetShips(fleet) / ships;
+      world.trade.lastIncome[fleet.owner] = (world.trade.lastIncome[fleet.owner] || 0) + share;
+    }
+  }
+
   function embargoBetween(world, a, b) {
     return Boolean(window.HIFI_DIPLOMACY_ENGINE?.embargoBetween?.(world, a, b));
   }
@@ -52,6 +83,7 @@
       if (!tile) continue;
       cost += (tile.devastation || 0) * .12;
       if (tile.occupation >= 100) cost += 14;
+      if (blockadeAtNode(world, city)) cost += 18;
       const owner = world.countries[tile.polity];
       cost += (owner?.tariff || 0) * .08;
     }
@@ -61,6 +93,10 @@
         if (embargoBetween(world, owners[i], owners[j])) cost += 10;
       }
     }
+    const routeKey = Object.entries(world.trade?.routes || {}).find(([, candidate]) => candidate === route)?.[0];
+    const privateerShips = privateersForRoute(world, routeKey)
+      .reduce((sum, fleet) => sum + fleetShips(fleet), 0);
+    cost += Math.min(24, privateerShips * 2.5);
     if (route.nodes.includes("君士坦丁堡") && world.flags?.constantinopleFallen) cost += 18;
     return Math.round(cost);
   }
@@ -92,6 +128,7 @@
       if (routeKey === "newWorld") world.trade.pools.silver += Math.round(route.flow * .08);
       const nodeShare = route.nodes.length ? route.flow / route.nodes.length : 0;
       const owners = routeOwners(world, route);
+      const privateers = privateersForRoute(world, routeKey);
       for (const city of route.nodes) {
         const polity = nodeTile(world, city)?.polity;
         if (!world.countries[polity]) continue;
@@ -100,7 +137,12 @@
         const policy = world.countries[polity].tradePolicy;
         const policyFactor = policy === "closed" ? .5 : policy === "open" ? 1.3 : 1;
         const embargoFactor = hasRouteEmbargo(world, polity, owners) ? .55 : 1;
-        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + nodeShare * tariff * policyFactor * embargoFactor;
+        const blockadeFactor = blockadeAtNode(world, city) ? .45 : 1;
+        const privateerRate = privateeringRate(privateers, polity);
+        const gross = nodeShare * tariff * policyFactor * embargoFactor * blockadeFactor;
+        const stolen = gross * privateerRate;
+        world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + gross - stolen;
+        distributePrivateerLoot(world, privateers, polity, stolen);
       }
     }
     // 白银累积推升物价（价格革命：白银流→物价指数）

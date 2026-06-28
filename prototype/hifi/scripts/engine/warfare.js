@@ -147,6 +147,8 @@
       supply: config.supply ?? 80,
       status: config.status || "ready",
       order: config.order || "hold",
+      targetPortId: config.targetPortId || null,
+      targetRouteKey: config.targetRouteKey || null,
       plannedPath: config.plannedPath ? [...config.plannedPath] : [],
       units: config.units.map(unit => ({ experience: 0, ...unit })),
     };
@@ -487,6 +489,8 @@
     const fleet = world.warfare.fleets[fleetId];
     if (!fleet) throw new Error("舰队不存在");
     if (!world.tiles.find(tile => tile.id === targetId && tile.isSea)) throw new Error("舰队目标必须是海域");
+    fleet.targetPortId = null;
+    fleet.targetRouteKey = null;
     const queue = [[fleet.tileId, []]];
     const visited = new Set([fleet.tileId]);
     while (queue.length) {
@@ -504,6 +508,65 @@
       }
     }
     throw new Error("海上目标不可达");
+  }
+
+  function routeNodeOwners(world, route) {
+    return [...new Set((route?.nodes || [])
+      .map(city => world.tiles.find(tile => tile.city === city && !tile.isSea)?.polity)
+      .filter(polity => polity && world.countries[polity]))];
+  }
+
+  function startBlockade(world, fleetId, portTileId) {
+    const fleet = world.warfare.fleets[fleetId];
+    const port = world.tiles.find(tile => tile.id === portTileId);
+    if (!fleet || fleet.status !== "ready") throw new Error("只有待命舰队可以封锁");
+    if (!port || port.isSea || !port.buildings?.includes("port")) throw new Error("封锁目标必须是港口地块");
+    if (port.polity === fleet.owner) throw new Error("不能封锁本国港口");
+    if (!areAtWar(world, fleet.owner, port.polity)) throw new Error("只能封锁交战国港口");
+    if (!coastalSeaAccess(world, portTileId, fleet.tileId)) throw new Error("舰队必须位于目标港口外海");
+    fleet.order = "blockade";
+    fleet.plannedPath = [];
+    fleet.targetPortId = portTileId;
+    fleet.targetRouteKey = null;
+    fleet.organization = Math.max(25, fleet.organization - 5);
+    return fleet;
+  }
+
+  function startPrivateering(world, fleetId, routeKey) {
+    const fleet = world.warfare.fleets[fleetId];
+    const route = world.trade?.routes?.[routeKey];
+    if (!fleet || fleet.status !== "ready") throw new Error("只有待命舰队可以私掠");
+    if (!route) throw new Error("私掠目标商路不存在");
+    const owners = routeNodeOwners(world, route);
+    if (!owners.length || owners.every(owner => owner === fleet.owner)) throw new Error("不能私掠完全由本国控制的商路");
+    fleet.order = "privateer";
+    fleet.plannedPath = [];
+    fleet.targetPortId = null;
+    fleet.targetRouteKey = routeKey;
+    fleet.organization = Math.max(25, fleet.organization - 4);
+    const atWarWithOwner = owners.some(owner => areAtWar(world, fleet.owner, owner));
+    if (!atWarWithOwner) world.countries[fleet.owner].reputation = Math.max(0, (world.countries[fleet.owner].reputation ?? 60) - 3);
+    return fleet;
+  }
+
+  function stopFleetOperation(world, fleetId) {
+    const fleet = world.warfare.fleets[fleetId];
+    if (!fleet) throw new Error("舰队不存在");
+    fleet.order = "hold";
+    fleet.targetPortId = null;
+    fleet.targetRouteKey = null;
+    fleet.plannedPath = [];
+    return fleet;
+  }
+
+  function blockadeAtPort(world, portTileId) {
+    return Object.values(world.warfare?.fleets || {})
+      .find(fleet => fleet.status === "ready" && fleet.order === "blockade" && fleet.targetPortId === portTileId) || null;
+  }
+
+  function privateersOnRoute(world, routeKey) {
+    return Object.values(world.warfare?.fleets || {})
+      .filter(fleet => fleet.status === "ready" && fleet.order === "privateer" && fleet.targetRouteKey === routeKey);
   }
 
   function planArmyRoute(world, armyId, targetId) {
@@ -1059,7 +1122,9 @@
     nearestSeaTile,
     planArmyRoute,
     planFleetRoute,
+    blockadeAtPort,
     peaceTermsCost,
+    privateersOnRoute,
     termAllowedByGoal,
     recruitGeneral,
     processWarfare,
@@ -1069,6 +1134,9 @@
     resolveBattle,
     resolveNavalBattle,
     rulerGeneral,
+    startBlockade,
+    startPrivateering,
+    stopFleetOperation,
     splitArmy,
     seaNeighbors,
     shipTypes,
