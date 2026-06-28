@@ -9,6 +9,17 @@
     nation_in_arms: { serviceType: "levy", levyCostFactor: .3, soldierFactor: 1.15 },
     mercenary_state: { serviceType: "professional", levyCostFactor: .2, soldierFactor: .9, militaryCost: 8, mercenaryCostFactor: .7 },
   };
+  const warGoalTypes = {
+    conquest: { label: "征服战", defaultTerms: ["target_territory", "reparations"] },
+    subjugation: { label: "附庸战", defaultTerms: ["subject", "reparations"] },
+    plunder: { label: "劫掠战", defaultTerms: ["reparations"] },
+    humiliation: { label: "霸权羞辱战", defaultTerms: ["reparations"] },
+  };
+
+  function normalizeWarGoal(goal, targetTileId) {
+    if (!goal || typeof goal === "string") return { type: goal || "conquest", tileId: targetTileId };
+    return { type: goal.type || "conquest", tileId: goal.tileId || targetTileId, ...goal };
+  }
 
   function militaryKey(country) {
     const institutions = country.government?.institutions;
@@ -390,13 +401,13 @@
     );
   }
 
-  function declareWarOn(world, attacker, defender, name) {
+  function declareWarOn(world, attacker, defender, name, goal = "conquest") {
     const permission = canDeclareWar(world, attacker, defender);
     if (!permission.ok) throw new Error(permission.reason);
     const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, defender).find(tile => tile.city)
       || window.HIFI_WORLD_ENGINE.controlledTiles(world, defender)[0];
     if (!target) throw new Error("目标国家没有可争夺的领土");
-    return declareWar(world, attacker, defender, target.id, name || `${attacker}对${defender}的战争`);
+    return declareWar(world, attacker, defender, target.id, name || `${attacker}对${defender}的战争`, goal);
   }
 
   function canDeclareWar(world, attacker, defender) {
@@ -409,9 +420,11 @@
     return { ok: true };
   }
 
-  function declareWar(world, attacker, defender, targetTileId, name = "边境战争") {
+  function declareWar(world, attacker, defender, targetTileId, name = "边境战争", goal = "conquest") {
     const permission = canDeclareWar(world, attacker, defender);
     if (!permission.ok) throw new Error(permission.reason);
+    const normalizedGoal = normalizeWarGoal(goal, targetTileId);
+    if (!warGoalTypes[normalizedGoal.type]) throw new Error("未知战争目标");
     const cbMatched = !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
@@ -419,7 +432,7 @@
       attackers: [attacker],
       defenders: [defender],
       primaryGoal: { tileId: targetTileId, claimant: attacker },
-      goal: { type: "conquest", tileId: targetTileId },
+      goal: normalizedGoal,
       cbMatched,
       score: 0,
       startedTurn: world.turn,
@@ -565,6 +578,7 @@
       if (term.type === "target_territory" && actor !== war.primaryGoal.claimant) {
         throw new Error("只有战争目标提出方可以索取目标领土");
       }
+      if (!termAllowedByGoal(war, term)) throw new Error("该战争目标不支持此和约条款");
     }
     if (!canConcludePeace(world, war, actor, terms)) throw new Error("战争分数不足");
     for (const term of terms) {
@@ -590,6 +604,10 @@
         const paid = Math.min(amount, world.countries[target].money);
         world.countries[target].money -= paid;
         world.countries[actor].money += paid;
+        if (war.goal?.type === "plunder") {
+          world.countries[target].warfare.warExhaustion += 2;
+          world.countries[actor].reputation = Math.max(0, (world.countries[actor].reputation ?? 60) - 2);
+        }
       } else if (term.type === "subject") {
         const target = peaceOpponent(war, actor, term.target);
         const subjectType = term.subjectType || "tributary";
@@ -642,8 +660,16 @@
     }, 0);
   }
 
+  function termAllowedByGoal(war, term) {
+    if (["status_quo", "truce"].includes(term.type)) return true;
+    const goalType = war.goal?.type || "conquest";
+    const allowed = warGoalTypes[goalType]?.defaultTerms || warGoalTypes.conquest.defaultTerms;
+    return allowed.includes(term.type);
+  }
+
   function canConcludePeace(world, war, actor, terms) {
     if (!war?.participants?.[actor]) return false;
+    if (terms.some(term => !termAllowedByGoal(war, term))) return false;
     if (terms.every(term => ["status_quo", "truce"].includes(term.type))) return true;
     return sideScore(war, actor) >= peaceTermsCost(world, war, terms);
   }
@@ -730,6 +756,7 @@
     neighbors,
     planArmyRoute,
     peaceTermsCost,
+    termAllowedByGoal,
     recruitGeneral,
     processWarfare,
     reinforceArmy,
@@ -740,5 +767,6 @@
     splitArmy,
     terrainMoveCost,
     trainArmy,
+    warGoalTypes,
   };
 })();

@@ -156,6 +156,7 @@ freshWorld.diplomacy.truces = [];
 const reputationBeforeNoClaim = freshWorld.countries["法兰西王国"].reputation;
 const onWar = warfare.declareWarOn(freshWorld, "法兰西王国", "英格兰王国");
 assert.equal(onWar.primaryGoal.tileId, 1, "declareWarOn 必须以目标国首都为战争目标");
+assert.equal(onWar.goal.type, "conquest", "默认宣战必须是征服目标");
 assert.equal(onWar.cbMatched, false, "无宣称战争必须标记为无战争理由");
 assert.ok(freshWorld.countries["法兰西王国"].reputation < reputationBeforeNoClaim, "无宣称宣战必须损害声誉");
 assert.equal(warfare.areAtWar(freshWorld, "法兰西王国", "英格兰王国"), true);
@@ -195,8 +196,32 @@ warfare.initializeWarfare(subjectWarWorld);
 subjectWarWorld.diplomacy.wars = [];
 const subjectWar = warfare.declareWarOn(subjectWarWorld, "法兰西王国", "英格兰王国");
 subjectWar.score = 40;
-warfare.concludePeace(subjectWarWorld, subjectWar.id, "法兰西王国", [{ type: "subject", subjectType: "tributary" }]);
+assert.equal(warfare.canConcludePeace(subjectWarWorld, subjectWar, "法兰西王国", [{ type: "subject", subjectType: "tributary" }]), false, "征服战不能直接签从属条款");
+assert.throws(
+  () => warfare.concludePeace(subjectWarWorld, subjectWar.id, "法兰西王国", [{ type: "subject", subjectType: "tributary" }]),
+  /不支持/
+);
+subjectWarWorld.diplomacy.wars = [];
+const subjugationWar = warfare.declareWarOn(subjectWarWorld, "法兰西王国", "英格兰王国", "附庸战争", "subjugation");
+assert.equal(subjugationWar.goal.type, "subjugation", "宣战应支持附庸战目标");
+subjugationWar.score = 40;
+assert.equal(warfare.canConcludePeace(subjectWarWorld, subjugationWar, "法兰西王国", [{ type: "target_territory" }]), false, "附庸战不能索取目标领土");
+warfare.concludePeace(subjectWarWorld, subjugationWar.id, "法兰西王国", [{ type: "subject", subjectType: "tributary" }]);
 assert.ok(diplomacy.subjectBetween(subjectWarWorld, "法兰西王国", "英格兰王国"), "强制朝贡和约必须建立从属关系");
+
+const plunderWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(plunderWorld);
+warfare.initializeWarfare(plunderWorld);
+plunderWorld.diplomacy.wars = [];
+plunderWorld.countries["英格兰王国"].money = 100;
+const plunderWar = warfare.declareWarOn(plunderWorld, "法兰西王国", "英格兰王国", "劫掠战争", "plunder");
+plunderWar.score = 30;
+assert.equal(warfare.termAllowedByGoal(plunderWar, { type: "target_territory" }), false, "劫掠战不能割地");
+const plunderRepBefore = plunderWorld.countries["法兰西王国"].reputation;
+warfare.concludePeace(plunderWorld, plunderWar.id, "法兰西王国", [{ type: "reparations", amount: 30 }]);
+assert.ok(plunderWorld.countries["法兰西王国"].money > 0, "劫掠战应能通过赔款拿到资源");
+assert.ok(plunderWorld.countries["英格兰王国"].warfare.warExhaustion >= 2, "劫掠赔款应提高目标战争疲惫");
+assert.ok(plunderWorld.countries["法兰西王国"].reputation < plunderRepBefore, "劫掠战应带来额外声誉代价");
 
 const truceWorld = worldEngine.createWorld(freshTiles);
 diplomacy.initializeDiplomacy(truceWorld);
