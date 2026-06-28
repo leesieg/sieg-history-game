@@ -19,6 +19,7 @@
   window.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   window.HIFI_HISTORY_ENGINE.initializeHistory(world);
   window.HIFI_FAITH_ENGINE.initializeFaith(world);
+  window.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(world);
   window.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
   window.HIFI_TRADE_ENGINE.initializeTrade(world);
   const store = window.HIFI_STORE.createStore(world);
@@ -387,6 +388,14 @@
         if (group === "treaty") return window.HIFI_DIPLOMACY_ENGINE.proposeTreaty(current, current.playerPolity, target, action);
         if (group === "war") return window.HIFI_WARFARE_ENGINE.declareWarOn(current, current.playerPolity, target);
         return window.HIFI_DIPLOMACY_ENGINE.proposeSubject(current, current.playerPolity, target, action);
+      }, button));
+    });
+    drawerBody.querySelectorAll("[data-imperial-action]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        if (button.dataset.imperialAction === "diet") {
+          return window.HIFI_SUPRANATIONAL_ENGINE.callImperialDiet(current, current.playerPolity);
+        }
+        return window.HIFI_SUPRANATIONAL_ENGINE.requestImperialMediation(current, current.playerPolity);
       }, button));
     });
     drawerBody.querySelectorAll("[data-integrate]").forEach(button => {

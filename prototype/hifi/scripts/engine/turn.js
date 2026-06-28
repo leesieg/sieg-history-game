@@ -24,6 +24,7 @@
     if (window.HIFI_DIPLOMACY_ENGINE) {
       window.HIFI_DIPLOMACY_ENGINE.processDiplomacy(world);
     }
+    if (window.HIFI_SUPRANATIONAL_ENGINE) window.HIFI_SUPRANATIONAL_ENGINE.processSupranational(world);
     if (window.HIFI_POLITICS_ENGINE) {
       for (const polity of Object.keys(world.countries)) {
         window.HIFI_POLITICS_ENGINE.processEstates(world, polity);

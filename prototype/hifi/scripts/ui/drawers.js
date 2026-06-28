@@ -105,7 +105,7 @@
     "国家": ["概览", "政制", "议会", "信仰", "决议"],
     "经济": ["财政", "贸易", "建设"],
     "军事": ["概览", "军团", "战争"],
-    "外交": ["邦交", "条约", "从属"],
+    "外交": ["邦交", "条约", "从属", "帝国"],
     "发展": ["概览", "科技"],
   };
   const activeTab = {};
@@ -127,7 +127,7 @@
       "国家": [[/data-law/, "政制"], [/data-assembly/, "议会"], [/data-faith-policy|data-missionary/, "信仰"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
       "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
-      "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"]],
+      "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"], [/data-imperial-action/, "帝国"]],
     };
     for (const [pattern, tab] of (rules[system] || [])) if (pattern.test(selector)) return `${system}:${tab}`;
     return null;
@@ -571,6 +571,33 @@
         ["treaty:alliance", "防御同盟", "2 外交点 · 盟友被攻击自动参战"],
       ]);
       return `${bar}${targetLine}${treaties}`;
+    }
+
+    if (tab === "帝国") {
+      const imperial = window.HIFI_SUPRANATIONAL_ENGINE?.summary(world, country.name, "hre");
+      if (!imperial) return `${bar}<div class="drawer-row">暂无超国家结构<span>—</span></div>`;
+      const memberLabel = imperial.member
+        ? `${imperial.member.role}${imperial.member.elector ? " · 选侯" : ""}`
+        : "非成员";
+      const election = imperial.election.slice(0, 5).map(entry =>
+        `<div class="drawer-row"><span>${entry.polity}${entry.polity === imperial.emperor ? "（现任）" : ""}</span><span>${entry.score}</span></div>`
+      ).join("");
+      const drift = imperial.lastDrift
+        ? `<div class="drawer-row">本季权威漂移<span>${imperial.lastDrift.delta > 0 ? "+" : ""}${imperial.lastDrift.delta} · ${imperial.lastDrift.parts.map(part => `${part[0]} ${part[1] > 0 ? "+" : ""}${part[1]}`).join(" / ")}</span></div>`
+        : '<div class="drawer-row">本季权威漂移<span>尚未结算</span></div>';
+      const action = imperial.emperor === country.name
+        ? actionButton("data-imperial-action", "diet", "召开帝国会议", "1 外交点 · 消耗 12 帝国权威 · 合法性与选侯信任上升", false, imperial.authority < 12 ? "帝国权威不足" : false)
+        : imperial.member
+          ? actionButton("data-imperial-action", "mediation", "请求帝国调停", "1 外交点 · 消耗 6 帝国权威 · 合法性与皇帝信任上升", false, imperial.authority < 6 ? "帝国权威不足" : false)
+          : '<div class="drawer-row">帝国行动<span>非成员不可操作</span></div>';
+      return `${bar}
+        <div class="drawer-row">${codexTerm("神圣罗马帝国", imperial.name)}<span>${imperial.authorityLabel} ${wd().meter(imperial.authority, 100, { tone: "gold" })} ${imperial.authority}</span></div>
+        <div class="drawer-row">皇帝<span>${imperial.emperor}</span></div>
+        <div class="drawer-row">我国身份<span>${memberLabel}</span></div>
+        <div class="drawer-row">帝国内战<span>${imperial.internalWars}</span></div>
+        ${drift}
+        <div class="drawer-subtitle">选举形势</div>${election}
+        <div class="drawer-subtitle">帝国行动</div>${action}`;
     }
 
     // 从属（34 号 P1-1）：每个类型按当前对象实算接受度与每季贡赋，标出"可签/会被拒"并对不可成立的提案禁用

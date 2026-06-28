@@ -7,10 +7,10 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
-  "data/rules.js", "data/trade.js", "data/countries.js", "data/institutions.js", "data/faiths.js",
+  "data/rules.js", "data/trade.js", "data/countries.js", "data/institutions.js", "data/faiths.js", "data/supranational.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
   "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
-  "engine/faith.js", "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
+  "engine/faith.js", "engine/supranational.js", "engine/history.js", "engine/struggle.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
   "data/codex.js", "ui/widgets.js", "ui/drawers.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
@@ -23,6 +23,7 @@ const tile = (id, polity, city, x) => ({
 const world = w.HIFI_WORLD_ENGINE.createWorld([
   tile(0, "法兰西王国", "巴黎", 0),
   tile(1, "英格兰王国", "伦敦", 20),
+  tile(2, "神圣罗马帝国", "布拉格", 40),
 ], undefined, "法兰西王国");
 w.HIFI_POLITICS_ENGINE.initializePolitics(world);
 w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
@@ -30,6 +31,7 @@ w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
 w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
 w.HIFI_HISTORY_ENGINE.initializeHistory(world);
 w.HIFI_FAITH_ENGINE.initializeFaith(world);
+w.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(world);
 w.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 world.selectedTile = 0; // 选中己方地块，触发建设/整合等分支
@@ -41,7 +43,7 @@ const drawers = w.HIFI_DRAWERS;
 const systems = {
   "国家": ["概览", "政制", "议会", "信仰", "决议"],
   "经济": ["财政", "贸易", "建设"],
-  "外交": ["邦交", "条约", "从属"],
+  "外交": ["邦交", "条约", "从属", "帝国"],
   "军事": ["概览", "军团", "战争"],
   "发展": ["概览", "科技"],
 };
@@ -69,6 +71,8 @@ assert.match(econTrade, /ui-radar-area/, "经济贸易应渲染压力雷达");
 assert.match(econTrade, /ui-meter-fill/, "经济贸易路线应渲染流量条");
 drawers.setDrawerTab("外交:邦交");
 assert.match(drawers.renderSystem("外交", world), /ui-dot/, "外交对象应渲染态度色点");
+drawers.setDrawerTab("外交:帝国");
+assert.match(drawers.renderSystem("外交", world), /神圣罗马帝国/, "外交帝国页应渲染神罗结构");
 drawers.setDrawerTab("发展:科技");
 assert.match(drawers.renderSystem("发展", world), /ui-checklist/, "科技应渲染门槛清单");
 
