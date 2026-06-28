@@ -528,6 +528,8 @@
     if (attacker === defender) return { ok: false, reason: "不能对本国宣战" };
     if (areAtWar(world, attacker, defender)) return { ok: false, reason: "双方已经交战" };
     if (underTruce(world, attacker, defender)) return { ok: false, reason: "停战协定期内不能宣战" };
+    const imperial = window.HIFI_SUPRANATIONAL_ENGINE?.imperialWarPermission?.(world, attacker, defender);
+    if (imperial && !imperial.ok) return imperial;
     return { ok: true };
   }
 

@@ -12,6 +12,7 @@ for (const file of [
   "engine/world.js",
   "engine/diplomacy.js",
   "engine/faith.js",
+  "engine/warfare.js",
   "engine/supranational.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
@@ -75,6 +76,26 @@ w.HIFI_SUPRANATIONAL_ENGINE.requestImperialMediation(world, "勃艮第公国");
 assert.equal(hre.authority, authorityBeforeMediation - 6, "请求帝国调停应消耗帝国权威");
 assert.equal(world.countries["勃艮第公国"].actionPoints.diplomatic, 1, "请求帝国调停应消耗外交点");
 
+hre.authority = 80;
+assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.imperialPeaceActive(world, "hre"), true, "高权威应启动帝国和平");
+assert.equal(
+  w.HIFI_WARFARE_ENGINE.canDeclareWar(world, "勃艮第公国", "米兰领").ok,
+  false,
+  "帝国和平应禁止成员私战"
+);
+world.countries["巴伐利亚公国"].actionPoints.diplomatic = 2;
+w.HIFI_SUPRANATIONAL_ENGINE.declareImperialBan(world, "巴伐利亚公国", "米兰领");
+assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.isImperialOutlaw(world, "米兰领"), true, "帝国除籍应标记目标成员");
+assert.equal(
+  w.HIFI_WARFARE_ENGINE.canDeclareWar(world, "巴伐利亚公国", "米兰领").ok,
+  true,
+  "除籍目标应允许皇帝讨伐"
+);
+assert.ok(
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, "巴伐利亚公国", "米兰领").some(claim => claim.type === "imperial_ban"),
+  "帝国除籍应给皇帝生成讨伐宣称"
+);
+
 hre.authority = 50;
 world.diplomacy.wars.push({
   id: "imperial-war",
@@ -104,6 +125,8 @@ const drawers = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 assert.ok(html.includes("scripts/data/supranational.js"), "页面必须加载超国家结构数据");
 assert.ok(html.includes("scripts/engine/supranational.js"), "页面必须加载超国家结构引擎");
 assert.ok(main.includes("initializeSupranational"), "启动流程必须初始化超国家结构");
+assert.ok(main.includes("declareImperialBan"), "main.js 必须接通帝国除籍操作");
 assert.ok(drawers.includes("data-imperial-action"), "外交界面必须提供帝国行动入口");
+assert.ok(drawers.includes("ban:"), "帝国界面必须提供除籍操作");
 
 console.log("hifi supranational passed");

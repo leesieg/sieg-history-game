@@ -607,8 +607,14 @@
       const drift = imperial.lastDrift
         ? `<div class="drawer-row">本季权威漂移<span>${imperial.lastDrift.delta > 0 ? "+" : ""}${imperial.lastDrift.delta} · ${imperial.lastDrift.parts.map(part => `${part[0]} ${part[1] > 0 ? "+" : ""}${part[1]}`).join(" / ")}</span></div>`
         : '<div class="drawer-row">本季权威漂移<span>尚未结算</span></div>';
+      const target = world.diplomacy?.selectedTarget;
+      const targetMember = target && window.HIFI_SUPRANATIONAL_ENGINE?.isMember(world, target, "hre");
+      const targetOutlaw = target && window.HIFI_SUPRANATIONAL_ENGINE?.isImperialOutlaw(world, target, "hre");
+      const banButton = imperial.emperor === country.name && target && target !== country.name && targetMember
+        ? actionButton("data-imperial-action", `ban:${target}`, `帝国除籍 ${target}`, "1 外交点 · 消耗 18 帝国权威 · 皇帝获得讨伐宣称", false, targetOutlaw ? "目标已被除籍" : imperial.authority < 25 ? "帝国权威不足" : false)
+        : "";
       const action = imperial.emperor === country.name
-        ? actionButton("data-imperial-action", "diet", "召开帝国会议", "1 外交点 · 消耗 12 帝国权威 · 合法性与选侯信任上升", false, imperial.authority < 12 ? "帝国权威不足" : false)
+        ? `${actionButton("data-imperial-action", "diet", "召开帝国会议", "1 外交点 · 消耗 12 帝国权威 · 合法性与选侯信任上升", false, imperial.authority < 12 ? "帝国权威不足" : false)}${banButton}`
         : imperial.member
           ? actionButton("data-imperial-action", "mediation", "请求帝国调停", "1 外交点 · 消耗 6 帝国权威 · 合法性与皇帝信任上升", false, imperial.authority < 6 ? "帝国权威不足" : false)
           : '<div class="drawer-row">帝国行动<span>非成员不可操作</span></div>';

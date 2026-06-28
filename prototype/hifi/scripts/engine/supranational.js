@@ -112,6 +112,28 @@
     return Boolean(structure(world, id)?.members?.[polity]);
   }
 
+  function imperialPeaceActive(world, id = "hre") {
+    const item = structure(world, id);
+    return Boolean(item && item.type === "imperial" && item.authority >= 70);
+  }
+
+  function isImperialOutlaw(world, polity, id = "hre") {
+    return Boolean(structure(world, id)?.members?.[polity]?.outlaw);
+  }
+
+  function imperialWarPermission(world, attacker, defender, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial" || !item.members[attacker] || !item.members[defender]) {
+      return { ok: true };
+    }
+    if (isImperialOutlaw(world, defender, id)) return { ok: true, reason: "帝国除籍" };
+    if (item.emperor === attacker) return { ok: true };
+    if (imperialPeaceActive(world, id)) {
+      return { ok: false, reason: "帝国权威已强制帝国和平，成员不得私战" };
+    }
+    return { ok: true };
+  }
+
   function unionId(senior) {
     return `union:${senior}`;
   }
@@ -409,6 +431,28 @@
     return item;
   }
 
+  function declareImperialBan(world, emperor, target, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial" || item.emperor !== emperor) throw new Error("只有皇帝可以帝国除籍");
+    if (!item.members[target] || target === emperor) throw new Error("只能除籍其他帝国成员");
+    const country = world.countries[emperor];
+    if (country.actionPoints.diplomatic < 1) throw new Error("帝国除籍需要 1 外交点");
+    if (item.authority < 25) throw new Error("帝国权威不足");
+    country.actionPoints.diplomatic -= 1;
+    item.authority = clamp(item.authority - 18);
+    item.members[target].outlaw = true;
+    item.members[target].role = item.members[target].role.includes("除籍")
+      ? item.members[target].role
+      : `${item.members[target].role}·帝国除籍`;
+    window.HIFI_DIPLOMACY_ENGINE?.addClaim?.(world, emperor, target, "imperial_ban");
+    if (window.HIFI_DIPLOMACY_ENGINE) {
+      window.HIFI_DIPLOMACY_ENGINE.relationView(world, target, emperor).trust = Math.max(0, relationTrust(world, target, emperor) - 12);
+    }
+    syncDiplomacyOrganizations(world);
+    syncCountryMemberships(world);
+    return item;
+  }
+
   function processSupranational(world) {
     if (!world.supranational?.structures) return world;
     for (const item of Object.values(world.supranational.structures)) {
@@ -452,10 +496,14 @@
     callImperialDiet,
     claimPersonalUnion,
     createPersonalUnion,
+    declareImperialBan,
     dissolveUnion,
     electionScores,
     integrateUnionMember,
     initializeSupranational,
+    imperialPeaceActive,
+    imperialWarPermission,
+    isImperialOutlaw,
     isMember,
     processSupranational,
     requestImperialMediation,

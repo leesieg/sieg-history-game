@@ -397,6 +397,10 @@
     });
     drawerBody.querySelectorAll("[data-imperial-action]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
+        const [imperialAction, target] = button.dataset.imperialAction.split(":");
+        if (imperialAction === "ban") {
+          return window.HIFI_SUPRANATIONAL_ENGINE.declareImperialBan(current, current.playerPolity, target);
+        }
         if (button.dataset.imperialAction === "diet") {
           return window.HIFI_SUPRANATIONAL_ENGINE.callImperialDiet(current, current.playerPolity);
         }
