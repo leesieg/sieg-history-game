@@ -42,10 +42,14 @@
       tile.confession = confessionKey(tile.confession || tile.religion);
       tile.religion = confessionLabel(tile.confession);
       tile.faithStrength ??= 80;
+      if (tile.churchLandShare === undefined && groupOf(tile.confession) === "christian") {
+        tile.churchLandShare = tile.city ? 0.14 : 0.1;
+      }
     }
     for (const [polity, country] of Object.entries(world.countries)) {
       country.stateConfession ||= majorityConfession(world, polity);
-      country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
+      country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+      country.faith.churchWealth ??= 0;
     }
     return world;
   }
@@ -146,6 +150,35 @@
     return tile;
   }
 
+  function secularizeChurchLands(world, polity, reason = "世俗化教产") {
+    const country = world.countries[polity];
+    if (!country) throw new Error("国家不存在");
+    country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+    const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)
+      .filter(tile => !tile.isSea && (tile.churchLandShare || 0) > 0);
+    if (!tiles.length) {
+      country.faith.secularized = true;
+      return { money: 0, tiles: 0 };
+    }
+    const money = tiles.reduce((sum, tile) => {
+      const share = tile.churchLandShare || 0;
+      const base = Math.max(1, tile.population || 1) * Math.max(.2, (tile.control || 0) / 100);
+      tile.churchLandShare = 0;
+      return sum + Math.round(base * share * 12);
+    }, 0);
+    country.money += money;
+    country.faith.secularized = true;
+    country.faith.churchWealth = 0;
+    for (const key of ["church", "clergy", "imperial_church"]) {
+      if (country.estates?.[key]) {
+        country.estates[key].power = Math.max(5, Math.round((country.estates[key].power || 0) * .75));
+        country.estates[key].satisfaction = Math.max(-100, (country.estates[key].satisfaction || 0) - 18);
+      }
+    }
+    country.log?.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：${reason}，国库接收教产 ${money}。`);
+    return { money, tiles: tiles.length };
+  }
+
   window.HIFI_FAITH_ENGINE = {
     confessionKey,
     confessionLabel,
@@ -154,6 +187,7 @@
     majorityConfession,
     pressure,
     sendMissionary,
+    secularizeChurchLands,
     setPolicy,
     spreadFaith,
     unity,

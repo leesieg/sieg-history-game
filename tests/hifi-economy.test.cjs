@@ -83,6 +83,25 @@ assert.equal(country.money - before.money, report.money - report.maintenance.mon
 assert.ok(country.military > before.military);
 assert.equal(report.tiles, 2);
 
+const churchLandWorld = worldEngine.createWorld([
+  { id: 40, isSea: false, polity: "教产测试国", population: 20, control: 100, good: "grain", terrain: "plains", climate: "temperate", buildings: ["market"], city: "主教座堂城", devastation: 0, churchLandShare: 0.2 },
+]);
+economy.initializeEconomy(churchLandWorld);
+const churchLandCountry = churchLandWorld.countries["教产测试国"];
+churchLandCountry.faith = { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+const churchOutput = economy.tileOutput(churchLandWorld.tiles[0], churchLandCountry);
+assert.ok(churchOutput.church > 0, "教会地产必须从地块金钱产出中分流");
+const churchMoneyBefore = churchLandCountry.money;
+const churchReport = economy.settleCountry(churchLandWorld, "教产测试国");
+assert.ok(churchReport.church > 0, "结算报告必须记录教会地产收入");
+assert.equal(churchLandCountry.faith.churchWealth, churchReport.church, "教会地产收入必须进入教会财富池");
+assert.equal(churchLandCountry.money - churchMoneyBefore, churchReport.money - churchReport.maintenance.money,
+  "国家金钱净额不应包含已分给教会的地产收入");
+churchLandCountry.faith.secularized = true;
+const secularOutput = economy.tileOutput(churchLandWorld.tiles[0], churchLandCountry);
+assert.equal(secularOutput.church, 0, "世俗化后教会地产不应继续分流收入");
+assert.ok(secularOutput.money > churchOutput.money, "世俗化后原教产收入应回到国家金钱流");
+
 country.actionPoints.administrative = 3;
 country.money = 100;
 economy.constructBuilding(world, "法兰西王国", 2, "market");

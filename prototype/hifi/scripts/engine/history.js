@@ -87,8 +87,11 @@
       const country = world.countries[polity];
       country.stateConfession = "lutheran";
       country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
-      country.faith.secularized = true;
-      country.money += 20;
+      const secularized = window.HIFI_FAITH_ENGINE?.secularizeChurchLands?.(world, polity, "接纳宗教改革并世俗化教产");
+      if (!secularized) {
+        country.faith.secularized = true;
+        country.money += 20;
+      }
       for (const key of ["church", "clergy", "imperial_church"]) {
         if (country.estates?.[key]) country.estates[key].satisfaction = Math.max(-100, country.estates[key].satisfaction - 18);
       }

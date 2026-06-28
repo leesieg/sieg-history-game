@@ -248,7 +248,9 @@
         country.government.laws.religion = "reformed";
         country.stateConfession = "lutheran";
         country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
-        country.faith.secularized = true;
+        if (!window.HIFI_FAITH_ENGINE?.secularizeChurchLands?.(world, country.name, "接纳宗教改革并世俗化教产")) {
+          country.faith.secularized = true;
+        }
         window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).forEach(tile => {
           tile.confession = "lutheran";
           tile.religion = window.HIFI_FAITH_ENGINE?.confessionLabel?.("lutheran") || "路德宗";

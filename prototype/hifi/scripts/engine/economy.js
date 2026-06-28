@@ -193,7 +193,7 @@
   }
 
   function tileOutput(tile, country) {
-    if (tile.isSea) return { food: 0, money: 0, military: 0, market: 0, goods: {} };
+    if (tile.isSea) return { food: 0, money: 0, military: 0, market: 0, church: 0, goods: {} };
     if (tile.occupier && tile.occupation >= 100) return { food: 0, money: 0, military: 0 };
     const population = Math.max(1, tile.population || 1);
     const control = Math.max(.2, (tile.control || 0) / 100);
@@ -246,12 +246,16 @@
       if (taxMultiplier) money *= taxMultiplier;
     }
     military *= militaryOutputFactor(country);
+    const churchShare = country.faith?.secularized ? 0 : Math.max(0, Math.min(.35, tile.churchLandShare || 0));
+    const church = Math.round(money * churchShare);
+    money -= church;
     // 物价指数推升名义金钱产出流（价格革命：白银流入→物价上行）
     return {
       food: Math.round(food),
       money: Math.round(money),
       military: Math.round(military),
       market: Math.round(value),
+      church,
       goods: { [goodKey]: Math.round(amount * 10) / 10 },
     };
   }
@@ -326,9 +330,10 @@
       total.money += output.money;
       total.military += output.military;
       total.market += output.market || 0;
+      total.church += output.church || 0;
       mergeGoods(total.goods, output.goods);
       return total;
-    }, { food: 0, money: 0, military: 0, market: 0, goods: {}, tiles: territory.length });
+    }, { food: 0, money: 0, military: 0, market: 0, church: 0, goods: {}, tiles: territory.length });
     country.goodsAccess = { ...report.goods };
     country.hasHorseSource = (country.goodsAccess.horses || 0) > 0;
     report.marketSplit = marketSplit(country);
@@ -344,6 +349,9 @@
     };
     report.maintenance = maintenance;
     processPopulation(world, polity, report);
+    if (country.faith && report.church) {
+      country.faith.churchWealth = Math.round(((country.faith.churchWealth || 0) + report.church) * 10) / 10;
+    }
 
     country.food += report.food - maintenance.food;
     // 封闭贸易牺牲对外商路、换取本土产出流加成（与下方 open 的对外收益互为取舍）

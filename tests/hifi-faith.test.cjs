@@ -46,6 +46,20 @@ assert.equal(world.tiles[1].confession, "orthodox", "地块信仰应归一到 co
 assert.equal(world.tiles[1].religion, "东正教", "展示字段仍应保持中文信仰名");
 assert.equal(w.HIFI_FAITH_ENGINE.unity(world, "法兰西王国"), 67, "宗教统一度应按人口加权");
 assert.ok(w.HIFI_FAITH_ENGINE.pressure(world, "法兰西王国") > 0, "非国教地块应产生信仰张力");
+assert.ok(world.tiles[0].churchLandShare > 0, "基督教地块应初始化教会地产份额");
+
+const secularWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(10, "萨克森选侯国", "莱比锡", "天主教", 12),
+], undefined, "萨克森选侯国");
+w.HIFI_FAITH_ENGINE.initializeFaith(secularWorld);
+const saxony = secularWorld.countries["萨克森选侯国"];
+saxony.estates = { church: { label: "教士", power: 30, satisfaction: 20 } };
+saxony.money = 10;
+const secularized = w.HIFI_FAITH_ENGINE.secularizeChurchLands(secularWorld, "萨克森选侯国", "测试世俗化");
+assert.ok(secularized.money > 0, "世俗化教产应按地块教产份额带来一次性国库收入");
+assert.equal(secularWorld.tiles[0].churchLandShare, 0, "世俗化后地块教产份额应清零");
+assert.equal(saxony.faith.secularized, true, "世俗化状态应写入国家信仰状态");
+assert.ok(saxony.estates.church.power < 30, "世俗化应削弱教士阶层权力");
 
 w.HIFI_FAITH_ENGINE.setPolicy(world, "法兰西王国", "conversion");
 assert.equal(france.faith.policy, "conversion", "信仰政策应可切换");
