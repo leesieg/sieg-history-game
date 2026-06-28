@@ -554,10 +554,15 @@
   function concludePeace(world, warId, actor, terms) {
     const war = world.diplomacy.wars.find(item => item.id === warId);
     if (!war) throw new Error("战争不存在");
+    if (!war.participants?.[actor]) throw new Error("只有参战方可以议和");
+    for (const term of terms) {
+      if (term.type === "target_territory" && actor !== war.primaryGoal.claimant) {
+        throw new Error("只有战争目标提出方可以索取目标领土");
+      }
+    }
+    if (!canConcludePeace(world, war, actor, terms)) throw new Error("战争分数不足");
     for (const term of terms) {
       if (term.type === "target_territory") {
-        if (actor !== war.primaryGoal.claimant) throw new Error("只有战争目标提出方可以索取目标领土");
-        if (war.score < 25) throw new Error("战争分数不足");
         const tile = world.tiles.find(candidate => candidate.id === war.primaryGoal.tileId);
         tile.polity = war.primaryGoal.claimant;
         if (!war.cbMatched) {
@@ -573,6 +578,29 @@
         ) {
           window.HIFI_HISTORY_ENGINE.applyCausalChain(world, "constantinople_falls");
         }
+      } else if (term.type === "reparations") {
+        const target = peaceOpponent(war, actor, term.target);
+        const amount = Math.max(10, Math.round(term.amount || 25));
+        const paid = Math.min(amount, world.countries[target].money);
+        world.countries[target].money -= paid;
+        world.countries[actor].money += paid;
+      } else if (term.type === "subject") {
+        const target = peaceOpponent(war, actor, term.target);
+        const subjectType = term.subjectType || "tributary";
+        if (window.HIFI_DIPLOMACY_ENGINE?.subjectBetween?.(world, actor, target)) continue;
+        const definition = window.HIFI_DIPLOMACY_ENGINE?.subjectTypes?.[subjectType];
+        if (!definition) throw new Error("未知从属条款");
+        world.diplomacy.subjects.push({
+          id: `subject-${world.diplomacy.nextId++}`,
+          type: subjectType,
+          overlord: actor,
+          subject: target,
+          autonomy: definition.autonomy,
+          loyalty: definition.loyalty,
+          tribute: definition.tribute,
+          terms: { diplomacy: "需宗主批准", war: "应召参战", military: "应召参战", finance: "固定贡赋" },
+          startedTurn: world.turn,
+        });
       }
     }
     for (const tile of world.tiles) {
@@ -581,6 +609,37 @@
     }
     world.diplomacy.wars = world.diplomacy.wars.filter(item => item.id !== warId);
     world.diplomacy.truces.push({ parties: [...war.attackers, ...war.defenders], endsTurn: world.turn + 20 });
+  }
+
+  function sideScore(war, actor) {
+    if (war.attackers.includes(actor)) return war.score || 0;
+    if (war.defenders.includes(actor)) return -(war.score || 0);
+    return 0;
+  }
+
+  function peaceOpponent(war, actor, explicitTarget = null) {
+    if (explicitTarget) return explicitTarget;
+    if (war.attackers.includes(actor)) return war.defenders[0];
+    return war.attackers[0];
+  }
+
+  function peaceTermsCost(world, war, terms) {
+    return terms.reduce((sum, term) => {
+      if (["status_quo", "truce"].includes(term.type)) return sum;
+      if (term.type === "target_territory") return sum + 25;
+      if (term.type === "reparations") return sum + Math.max(10, Math.ceil((term.amount || 25) / 2));
+      if (term.type === "subject") {
+        const costs = { tributary: 35, vassal: 55, puppet: 75 };
+        return sum + (costs[term.subjectType || "tributary"] || 35);
+      }
+      throw new Error("未知和约条款");
+    }, 0);
+  }
+
+  function canConcludePeace(world, war, actor, terms) {
+    if (!war?.participants?.[actor]) return false;
+    if (terms.every(term => ["status_quo", "truce"].includes(term.type))) return true;
+    return sideScore(war, actor) >= peaceTermsCost(world, war, terms);
   }
 
   function processWarfare(world) {
@@ -646,6 +705,7 @@
     areAtWar,
     armyTotalSoldiers,
     canDeclareWar,
+    canConcludePeace,
     canRecruitCombatType,
     concludePeace,
     createArmy,
@@ -663,6 +723,7 @@
     mobilizeArmy,
     neighbors,
     planArmyRoute,
+    peaceTermsCost,
     recruitGeneral,
     processWarfare,
     reinforceArmy,

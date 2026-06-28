@@ -170,6 +170,37 @@ const claimedWar = warfare.declareWarOn(claimedWorld, "法兰西王国", "英格
 assert.equal(claimedWar.cbMatched, true, "匹配宣称的战争必须标记为有战争理由");
 assert.equal(claimedWorld.countries["法兰西王国"].reputation, reputationBeforeClaim, "有宣称宣战不应损害声誉");
 
+const peaceWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(peaceWorld);
+warfare.initializeWarfare(peaceWorld);
+peaceWorld.diplomacy.wars = [];
+const peaceWar = warfare.declareWarOn(peaceWorld, "法兰西王国", "英格兰王国");
+peaceWar.score = 40;
+peaceWorld.countries["英格兰王国"].money = 80;
+assert.equal(warfare.peaceTermsCost(peaceWorld, peaceWar, [{ type: "reparations", amount: 30 }]), 15, "赔款条款必须有战争分数成本");
+assert.equal(warfare.canConcludePeace(peaceWorld, peaceWar, "法兰西王国", [{ type: "reparations", amount: 30 }]), true);
+warfare.concludePeace(peaceWorld, peaceWar.id, "法兰西王国", [{ type: "reparations", amount: 30 }]);
+assert.equal(peaceWorld.countries["法兰西王国"].money >= 70, true, "胜方必须收到赔款");
+assert.equal(warfare.areAtWar(peaceWorld, "法兰西王国", "英格兰王国"), false, "赔款和约必须结束战争");
+
+const subjectWarWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(subjectWarWorld);
+warfare.initializeWarfare(subjectWarWorld);
+subjectWarWorld.diplomacy.wars = [];
+const subjectWar = warfare.declareWarOn(subjectWarWorld, "法兰西王国", "英格兰王国");
+subjectWar.score = 40;
+warfare.concludePeace(subjectWarWorld, subjectWar.id, "法兰西王国", [{ type: "subject", subjectType: "tributary" }]);
+assert.ok(diplomacy.subjectBetween(subjectWarWorld, "法兰西王国", "英格兰王国"), "强制朝贡和约必须建立从属关系");
+
+const truceWorld = worldEngine.createWorld(freshTiles);
+diplomacy.initializeDiplomacy(truceWorld);
+warfare.initializeWarfare(truceWorld);
+truceWorld.diplomacy.wars = [];
+const truceWar = warfare.declareWarOn(truceWorld, "法兰西王国", "英格兰王国");
+assert.equal(warfare.canConcludePeace(truceWorld, truceWar, "英格兰王国", [{ type: "truce" }]), true, "停战条款不应需要战争分数");
+warfare.concludePeace(truceWorld, truceWar.id, "英格兰王国", [{ type: "truce" }]);
+assert.equal(warfare.areAtWar(truceWorld, "法兰西王国", "英格兰王国"), false, "停战和约必须结束战争");
+
 const fr = freshWorld.countries["法兰西王国"];
 fr.actionPoints.military = 2;
 fr.military = 100;
