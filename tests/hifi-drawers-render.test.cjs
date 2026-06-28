@@ -58,7 +58,8 @@ for (const [system, tabs] of Object.entries(systems)) {
 drawers.setDrawerTab("国家:概览");
 assert.match(drawers.renderSystem("国家", world), /ui-radar-area/, "国家概览应渲染统治者雷达");
 drawers.setDrawerTab("国家:政制");
-assert.match(drawers.renderSystem("国家", world), /ui-pips/, "政制应渲染改革点阵");
+assert.match(drawers.renderSystem("国家", world), /制度模块/, "政制应渲染制度模块");
+assert.match(drawers.renderSystem("国家", world), /institution-row/, "政制应渲染制度模块行");
 drawers.setDrawerTab("经济:贸易");
 const econTrade = drawers.renderSystem("经济", world);
 assert.match(econTrade, /ui-radar-area/, "经济贸易应渲染压力雷达");

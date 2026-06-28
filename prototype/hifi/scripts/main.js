@@ -297,15 +297,6 @@
         renderSystemBody(system);
       });
     });
-    drawerBody.querySelectorAll("[data-reform]").forEach(reformButton => {
-      reformButton.addEventListener("click", () => {
-        runAction(current => window.HIFI_POLITICS_ENGINE.advanceReform(
-            current,
-            current.playerPolity,
-            reformButton.dataset.reform
-        ), reformButton);
-      });
-    });
     drawerBody.querySelectorAll("[data-law]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
         const [category, value] = button.dataset.law.split(":");

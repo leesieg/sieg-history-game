@@ -12,14 +12,6 @@
     theocracy: "✝",
     tribal: "◇",
   };
-  const reformLabels = {
-    administrative: "行政改革",
-    fiscal: "财政改革",
-    military: "军事改革",
-    religious: "宗教改革",
-    political: "政治改革",
-    maritime: "海事改革",
-  };
   const lawCategoryLabels = {
     taxation: "税收制度",
     mobilization: "动员制度",
@@ -132,7 +124,7 @@
   function drawerTabForSelector(system, selector) {
     if (!selector) return null;
     const rules = {
-      "国家": [[/data-reform|data-law/, "政制"], [/data-assembly/, "议会"], [/data-decision|data-integrate/, "决议"]],
+      "国家": [[/data-law/, "政制"], [/data-assembly/, "议会"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
       "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
       "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"]],
@@ -169,9 +161,17 @@
     }
 
     if (activeCountryTab === "政制") {
-      const reforms = Object.entries(country.government.reforms)
-        .map(([key, value]) => `<button class="drawer-row political-action" data-reform="${key}">${reformLabels[key]}<span>${wd().pips(value, 5)}</span></button>`)
-        .join("");
+      const labels = country.government.institutionLabels || {};
+      const moduleRows = [
+        ["权力来源", labels.succession],
+        ["中央-地方", labels.centralization],
+        ["财政制度", labels.fiscal],
+        ["军事制度", labels.military],
+        ["立法机构", labels.assembly],
+      ].map(([label, value]) => `<div class="drawer-row institution-row">${label}<span>${value}</span></div>`).join("");
+      const drift = country.government.lastCentralizationDrift
+        ? `<div class="drawer-row">压力漂移<span>内压 ${country.government.lastCentralizationDrift.internal} · 外压 ${country.government.lastCentralizationDrift.external} · ${country.government.lastCentralizationDrift.delta > 0 ? "+" : ""}${country.government.lastCentralizationDrift.delta}</span></div>`
+        : "";
       const laws = Object.entries(country.government.laws).map(([category, value]) => {
         const options = window.HIFI_POLITICS_ENGINE.lawOptions[category];
         const next = options[(options.indexOf(value) + 1) % options.length];
@@ -182,7 +182,7 @@
           `${lawValueLabels[value]} → ${lawValueLabels[next]}`
         );
       }).join("");
-      return `${bar}<div class="drawer-subtitle">${codexTerm("改革", "改革槽")}</div>${reforms}
+      return `${bar}<div class="drawer-subtitle">制度模块</div>${moduleRows}${drift}
         <div class="drawer-subtitle">${codexTerm("法律", "法律")}</div>${laws}`;
     }
 
