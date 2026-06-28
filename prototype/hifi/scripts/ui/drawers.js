@@ -410,32 +410,46 @@
         <div class="drawer-subtitle">导师指引</div><div class="drawer-row"><span>${tutorial?.label || "已完成全部指引"}</span><span>${wd().pips(world.tutorial.step, 5)}</span></div>`;
     }
 
-    // 科技：未采纳的列出三重门槛（年代 / 传播≥25% / 思想点）。
+    // 科技：按领域展示树状前沿，唯一满足条件的前沿会在季度结算时自动采纳。
     const currentYear = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
-    const technologies = Object.entries(window.HIFI_RULES.technologies).map(([key, technology]) => {
+    function technologyNode([key, technology]) {
       const awareness = country.technologyAwareness[key] || 0;
       const gate = technology.awarenessGate ?? 25;
       const domain = technology.domain || "cultural";
       const domainLabel = domains[domain]?.label || domain;
       const research = country.research?.[domain] || 0;
+      const cost = window.HIFI_ECONOMY_ENGINE?.effectiveTechnologyCost?.(country, key) || technology.cost;
       const missing = (technology.requires || []).filter(required => !country.technology[required]);
       const unmet = [];
       if (currentYear < technology.year) unmet.push(`年代 ${currentYear}/${technology.year}`);
       if (missing.length) unmet.push(`前置 ${missing.map(item => window.HIFI_RULES.technologies[item]?.label || item).join("、")}`);
       if (awareness < gate) unmet.push(`传播 ${awareness}%/${gate}%`);
-      if (research < technology.cost) unmet.push(`${domainLabel}研究 ${Math.round(research)}/${technology.cost}`);
+      if (research < cost) unmet.push(`${domainLabel}研究 ${Math.round(research)}/${cost}`);
+      const frontier = !country.technology[key] && currentYear >= technology.year && missing.length === 0;
       const detail = country.technology[key]
         ? `已采纳 · ${technology.effect}`
         : `${wd().checklist([
             { label: `年代 ${technology.year}`, met: currentYear >= technology.year },
             { label: `前置科技`, met: missing.length === 0 },
             { label: `传播 ${awareness}%≥${gate}`, met: awareness >= gate },
-            { label: `${domainLabel}研究 ${technology.cost}`, met: research >= technology.cost },
-          ])} ${technology.effect}`;
+            { label: `${domainLabel}研究 ${cost}`, met: research >= cost },
+          ])} ${frontier ? "前沿 · " : ""}${technology.effect}`;
       const disabled = country.technology[key] ? "科技已经采纳" : unmet.length ? `尚不满足：${unmet.join("，")}` : false;
       return actionButton("data-technology", key, technology.label, detail, country.technology[key], disabled);
+    }
+    const technologyTree = Object.entries(domains).map(([domain, info]) => {
+      const entries = Object.entries(window.HIFI_RULES.technologies)
+        .filter(([, technology]) => (technology.domain || "cultural") === domain)
+        .sort((a, b) => a[1].year - b[1].year || a[1].cost - b[1].cost);
+      const adopted = entries.filter(([key]) => country.technology[key]).length;
+      const frontier = window.HIFI_ECONOMY_ENGINE?.frontierTechnologies?.(world, country, domain) || [];
+      const ready = frontier.filter(item => item.ready).length;
+      return `<div class="tech-domain">
+        <div class="drawer-subtitle">${info.label || domain} · ${adopted}/${entries.length} · 前沿 ${frontier.length}${ready ? ` · 可采纳 ${ready}` : ""}</div>
+        ${entries.map(technologyNode).join("")}
+      </div>`;
     }).join("");
-    return `${bar}<div class="drawer-subtitle">领域研究</div>${researchRows}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}</div>${technologies}`;
+    return `${bar}<div class="drawer-subtitle">领域研究</div>${researchRows}<div class="drawer-subtitle">${codexTerm("科技", "科技采纳")}树</div>${technologyTree}`;
   }
 
   function renderMilitary(country, world) {

@@ -133,8 +133,40 @@
     if ((country.technologyAwareness[key] || 0) < gate) return { ready: false, reason: `${technology.label}传播度不足` };
     ensureResearchState(country);
     const domain = technology.domain || "cultural";
-    if ((country.research[domain] || 0) < technology.cost) return { ready: false, reason: `${rules.techDomains?.[domain]?.label || domain}研究不足` };
+    const cost = effectiveTechnologyCost(country, key);
+    if ((country.research[domain] || 0) < cost) return { ready: false, reason: `${rules.techDomains?.[domain]?.label || domain}研究不足` };
     return { ready: true, technology };
+  }
+
+  function effectiveTechnologyCost(country, key) {
+    const technology = rules.technologies[key];
+    if (!technology) throw new Error("未知科技");
+    const awareness = Math.max(0, Math.min(100, country.technologyAwareness?.[key] || 0));
+    const discount = Math.min(.5, awareness / 200);
+    return Math.max(1, Math.round(technology.cost * (1 - discount)));
+  }
+
+  function frontierTechnologies(world, country, domain = null) {
+    const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
+    return Object.entries(rules.technologies)
+      .filter(([key, technology]) => !country.technology?.[key])
+      .filter(([, technology]) => !domain || (technology.domain || "cultural") === domain)
+      .filter(([, technology]) => year >= technology.year)
+      .filter(([, technology]) => !(technology.requires || []).some(required => !country.technology?.[required]))
+      .map(([key, technology]) => ({ key, technology, ready: technologyReady(world, country, key).ready }))
+      .sort((a, b) => (a.technology.year - b.technology.year) || (a.technology.cost - b.technology.cost));
+  }
+
+  function autoAdoptReadyTechnologies(world, polity) {
+    const country = world.countries[polity];
+    ensureResearchState(country);
+    const adopted = [];
+    for (const domain of Object.keys(rules.techDomains || {})) {
+      const ready = frontierTechnologies(world, country, domain).filter(item => item.ready);
+      if (ready.length !== 1) continue;
+      adopted.push(adoptTechnology(world, polity, ready[0].key).label);
+    }
+    return adopted;
   }
 
   function tileOutput(tile, country) {
@@ -380,7 +412,7 @@
     const ready = technologyReady(world, country, key);
     if (!ready.ready) throw new Error(ready.reason);
     const domain = technology.domain || "cultural";
-    country.research[domain] -= technology.cost;
+    country.research[domain] -= effectiveTechnologyCost(country, key);
     if (domain === "cultural") country.ideas = Math.max(0, Math.round(country.research[domain]));
     country.technology[key] = true;
     country.ageProgress = Math.round(
@@ -424,6 +456,7 @@
   window.HIFI_ECONOMY_ENGINE = {
     adoptTechnology,
     addResearch,
+    autoAdoptReadyTechnologies,
     armyMaintenance,
     buildingMaintenance,
     constructBuilding,
@@ -433,6 +466,8 @@
     integrateTile,
     ensureResearchState,
     fiscalEffect,
+    frontierTechnologies,
+    effectiveTechnologyCost,
     marketSplit,
     integrationGain,
     technologyReady,

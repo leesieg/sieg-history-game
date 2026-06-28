@@ -159,6 +159,17 @@
     }
   }
 
+  function autoAdoptTechnology(world) {
+    const engine = window.HIFI_ECONOMY_ENGINE;
+    if (!engine?.autoAdoptReadyTechnologies) return;
+    for (const country of Object.values(world.countries)) {
+      const adopted = engine.autoAdoptReadyTechnologies(world, country.name);
+      for (const label of adopted) {
+        pushChronicle(world, country.name, "technology", `采纳科技「${label}」`);
+      }
+    }
+  }
+
   // 压力层驱动转折：把 pressures 从仪表盘变成真实输入（核心循环：压力→内政/军事/信仰）
   function applyPressureEffects(world) {
     for (const country of Object.values(world.countries)) {
@@ -665,6 +676,7 @@
     }
     applyStruggleWarPressure(world); // 鏖战阶段战争压力回灌产出流（在 settleCountry 写完 lastReport 之后追加 war 段）
     spreadTechnology(world);
+    autoAdoptTechnology(world);
     processMilestones(world);
     applyMissions(world);
     triggerFlowChains(world);
@@ -711,6 +723,7 @@
     quarterLedger,
     missions,
     spreadTechnology,
+    autoAdoptTechnology,
     shouldInterruptRegency,
     startRegency,
     tutorialTask,

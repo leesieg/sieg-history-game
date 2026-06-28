@@ -124,9 +124,23 @@ country.research.economic = 100;
 world.turn = (1400 - 1337) * 4 + 1;
 assert.throws(() => economy.adoptTechnology(world, "法兰西王国", "accounting"), /成文法典/, "科技树前置必须生效");
 country.technology.codifiedLaw = true;
+const discountedAccounting = economy.effectiveTechnologyCost(country, "accounting");
+assert.ok(discountedAccounting < rules.technologies.accounting.cost, "传播度必须降低科技有效成本，形成追赶机制");
+assert.ok(economy.frontierTechnologies(world, country, "economic").some(item => item.key === "accounting"), "前置满足后科技必须进入经济领域前沿");
 economy.adoptTechnology(world, "法兰西王国", "accounting");
 assert.equal(country.technology.accounting, true);
 assert.ok(country.research.economic < 100, "经济科技必须消耗经济领域研究");
+
+const autoTechWorld = worldEngine.createWorld([
+  { id: 30, isSea: false, polity: "自动科研国", population: 10, control: 100, good: "grain", buildings: [], city: "学城", devastation: 0 },
+]);
+economy.initializeEconomy(autoTechWorld);
+const autoCountry = autoTechWorld.countries["自动科研国"];
+autoCountry.research.administrative = 30;
+const autoAdopted = economy.autoAdoptReadyTechnologies(autoTechWorld, "自动科研国");
+assert.ok(autoAdopted.includes("成文法典"), "唯一满足条件的领域前沿科技应可自动采纳");
+assert.equal(autoCountry.technology.codifiedLaw, true);
+assert.equal(autoCountry.technology.universities, true, "文化领域初始研究满足时也应自动采纳唯一前沿");
 
 country.actionPoints.administrative = 3;
 const foodBeforeEdict = country.food;
