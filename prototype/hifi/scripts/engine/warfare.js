@@ -620,6 +620,28 @@
     }, 0);
   }
 
+  function navalWaterType(tile) {
+    if (tile?.waterType) return tile.waterType;
+    if (tile?.terrain === "ocean") return "ocean";
+    return "coastal";
+  }
+
+  function navalPower(world, fleetIds, tile) {
+    const waterType = navalWaterType(tile);
+    return fleetIds.reduce((sum, id) => {
+      const fleet = world.warfare.fleets[id];
+      if (!fleet) return sum;
+      const composition = fleet.units.reduce((power, unit) => {
+        const definition = shipTypes[unit.shipType];
+        const waterFactor = definition.water === "ocean"
+          ? (waterType === "ocean" ? 1.25 : 1)
+          : (waterType === "ocean" ? .25 : 1);
+        return power + unit.ships * 100 * definition.strength * waterFactor * (1 + (unit.experience || 0) * .04);
+      }, 0);
+      return sum + composition * fleet.morale / 100 * fleet.organization / 100 * fleet.supply / 100;
+    }, 0);
+  }
+
   function applyCasualties(world, armyIds, amount) {
     const total = armyIds.reduce((sum, id) => sum + armyTotalSoldiers(world.warfare.armies[id]), 0);
     for (const id of armyIds) {
@@ -635,6 +657,25 @@
       if (army.mercenaryLoyalty !== undefined && amount > 0) {
         army.mercenaryLoyalty = Math.max(0, army.mercenaryLoyalty - Math.ceil(amount / Math.max(1, total) * 20));
       }
+    }
+  }
+
+  function applyNavalCasualties(world, fleetIds, amount) {
+    const total = fleetIds.reduce((sum, id) => sum + fleetTotalShips(world.warfare.fleets[id]), 0);
+    for (const id of fleetIds) {
+      const fleet = world.warfare.fleets[id];
+      if (!fleet) continue;
+      const share = total ? fleetTotalShips(fleet) / total : 0;
+      let remaining = Math.round(amount * share);
+      for (const unit of fleet.units) {
+        const loss = Math.min(unit.ships, Math.round(remaining * unit.ships / Math.max(1, fleetTotalShips(fleet))));
+        unit.ships -= loss;
+        remaining -= loss;
+      }
+      fleet.units = fleet.units.filter(unit => unit.ships > 0);
+      fleet.morale = Math.max(0, fleet.morale - 18);
+      fleet.organization = Math.max(0, fleet.organization - 20);
+      if (!fleet.units.length) delete world.warfare.fleets[id];
     }
   }
 
@@ -672,6 +713,46 @@
         && defenders.some(id => war.defenders.includes(world.warfare.armies[id]?.owner));
       if (attackerWon) war.score = Math.min(100, (war.score || 0) + 8);
       else if (defenderWon) war.score = Math.max(-100, (war.score || 0) - 8);
+    }
+    world.warfare.battles.unshift(battle);
+    return battle;
+  }
+
+  function resolveNavalBattle(world, tileId, attackers, defenders) {
+    const tile = world.tiles.find(candidate => candidate.id === tileId);
+    const attackPower = navalPower(world, attackers, tile);
+    const defensePower = navalPower(world, defenders, tile);
+    const attackerShips = attackers.reduce((sum, id) => sum + fleetTotalShips(world.warfare.fleets[id]), 0);
+    const defenderShips = defenders.reduce((sum, id) => sum + fleetTotalShips(world.warfare.fleets[id]), 0);
+    const fleetOwners = Object.fromEntries([...attackers, ...defenders].map(id => [id, world.warfare.fleets[id]?.owner]));
+    const attackerLoss = Math.max(1, Math.round(attackerShips * (attackPower >= defensePower ? .12 : .28)));
+    const defenderLoss = Math.max(1, Math.round(defenderShips * (attackPower >= defensePower ? .28 : .12)));
+    applyNavalCasualties(world, attackers, attackerLoss);
+    applyNavalCasualties(world, defenders, defenderLoss);
+    const winner = attackPower >= defensePower ? "attackers" : "defenders";
+    const losingIds = winner === "attackers" ? defenders : attackers;
+    losingIds.forEach(id => {
+      if (world.warfare.fleets[id]) world.warfare.fleets[id].status = "routed";
+    });
+    const battle = {
+      id: `battle-${world.warfare.nextBattleId++}`,
+      tileId,
+      naval: true,
+      winner,
+      casualties: { attackers: attackerLoss, defenders: defenderLoss },
+    };
+    const involved = [...new Set(Object.values(fleetOwners).filter(Boolean))];
+    const war = world.diplomacy.wars.find(item =>
+      item.attackers.some(polity => involved.includes(polity))
+      && item.defenders.some(polity => involved.includes(polity))
+    );
+    if (war) {
+      const attackerWon = winner === "attackers"
+        && attackers.some(id => war.attackers.includes(fleetOwners[id]));
+      const defenderWon = winner === "defenders"
+        && defenders.some(id => war.defenders.includes(fleetOwners[id]));
+      if (attackerWon) war.score = Math.min(100, (war.score || 0) + 6);
+      else if (defenderWon) war.score = Math.max(-100, (war.score || 0) - 6);
     }
     world.warfare.battles.unshift(battle);
     return battle;
@@ -825,6 +906,21 @@
       const defenders = armies.filter(army => war.defenders.includes(army.owner)).map(army => army.id);
       if (attackers.length && defenders.length) resolveBattle(world, Number(tileId), attackers, defenders);
     }
+    const fleetsByTile = {};
+    for (const fleet of Object.values(world.warfare.fleets || {})) {
+      if (fleet.status !== "ready") continue;
+      (fleetsByTile[fleet.tileId] ||= []).push(fleet);
+    }
+    for (const [tileId, fleets] of Object.entries(fleetsByTile)) {
+      const war = world.diplomacy.wars.find(item =>
+        fleets.some(fleet => item.attackers.includes(fleet.owner))
+        && fleets.some(fleet => item.defenders.includes(fleet.owner))
+      );
+      if (!war) continue;
+      const attackers = fleets.filter(fleet => war.attackers.includes(fleet.owner)).map(fleet => fleet.id);
+      const defenders = fleets.filter(fleet => war.defenders.includes(fleet.owner)).map(fleet => fleet.id);
+      if (attackers.length && defenders.length) resolveNavalBattle(world, Number(tileId), attackers, defenders);
+    }
     for (const army of Object.values(world.warfare.armies)) {
       if (army.status === "ready") advanceOccupation(world, army.id);
     }
@@ -878,6 +974,7 @@
     buildFleet,
     dismissGeneral,
     fleetTotalShips,
+    applyNavalCasualties,
     hireMercenary,
     initializeWarfare,
     institutionalCommandBonus,
@@ -885,6 +982,8 @@
     militaryEffect,
     mobilizeArmy,
     neighbors,
+    navalPower,
+    navalWaterType,
     nearestSeaTile,
     planArmyRoute,
     planFleetRoute,
@@ -896,6 +995,7 @@
     releaseMercenary,
     renewMercenary,
     resolveBattle,
+    resolveNavalBattle,
     rulerGeneral,
     splitArmy,
     seaNeighbors,

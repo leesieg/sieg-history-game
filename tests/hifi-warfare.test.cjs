@@ -84,6 +84,36 @@ assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
 warfare.executeNavalMovementPhase(navalWorld);
 assert.equal(fleet.tileId, 14);
 
+const navalBattleTiles = [
+  { id: 20, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 21, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 30, y: 0, control: 85, devastation: 0 },
+  { id: 22, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 15, y: 0, control: 0 },
+];
+const navalBattleWorld = worldEngine.createWorld(navalBattleTiles, {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(navalBattleWorld);
+warfare.initializeWarfare(navalBattleWorld);
+navalBattleWorld.diplomacy.wars = [];
+const venetianFleet = warfare.createFleet(navalBattleWorld, {
+  owner: "威尼斯共和国",
+  tileId: 22,
+  name: "威尼斯战舰队",
+  units: [{ shipType: "galley", ships: 6 }],
+});
+const genoeseFleet = warfare.createFleet(navalBattleWorld, {
+  owner: "热那亚共和国",
+  tileId: 22,
+  name: "热那亚运输护航队",
+  units: [{ shipType: "cog", ships: 5 }],
+});
+const navalWar = warfare.declareWar(navalBattleWorld, "威尼斯共和国", "热那亚共和国", 21, "利古里亚海战", "plunder");
+const venetianShipsBefore = warfare.fleetTotalShips(venetianFleet);
+const genoeseShipsBefore = warfare.fleetTotalShips(genoeseFleet);
+warfare.processWarfare(navalBattleWorld);
+assert.equal(navalBattleWorld.warfare.battles[0].naval, true, "敌对舰队同海域必须自动结算海战");
+assert.ok(warfare.fleetTotalShips(venetianFleet) < venetianShipsBefore, "海战应造成胜方舰船损失");
+assert.ok(warfare.fleetTotalShips(genoeseFleet) < genoeseShipsBefore, "海战应造成败方舰船损失");
+assert.notEqual(navalWar.score, 0, "海战胜负必须影响战争分数");
+
 assert.ok(warfare.terrainMoveCost(tiles[1]) > warfare.terrainMoveCost(tiles[0]));
 tiles[1].terrain = "mountains";
 assert.equal(warfare.terrainMoveCost(tiles[1]), Infinity);
