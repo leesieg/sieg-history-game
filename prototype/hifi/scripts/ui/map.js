@@ -347,6 +347,18 @@
         marker.textContent = "♞";
         armyLayer.appendChild(marker);
       }
+      for (const fleet of Object.values(window.hifiGame.store.getState().warfare.fleets || {})) {
+        const tile = tiles.find(candidate => candidate.id === fleet.tileId);
+        if (!tile) continue;
+        const marker = node("text", {
+          x: tile.x,
+          y: tile.y + 5,
+          class: "map-fleet-marker",
+          "data-fleet-marker": fleet.id,
+        });
+        marker.textContent = "⚓";
+        armyLayer.appendChild(marker);
+      }
       svg.appendChild(armyLayer);
     }
 
@@ -586,6 +598,11 @@
       const armyMarker = event.target.closest("[data-army-marker]");
       if (armyMarker) {
         window.dispatchEvent(new CustomEvent("hifi:army-selected", { detail: { armyId: armyMarker.dataset.armyMarker } }));
+        return;
+      }
+      const fleetMarker = event.target.closest("[data-fleet-marker]");
+      if (fleetMarker) {
+        window.dispatchEvent(new CustomEvent("hifi:fleet-selected", { detail: { fleetId: fleetMarker.dataset.fleetMarker } }));
         return;
       }
       const polygon = event.target.closest("[data-map-tile]");

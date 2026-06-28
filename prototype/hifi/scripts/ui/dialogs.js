@@ -13,6 +13,11 @@
     levy: "征召兵",
     mercenary: "雇佣兵",
   };
+  const shipTypeLabels = {
+    galley: "桨帆船",
+    cog: "柯克船",
+    carrack: "卡拉克",
+  };
 
   function bindArmyDialog(store) {
     const drawer = document.getElementById("armyDrawer");
@@ -125,9 +130,70 @@
       drawer.setAttribute("aria-hidden", "false");
       document.getElementById("game").classList.add("army-open");
     }
+
+    function renderFleet(fleetId) {
+      const world = store.getState();
+      const fleet = world.warfare.fleets?.[fleetId];
+      if (!fleet) return close();
+      world.warfare.selectedFleet = fleetId;
+      const sea = world.tiles.find(candidate => candidate.id === fleet.tileId);
+      const engine = window.HIFI_WARFARE_ENGINE;
+      const composition = fleet.units.map(unit =>
+        `<div class="drawer-row">${shipTypeLabels[unit.shipType] || unit.shipType}<span>${unit.ships} 艘 · 经验 ${unit.experience || 0}</span></div>`
+      ).join("");
+      const nearbyEnemyPorts = world.tiles.filter(tile =>
+        !tile.isSea
+        && tile.buildings?.includes("port")
+        && tile.polity !== fleet.owner
+        && engine.areAtWar(world, fleet.owner, tile.polity)
+        && engine.nearestSeaTile(world, tile.id)?.id === fleet.tileId
+      );
+      const privateerRoutes = Object.entries(world.trade?.routes || {})
+        .filter(([, route]) => route.active && route.nodes.some(city => {
+          const tile = world.tiles.find(candidate => candidate.city === city && !candidate.isSea);
+          return tile?.polity && tile.polity !== fleet.owner;
+        }));
+      document.getElementById("armyDrawerTitle").textContent = fleet.name;
+      body.innerHTML = `<div class="drawer-row">所属<span>${fleet.owner}</span></div>
+        <div class="drawer-row">位置<span>${sea?.region || sea?.city || "近海"}</span></div>
+        <div class="drawer-row">任务<span>${fleet.order === "blockade" ? "封锁港口" : fleet.order === "privateer" ? "私掠商路" : fleet.order === "sail" ? "航行" : "待命"}</span></div>
+        <div class="drawer-row">士气 / 组织 / 补给<span>${fleet.morale} / ${fleet.organization} / ${fleet.supply}</span></div>
+        <div class="drawer-row">运载力<span>${engine.fleetTransportLoad(world, fleet.id)} / ${engine.fleetTransportCapacity(fleet)}</span></div>
+        <div class="drawer-subtitle">编成</div>${composition}
+        <div class="drawer-subtitle">海军命令</div>
+        <div class="icon-cmd-row">
+          <button class="icon-cmd" data-tip="停止当前封锁、私掠或航行命令" aria-label="停止舰队行动" data-fleet-stop="1">▣ 停止</button>
+          ${nearbyEnemyPorts.map(port => `<button class="icon-cmd wide" data-tip="封锁敌方港口 · 降低相关商路收入" aria-label="封锁 ${port.city || port.region}" data-fleet-blockade="${port.id}">⚓ 封锁 ${port.city || port.region}</button>`).join("")}
+          ${privateerRoutes.slice(0, 4).map(([key, route]) => `<button class="icon-cmd wide" data-tip="劫掠商路收入 · 和平私掠会损害声誉" aria-label="私掠 ${route.label}" data-fleet-privateer="${key}">☠ 私掠 ${route.label}</button>`).join("")}
+        </div>`;
+      body.querySelector("[data-fleet-stop]")?.addEventListener("click", () => {
+        store.update(current => engine.stopFleetOperation(current, fleetId));
+        renderFleet(fleetId);
+      });
+      body.querySelectorAll("[data-fleet-blockade]").forEach(button => {
+        button.addEventListener("click", () => {
+          try {
+            store.update(current => engine.startBlockade(current, fleetId, Number(button.dataset.fleetBlockade)));
+            renderFleet(fleetId);
+          } catch (error) { window.hifiGame?.showToast?.(error.message); }
+        });
+      });
+      body.querySelectorAll("[data-fleet-privateer]").forEach(button => {
+        button.addEventListener("click", () => {
+          try {
+            store.update(current => engine.startPrivateering(current, fleetId, button.dataset.fleetPrivateer));
+            renderFleet(fleetId);
+          } catch (error) { window.hifiGame?.showToast?.(error.message); }
+        });
+      });
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+      document.getElementById("game").classList.add("army-open");
+    }
     document.getElementById("armyDrawerClose").addEventListener("click", close);
     window.addEventListener("hifi:army-close", close);
     window.addEventListener("hifi:army-selected", event => render(event.detail.armyId));
+    window.addEventListener("hifi:fleet-selected", event => renderFleet(event.detail.fleetId));
     return { close, render };
   }
 

@@ -454,9 +454,11 @@
 
   function renderMilitary(country, world) {
     const armies = Object.values(world.warfare.armies).filter(army => army.owner === country.name);
+    const fleets = Object.values(world.warfare.fleets || {}).filter(fleet => fleet.owner === country.name);
     const wars = world.diplomacy.wars.filter(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
     const tile = world.tiles.find(candidate => candidate.id === world.selectedTile);
     const canRecruit = tile && !tile.isSea && tile.polity === country.name;
+    const canBuildFleet = canRecruit && tile.buildings?.includes("port");
     const tab = currentTab("军事");
     const bar = tabBar("军事");
 
@@ -466,6 +468,7 @@
         <div class="drawer-row">${codexTerm("军事点", "军事点")}<span>${country.actionPoints.military}</span></div>
         <div class="drawer-row">${codexTerm("战争疲惫", "战争疲惫")}<span>${wd().meter(country.warfare.warExhaustion, 100, { tone: "red" })} ${Math.round(country.warfare.warExhaustion)}</span></div>
         <div class="drawer-row">${codexTerm("军团", "军团数")}<span>${armies.length}</span></div>
+        <div class="drawer-row">舰队<span>${fleets.length}</span></div>
         <div class="drawer-row">总兵力<span>${totalSoldiers} 人</span></div>
         <div class="drawer-row">${codexTerm("战争", "进行中战争")}<span>${wars.length}</span></div>`;
     }
@@ -482,7 +485,15 @@
         <div class="drawer-subtitle">${codexTerm("军团", "现役军团")}</div>
         ${armies.length ? armies.map(army => actionButton("data-army-open", army.id, army.name,
           `${window.HIFI_WARFARE_ENGINE.armyTotalSoldiers(army)} 人 · 士${wd().meter(army.morale, 100, { tone: "green", mini: true })} 组${wd().meter(army.organization, 100, { tone: "blue", mini: true })} 补${wd().meter(army.supply, 100, { tone: "gold", mini: true })}`
-        )).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}`;
+        )).join("") : '<div class="drawer-row">暂无军团<span>—</span></div>'}
+        <div class="drawer-subtitle">造舰：${canBuildFleet ? tile.city || tile.region : "请选择己方港口"}</div>
+        ${actionButton("data-build-fleet", "galley", "建造桨帆船队", "金钱 28 · 军需 8 · 近海作战", false, canBuildFleet ? false : "需要选择己方港口")}
+        ${actionButton("data-build-fleet", "cog", "建造柯克船队", "金钱 24 · 军需 6 · 运载力高", false, canBuildFleet ? false : "需要选择己方港口")}
+        ${actionButton("data-build-fleet", "carrack", "建造卡拉克船队", "金钱 42 · 军需 12 · 远洋舰", false, canBuildFleet && country.technology.oceanGoingShips ? false : "需要己方港口与远洋帆装")}
+        <div class="drawer-subtitle">现役舰队</div>
+        ${fleets.length ? fleets.map(fleet => actionButton("data-fleet-open", fleet.id, fleet.name,
+          `${window.HIFI_WARFARE_ENGINE.fleetTotalShips(fleet)} 艘 · 士${wd().meter(fleet.morale, 100, { tone: "green", mini: true })} 组${wd().meter(fleet.organization, 100, { tone: "blue", mini: true })} 补${wd().meter(fleet.supply, 100, { tone: "gold", mini: true })}`
+        )).join("") : '<div class="drawer-row">暂无舰队<span>—</span></div>'}`;
     }
 
     // 战争：基础战争 / 议和列表。局势作战室已统一到右下角局势浮窗（反馈 #1）。

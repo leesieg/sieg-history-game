@@ -445,6 +445,21 @@
         detail: { armyId: button.dataset.armyOpen },
       })));
     });
+    drawerBody.querySelectorAll("[data-fleet-open]").forEach(button => {
+      button.addEventListener("click", () => window.dispatchEvent(new CustomEvent("hifi:fleet-selected", {
+        detail: { fleetId: button.dataset.fleetOpen },
+      })));
+    });
+    drawerBody.querySelectorAll("[data-build-fleet]").forEach(button => {
+      button.addEventListener("click", () => runAction(current =>
+        window.HIFI_WARFARE_ENGINE.buildFleet(
+          current,
+          current.playerPolity,
+          current.selectedTile,
+          button.dataset.buildFleet
+        )
+      , button));
+    });
     drawerBody.querySelectorAll("[data-mobilize]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         window.HIFI_WARFARE_ENGINE.mobilizeArmy(

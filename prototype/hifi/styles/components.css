@@ -711,6 +711,15 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
   text-anchor: middle;
   cursor: pointer;
 }
+.map-fleet-marker {
+  fill: #9fd2e8;
+  stroke: #142632;
+  stroke-width: 1.5px;
+  paint-order: stroke;
+  font-size: 17px;
+  text-anchor: middle;
+  cursor: pointer;
+}
 
 .issue-panel {
   position: absolute;
