@@ -24,11 +24,25 @@
     plunder: { label: "劫掠战", defaultTerms: ["reparations"] },
     humiliation: { label: "霸权羞辱战", defaultTerms: ["reparations"] },
     succession: { label: "继承战", defaultTerms: ["personal_union", "reparations"] },
+    religious: { label: "宗教战争", defaultTerms: ["target_territory", "reparations"] },
   };
 
   function normalizeWarGoal(goal, targetTileId) {
     if (!goal || typeof goal === "string") return { type: goal || "conquest", tileId: targetTileId };
     return { type: goal.type || "conquest", tileId: goal.tileId || targetTileId, ...goal };
+  }
+
+  function faithGroup(world, polity) {
+    const confession = world.countries[polity]?.stateConfession;
+    return window.HIFI_FAITHS?.confessions?.[confession]?.group || null;
+  }
+
+  function hasReligiousWarBasis(world, attacker, defender) {
+    const claims = window.HIFI_DIPLOMACY_ENGINE?.claimsAgainst?.(world, attacker, defender) || [];
+    if (claims.some(claim => ["crusade", "excommunication"].includes(claim.type))) return true;
+    const attackerGroup = faithGroup(world, attacker);
+    const defenderGroup = faithGroup(world, defender);
+    return Boolean(attackerGroup && defenderGroup && attackerGroup !== defenderGroup);
   }
 
   function militaryKey(country) {
@@ -738,6 +752,9 @@
       if (!hasTransportFleet(world, attacker)) throw new Error("跨海远征需要可运兵舰队");
       if (!nearestSeaTile(world, targetTileId)) throw new Error("跨海远征目标附近没有可登陆海域");
     }
+    if (normalizedGoal.type === "religious" && !hasReligiousWarBasis(world, attacker, defender)) {
+      throw new Error("宗教战争需要十字军、绝罚或跨信仰组理由");
+    }
     const cbMatched = !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
@@ -1064,6 +1081,12 @@
           && !world.flags?.constantinopleFallen
         ) {
           window.HIFI_HISTORY_ENGINE.applyCausalChain(world, "constantinople_falls");
+        }
+        if (war.goal?.type === "religious") {
+          const claimant = world.countries[war.primaryGoal.claimant];
+          claimant.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+          claimant.faith.piety = Math.min(100, (claimant.faith.piety || 0) + 8);
+          claimant.legitimacy = Math.min(100, (claimant.legitimacy || 0) + 3);
         }
       } else if (term.type === "reparations") {
         const target = peaceOpponent(war, actor, term.target);

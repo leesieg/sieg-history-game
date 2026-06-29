@@ -115,10 +115,20 @@ const religiousWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
   "法兰西王国",
   "格拉纳达酋长国",
   "十字军",
-  "conquest"
+  "religious"
 );
+assert.equal(religiousWar.goal.type, "religious", "十字军应能进入宗教战争目标");
 assert.equal(religiousWar.cbMatched, true, "十字军宣称应被战争系统识别为宣战理由");
 assert.equal(authorityWorld.countries["法兰西王国"].reputation, reputationBeforeWar, "有十字军宣称宣战不应扣声望");
+assert.equal(
+  w.HIFI_WARFARE_ENGINE.termAllowedByGoal(religiousWar, { type: "subject", subjectType: "tributary" }),
+  false,
+  "宗教战争不能直接强迫附属"
+);
+religiousWar.score = 40;
+const pietyBeforePeace = authorityWorld.countries["法兰西王国"].faith.piety;
+w.HIFI_WARFARE_ENGINE.concludePeace(authorityWorld, religiousWar.id, "法兰西王国", [{ type: "target_territory" }]);
+assert.ok(authorityWorld.countries["法兰西王国"].faith.piety > pietyBeforePeace, "宗教战争夺取目标应提高虔诚");
 
 const defenderWorld = w.HIFI_WORLD_ENGINE.createWorld([
   tile(30, "法兰西王国", "巴黎", "天主教", 20),
