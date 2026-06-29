@@ -92,6 +92,9 @@ assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galley"
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, false, "卡拉克必须先有远洋帆装");
 navalWorld.countries["威尼斯共和国"].technology.oceanGoingShips = true;
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, true, "远洋帆装应解锁卡拉克");
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "shipOfLine").ok, false, "风帆战列舰必须先有对应科技");
+navalWorld.countries["威尼斯共和国"].technology.shipOfLine = true;
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "shipOfLine").ok, true, "风帆战列舰科技必须解锁战列舰舰种");
 const fleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galley");
 assert.equal(fleet.tileId, 12, "舰队必须生成在港口附近海域");
 assert.equal(warfare.fleetTotalShips(fleet), 4);
@@ -167,6 +170,9 @@ const genoeseFleet = warfare.createFleet(navalBattleWorld, {
   units: [{ shipType: "cog", ships: 5 }],
 });
 const navalWar = warfare.declareWar(navalBattleWorld, "威尼斯共和国", "热那亚共和国", 21, "利古里亚海战", "plunder");
+const navalPowerBeforeLine = warfare.navalPower(navalBattleWorld, [venetianFleet.id], navalBattleTiles[2]);
+navalBattleWorld.countries["威尼斯共和国"].technology.shipOfLine = true;
+assert.ok(warfare.navalPower(navalBattleWorld, [venetianFleet.id], navalBattleTiles[2]) > navalPowerBeforeLine, "风帆战列舰科技必须提高舰队制海权");
 const venetianShipsBefore = warfare.fleetTotalShips(venetianFleet);
 const genoeseShipsBefore = warfare.fleetTotalShips(genoeseFleet);
 warfare.processWarfare(navalBattleWorld);
@@ -246,6 +252,14 @@ frenchArmy.tileId = 2;
 frenchArmy.plannedPath = [];
 
 const populationBefore = tiles[2].population;
+const frenchPowerBeforeTech = warfare.sidePower(world, [frenchArmy.id], tiles[2]);
+world.countries["法兰西王国"].technology.plateCavalry = true;
+world.countries["法兰西王国"].technology.bayonetVolley = true;
+assert.ok(warfare.sidePower(world, [frenchArmy.id], tiles[2]) > frenchPowerBeforeTech, "板甲重骑与刺刀齐射必须提高陆军战斗力");
+const englishDefenseBeforeBastions = warfare.sidePower(world, [englishArmy.id], tiles[2]);
+world.countries["英格兰王国"].technology.bastions = true;
+assert.ok(englishDefenseBeforeBastions > 0, "战斗力基线必须有效");
+assert.ok(warfare.defensiveTechnologyFactor(world, [englishArmy.id], tiles[2]) > 1, "棱堡体系必须提高堡垒守军防御系数");
 const battle = warfare.resolveBattle(world, 2, [frenchArmy.id], [englishArmy.id]);
 assert.ok(battle.casualties.attackers > 0);
 assert.ok(battle.casualties.defenders > 0);

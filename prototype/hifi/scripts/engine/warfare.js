@@ -7,6 +7,7 @@
     galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", transport: 500 },
     cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal", transport: 900 },
     carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips", transport: 1300 },
+    shipOfLine: { label: "风帆战列舰", cost: { money: 72, military: 24 }, strength: 2.1, water: "ocean", requires: "shipOfLine", transport: 700 },
   };
   const MILITARY_EFFECTS = {
     feudal_levy: { serviceType: "levy", levyCostFactor: 1, soldierFactor: 1 },
@@ -731,9 +732,17 @@
   function sidePower(world, armyIds, tile) {
     return armyIds.reduce((sum, id) => {
       const army = world.warfare.armies[id];
+      const country = world.countries[army.owner] || {};
       const cavalryPenalty = ["forest", "hills", "wetland", "mountains"].includes(tile.terrain) ? .75 : 1.15;
       const composition = army.units.reduce((power, unit) => {
-        const type = unit.combatType === "cavalry" ? 1.3 * cavalryPenalty : unit.combatType === "artillery" ? 1.5 : 1;
+        const infantryTech = unit.combatType === "infantry" && country.technology?.bayonetVolley ? 1.15 : 1;
+        const cavalryTech = unit.combatType === "cavalry" && country.technology?.plateCavalry ? 1.1 : 1;
+        const artilleryTech = unit.combatType === "artillery" && country.technology?.bastions ? 1.06 : 1;
+        const type = unit.combatType === "cavalry"
+          ? 1.3 * cavalryPenalty * cavalryTech
+          : unit.combatType === "artillery"
+            ? 1.5 * artilleryTech
+            : infantryTech;
         return power + unit.soldiers * type * (1 + (unit.experience || 0) * .04);
       }, 0);
       const general = army.generalId ? world.warfare.generals[army.generalId] : null;
@@ -753,15 +762,24 @@
     return fleetIds.reduce((sum, id) => {
       const fleet = world.warfare.fleets[id];
       if (!fleet) return sum;
+      const country = world.countries[fleet.owner] || {};
       const composition = fleet.units.reduce((power, unit) => {
         const definition = shipTypes[unit.shipType];
         const waterFactor = definition.water === "ocean"
           ? (waterType === "ocean" ? 1.25 : 1)
           : (waterType === "ocean" ? .25 : 1);
-        return power + unit.ships * 100 * definition.strength * waterFactor * (1 + (unit.experience || 0) * .04);
+        const lineBonus = country.technology?.shipOfLine
+          ? (waterType === "ocean" ? 1.15 : 1.08)
+          : 1;
+        return power + unit.ships * 100 * definition.strength * waterFactor * lineBonus * (1 + (unit.experience || 0) * .04);
       }, 0);
       return sum + composition * fleet.morale / 100 * fleet.organization / 100 * fleet.supply / 100;
     }, 0);
+  }
+
+  function defensiveTechnologyFactor(world, armyIds, tile) {
+    if (!tile?.buildings?.includes("fort")) return 1;
+    return armyIds.some(id => world.countries[world.warfare.armies[id]?.owner]?.technology?.bastions) ? 1.12 : 1;
   }
 
   function applyCasualties(world, armyIds, amount) {
@@ -809,7 +827,7 @@
   function resolveBattle(world, tileId, attackers, defenders) {
     const tile = world.tiles.find(candidate => candidate.id === tileId);
     const attackPower = sidePower(world, attackers, tile);
-    const defensePower = sidePower(world, defenders, tile) * 1.08;
+    const defensePower = sidePower(world, defenders, tile) * 1.08 * defensiveTechnologyFactor(world, defenders, tile);
     const attackerSoldiers = attackers.reduce((sum, id) => sum + armyTotalSoldiers(world.warfare.armies[id]), 0);
     const defenderSoldiers = defenders.reduce((sum, id) => sum + armyTotalSoldiers(world.warfare.armies[id]), 0);
     const attackerLoss = Math.max(1, Math.round(attackerSoldiers * (attackPower >= defensePower ? .08 : .18)));
@@ -1095,6 +1113,7 @@
     demobilizeLevies,
     declareWar,
     declareWarOn,
+    defensiveTechnologyFactor,
     disembarkArmy,
     embarkArmy,
     underTruce,
@@ -1130,6 +1149,7 @@
     resolveBattle,
     resolveNavalBattle,
     rulerGeneral,
+    sidePower,
     startBlockade,
     startPrivateering,
     stopFleetOperation,
