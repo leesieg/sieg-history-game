@@ -4,10 +4,12 @@
   const combatTypes = new Set(["infantry", "cavalry", "artillery"]);
   const serviceTypes = new Set(["guard", "professional", "standing", "levy", "mercenary"]);
   const shipTypes = {
-    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", transport: 500 },
-    cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal", transport: 900 },
-    carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips", transport: 1300 },
-    shipOfLine: { label: "风帆战列舰", cost: { money: 72, military: 24 }, strength: 2.1, water: "ocean", requires: "shipOfLine", transport: 700 },
+    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", materials: ["timber"], transport: 500 },
+    cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal", materials: ["timber"], transport: 900 },
+    carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips", materials: ["timber", "naval_supplies"], transport: 1300 },
+    galleon: { label: "盖伦船", cost: { money: 58, military: 18 }, strength: 1.65, water: "ocean", requires: "triangleTrade", materials: ["timber", "naval_supplies"], transport: 1000 },
+    shipOfLine: { label: "风帆战列舰", cost: { money: 72, military: 24 }, strength: 2.1, water: "ocean", requires: "shipOfLine", materials: ["timber", "naval_supplies"], transport: 700 },
+    frigate: { label: "护卫舰", cost: { money: 46, military: 14 }, strength: 1.35, water: "mixed", requires: "shipOfLine", materials: ["timber"], transport: 400 },
   };
   const MILITARY_EFFECTS = {
     feudal_levy: { serviceType: "levy", levyCostFactor: 1, soldierFactor: 1 },
@@ -405,10 +407,15 @@
     return true;
   }
 
-  function hasNavalMaterial(world, polity) {
+  function hasShipMaterial(world, polity, good) {
+    if (window.HIFI_ECONOMY_ENGINE?.hasGoodAccess) return window.HIFI_ECONOMY_ENGINE.hasGoodAccess(world, polity, good);
     const country = world.countries[polity];
-    return Boolean(country.goodsAccess?.timber || country.goodsAccess?.naval_supplies)
-      || window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).some(tile => ["timber", "naval_supplies"].includes(tile.good));
+    return Boolean(country.goodsAccess?.[good])
+      || window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).some(tile => tile.good === good);
+  }
+
+  function hasShipMaterials(world, polity, materials) {
+    return materials.every(good => hasShipMaterial(world, polity, good));
   }
 
   function nearestSeaTile(world, tileId) {
@@ -437,7 +444,7 @@
     const definition = shipTypes[shipType];
     if (!definition) return { ok: false, reason: "未知舰种" };
     if (definition.requires && !world.countries[polity].technology?.[definition.requires]) return { ok: false, reason: "尚未掌握对应航海技术" };
-    if (!hasNavalMaterial(world, polity)) return { ok: false, reason: "缺少木材或海军物资" };
+    if (!hasShipMaterials(world, polity, definition.materials || ["timber"])) return { ok: false, reason: "缺少造舰物产" };
     return { ok: true };
   }
 
@@ -457,7 +464,7 @@
       owner: polity,
       tileId: sea.id,
       name: `${port.city || port.region || polity}${definition.label}队`,
-      units: [{ shipType, ships: shipType === "carrack" ? 2 : 4, sourceTileId: portTileId }],
+      units: [{ shipType, ships: ["carrack", "galleon", "shipOfLine"].includes(shipType) ? 2 : 4, sourceTileId: portTileId }],
     });
   }
 
@@ -790,7 +797,9 @@
         const definition = shipTypes[unit.shipType];
         const waterFactor = definition.water === "ocean"
           ? (waterType === "ocean" ? 1.25 : 1)
-          : (waterType === "ocean" ? .25 : 1);
+          : definition.water === "mixed"
+            ? (waterType === "ocean" ? 1.05 : 1.05)
+            : (waterType === "ocean" ? .25 : 1);
         const lineBonus = country.technology?.shipOfLine
           ? (waterType === "ocean" ? 1.15 : 1.08)
           : 1;

@@ -17,6 +17,9 @@
     galley: "桨帆船",
     cog: "柯克船",
     carrack: "卡拉克",
+    galleon: "盖伦船",
+    shipOfLine: "风帆战列舰",
+    frigate: "护卫舰",
   };
 
   function bindArmyDialog(store) {

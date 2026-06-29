@@ -460,6 +460,9 @@
         ${actionButton("data-build-fleet", "galley", "建造桨帆船队", "金钱 28 · 军需 8 · 近海作战", false, canBuildFleet ? false : "需要选择己方港口")}
         ${actionButton("data-build-fleet", "cog", "建造柯克船队", "金钱 24 · 军需 6 · 运载力高", false, canBuildFleet ? false : "需要选择己方港口")}
         ${actionButton("data-build-fleet", "carrack", "建造卡拉克船队", "金钱 42 · 军需 12 · 远洋舰", false, canBuildFleet && country.technology.oceanGoingShips ? false : "需要己方港口与远洋帆装")}
+        ${actionButton("data-build-fleet", "galleon", "建造盖伦船队", "金钱 58 · 军需 18 · 帝国远洋舰", false, canBuildFleet && country.technology.triangleTrade ? false : "需要己方港口与跨洋贸易体系")}
+        ${actionButton("data-build-fleet", "shipOfLine", "建造战列舰队", "金钱 72 · 军需 24 · 远洋决战", false, canBuildFleet && country.technology.shipOfLine ? false : "需要己方港口与风帆战列舰")}
+        ${actionButton("data-build-fleet", "frigate", "建造护卫舰队", "金钱 46 · 军需 14 · 私掠护航", false, canBuildFleet && country.technology.shipOfLine ? false : "需要己方港口与风帆战列舰")}
         <div class="drawer-subtitle">现役舰队</div>
         ${fleets.length ? fleets.map(fleet => actionButton("data-fleet-open", fleet.id, fleet.name,
           `${window.HIFI_WARFARE_ENGINE.fleetTotalShips(fleet)} 艘 · 士${wd().meter(fleet.morale, 100, { tone: "green", mini: true })} 组${wd().meter(fleet.organization, 100, { tone: "blue", mini: true })} 补${wd().meter(fleet.supply, 100, { tone: "gold", mini: true })}`

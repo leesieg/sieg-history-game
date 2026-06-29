@@ -76,7 +76,7 @@ diplomacy.imposeEmbargo(horseTradeWorld, "英格兰王国", "法兰西王国");
 assert.equal(warfare.canRecruitCombatType(horseTradeWorld, "法兰西王国", "cavalry"), false, "被产马国禁运后不能继续动员骑兵");
 
 const navalTiles = [
-  { id: 10, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "fish", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 10, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "naval_supplies", x: 0, y: 0, control: 90, devastation: 0 },
   { id: 11, isSea: false, polity: "威尼斯共和国", population: 6, buildings: [], city: "", terrain: "forest", good: "timber", x: 0, y: 10, control: 80, devastation: 0 },
   { id: 12, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
   { id: 13, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 25, y: 0, control: 0 },
@@ -88,16 +88,24 @@ warfare.initializeWarfare(navalWorld);
 economy.initializeEconomy(navalWorld);
 navalWorld.countries["威尼斯共和国"].money = 200;
 navalWorld.countries["威尼斯共和国"].military = 100;
+assert.deepEqual(Object.keys(warfare.shipTypes).sort(), ["carrack", "cog", "frigate", "galleon", "galley", "shipOfLine"], "海军系统必须实现 6 类历史舰种");
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galley").ok, true, "港口国家有木材时可建基础舰队");
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, false, "卡拉克必须先有远洋帆装");
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galleon").ok, false, "盖伦船必须先有跨洋贸易体系");
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "frigate").ok, false, "护卫舰必须先有风帆战列舰科技");
 navalWorld.countries["威尼斯共和国"].technology.oceanGoingShips = true;
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, true, "远洋帆装应解锁卡拉克");
+navalWorld.countries["威尼斯共和国"].technology.triangleTrade = true;
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galleon").ok, true, "跨洋贸易体系应解锁盖伦船");
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "shipOfLine").ok, false, "风帆战列舰必须先有对应科技");
 navalWorld.countries["威尼斯共和国"].technology.shipOfLine = true;
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "shipOfLine").ok, true, "风帆战列舰科技必须解锁战列舰舰种");
+assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "frigate").ok, true, "风帆战列舰科技必须解锁护卫舰");
 const fleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galley");
 assert.equal(fleet.tileId, 12, "舰队必须生成在港口附近海域");
 assert.equal(warfare.fleetTotalShips(fleet), 4);
+const galleonFleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galleon");
+assert.equal(galleonFleet.units[0].ships, 2, "盖伦船队应按大型舰船数量生成");
 assert.deepEqual(warfare.planFleetRoute(navalWorld, fleet.id, 14), [13, 14], "舰队必须沿海域邻接寻路");
 warfare.executeNavalMovementPhase(navalWorld);
 assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
