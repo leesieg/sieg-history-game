@@ -7,10 +7,13 @@ const hifiRoot = path.join(__dirname, "..", "prototype", "hifi");
 const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/techs.js",
   "data/rules.js",
+  "data/goods.js",
   "data/faiths.js",
   "data/supranational.js",
   "engine/world.js",
+  "engine/economy.js",
   "engine/faith.js",
   "engine/supranational.js",
   "engine/struggle.js",
@@ -143,6 +146,25 @@ history.spreadTechnology(world);
 assert.ok(explorer.exploration.milestones.includes("atlantic"), "累积探索点必须开辟大西洋航路");
 assert.equal(explorer.exploration.colonial, true, "里程碑必须解锁殖民收入流");
 assert.ok(explorer.ideas > ideasBeforeMilestone, "里程碑必须给一次性思想奖励");
+
+explorer.exploration.points = 0;
+explorer.exploration.milestones = [];
+explorer.exploration.colonial = false;
+explorer.pressures.exploration = 40;
+explorer.technology.astrolabe = true;
+history.spreadTechnology(world);
+assert.equal(explorer.exploration.points, 2, "星盘航法必须加速探索点累积");
+
+explorer.technology.astrolabe = false;
+explorer.technology.scientificMethod = false;
+explorer.research ||= {};
+const culturalBeforeScience = explorer.research.cultural || 0;
+history.spreadTechnology(world);
+const culturalGainBeforeScience = (explorer.research.cultural || 0) - culturalBeforeScience;
+explorer.technology.scientificMethod = true;
+const culturalBeforeScience2 = explorer.research.cultural || 0;
+history.spreadTechnology(world);
+assert.ok((explorer.research.cultural || 0) - culturalBeforeScience2 > culturalGainBeforeScience, "科学方法必须提高研究流");
 
 // 压力层驱动转折：军事压力加速战争疲惫、财政压力压低合法性
 const pressured = world.countries["法兰西王国"];

@@ -156,13 +156,14 @@
     const atWar = world.diplomacy?.wars?.some(war => war.attackers.includes(country.name) || war.defenders.includes(country.name));
     const central = Math.max(0, Math.min(100, country.government?.institutions?.centralization ?? country.government?.centralPower ?? 60));
     const sources = {
-      administrative: 1 + central / 80 + cities * .25 + (country.technology?.codifiedLaw ? .35 : 0),
+      administrative: 1 + central / 80 + cities * .25 + (country.technology?.codifiedLaw ? .35 : 0) + (country.technology?.bureaucracy ? .45 : 0) + (country.technology?.constitutionalism ? .35 : 0),
       military: 1 + forts * .45 + (atWar ? 1.25 : 0) + ((country.government?.institutions?.military === "standing_army") ? .6 : 0),
-      economic: 1 + markets * .45 + workshops * .35 + (country.technology?.threeFieldSystem ? .25 : 0) + (world.trade?.lastIncome?.[country.name] || 0) / 35,
-      naval: 1 + ports * .65 + (country.technology?.compassCharts ? .25 : 0) + (country.pressures?.exploration || 0) / 45,
-      cultural: 1 + (country.technology?.universities ? .6 : 0) + (country.technology?.printing ? 1 : 0) + Math.max(0, country.legitimacy || 0) / 100,
+      economic: 1 + markets * .45 + workshops * .35 + (country.technology?.threeFieldSystem ? .25 : 0) + (country.technology?.watermills ? .3 : 0) + (country.technology?.billsOfExchange ? .35 : 0) + (country.technology?.jointStockCompanies ? .45 : 0) + (world.trade?.lastIncome?.[country.name] || 0) / 35,
+      naval: 1 + ports * .65 + (country.technology?.compassCharts ? .25 : 0) + (country.technology?.astrolabe ? .45 : 0) + (country.technology?.shipOfLine ? .35 : 0) + (country.pressures?.exploration || 0) / 45,
+      cultural: 1 + (country.technology?.universities ? .6 : 0) + (country.technology?.printing ? 1 : 0) + (country.technology?.humanism ? .45 : 0) + (country.technology?.scientificMethod ? .6 : 0) + (country.technology?.enlightenment ? .45 : 0) + Math.max(0, country.legitimacy || 0) / 100,
     };
-    return Math.max(.5, sources[domain] || 1);
+    const scientificBonus = country.technology?.scientificMethod ? 1.08 : 1;
+    return Math.max(.5, (sources[domain] || 1) * scientificBonus);
   }
 
   function spreadTechnology(world) {
@@ -182,7 +183,7 @@
         const laggardBoost = country.technology?.[key] ? 0 : Math.min(3, neighborsKnown);
         country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + laggardBoost + printing + ideasBoost);
       }
-      if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += 1;
+      if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += country.technology?.astrolabe ? 2 : 1;
       if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {
         country.exploration.milestones.push("atlantic");
         country.exploration.colonial = true;   // 解锁殖民收入流（economy.settleCountry 每季注入）

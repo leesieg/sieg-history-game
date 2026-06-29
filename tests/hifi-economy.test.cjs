@@ -191,12 +191,30 @@ economy.adoptTechnology(world, "法兰西王国", "standingArmy");
 assert.equal(country.unlockedInstitutions.military.standing_army, true, "常备军操典必须解锁常备军制度能力");
 
 const industryTile = { ...tiles[0], good: "cloth", buildings: ["workshop"], terrain: "plains", climate: "temperate" };
+country.technology.watermills = false;
+const workshopBeforeWatermills = economy.tileOutput(industryTile, country).money;
+country.technology.watermills = true;
+assert.ok(economy.tileOutput(industryTile, country).money > workshopBeforeWatermills, "水力工坊必须提高工坊产出");
 country.technology.steamEngine = false;
 const workshopBeforeSteam = economy.tileOutput(industryTile, country).money;
 country.technology.steamEngine = true;
 assert.ok(economy.tileOutput(industryTile, country).money > workshopBeforeSteam, "蒸汽动力必须提高工坊产出");
 country.technology.railways = true;
 assert.ok(economy.tileOutput(industryTile, country).military > economy.tileOutput({ ...industryTile, buildings: [] }, country).military, "铁路时代的工坊与陆上连接必须继续回灌产出");
+
+country.technology.billsOfExchange = false;
+country.technology.jointStockCompanies = false;
+const capitalRateBase = economy.tradeCapitalRate(country);
+country.technology.billsOfExchange = true;
+assert.ok(economy.tradeCapitalRate(country) > capitalRateBase, "银行汇票必须提高贸易资本沉淀率");
+country.technology.jointStockCompanies = true;
+assert.ok(economy.tradeCapitalRate(country) > capitalRateBase + .06, "股份公司必须继续提高资本沉淀率");
+
+country.technology.bureaucracy = false;
+country.technology.constitutionalism = false;
+const gainBeforeBureaucracy = economy.integrationGain(country);
+country.technology.bureaucracy = true;
+assert.ok(economy.integrationGain(country) > gainBeforeBureaucracy, "官僚体系必须提高领土整合效率");
 
 const autoTechWorld = worldEngine.createWorld([
   { id: 30, isSea: false, polity: "自动科研国", population: 10, control: 100, good: "grain", buildings: [], city: "学城", devastation: 0 },

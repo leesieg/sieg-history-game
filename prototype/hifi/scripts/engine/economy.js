@@ -62,8 +62,17 @@
     const assembly = country.government?.institutions?.assembly?.type;
     return 16
       + Math.round(central / 20)
+      + (country.technology?.bureaucracy ? 2 : 0)
+      + (country.technology?.constitutionalism ? 2 : 0)
       + (fiscal === "direct" ? 4 : 0)
       + (assembly === "parliamentary" ? 2 : 0);
+  }
+
+  function tradeCapitalRate(country) {
+    let rate = .2;
+    if (country.technology?.billsOfExchange) rate += .06;
+    if (country.technology?.jointStockCompanies) rate += .09;
+    return rate;
   }
 
   function initializeEconomy(world) {
@@ -231,6 +240,7 @@
     if (tile.buildings.includes("workshop")) {
       money *= 1.2;
       military *= 1.2;
+      if (country.technology.watermills) money *= 1.12;
     }
     money *= industry.money;
     military *= industry.military;
@@ -421,7 +431,7 @@
       const tradeShare = fiscalEffect(country)?.tradeShare || 1;
       const trade = Math.max(2, Math.round((report.market || report.money) * report.marketSplit.trade * .48 * tradeShare * (1 - report.marketEmbargoPenalty)));
       country.money += trade;
-      country.capital += Math.max(1, Math.round(trade * .2));
+      country.capital += Math.max(1, Math.round(trade * tradeCapitalRate(country)));
       report.trade = trade;
     }
     // 探索里程碑解锁的殖民收入流（核心循环：探索流→收入流）
@@ -580,6 +590,7 @@
     fiscalEffect,
     frontierTechnologies,
     effectiveTechnologyCost,
+    tradeCapitalRate,
     marketSplit,
     integrationGain,
     technologyReady,
