@@ -171,6 +171,38 @@ assert.equal(landingArmy.tileId, 31, "登陆后军团位置必须变为目标陆
 warfare.advanceOccupation(amphibiousWorld, landingArmy.id);
 assert.equal(amphibiousTiles[1].occupier, "威尼斯共和国", "登陆军团应能继续执行占领");
 
+const interceptionWorld = worldEngine.createWorld([
+  { id: 70, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 71, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 40, y: 0, control: 85, devastation: 0 },
+  { id: 72, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 20, y: 0, control: 0 },
+], {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(interceptionWorld);
+warfare.initializeWarfare(interceptionWorld);
+interceptionWorld.diplomacy.wars = [];
+const weakTransportFleet = warfare.createFleet(interceptionWorld, {
+  owner: "威尼斯共和国",
+  tileId: 72,
+  name: "弱运输舰队",
+  units: [{ shipType: "cog", ships: 2 }],
+});
+const transportedArmy = warfare.createArmy(interceptionWorld, {
+  owner: "威尼斯共和国",
+  tileId: 70,
+  name: "被拦截登陆军",
+  units: [{ combatType: "infantry", serviceType: "professional", soldiers: 1000 }],
+});
+warfare.embarkArmy(interceptionWorld, transportedArmy.id, weakTransportFleet.id);
+warfare.createFleet(interceptionWorld, {
+  owner: "热那亚共和国",
+  tileId: 72,
+  name: "拦截舰队",
+  units: [{ shipType: "galley", ships: 8 }],
+});
+warfare.declareWar(interceptionWorld, "威尼斯共和国", "热那亚共和国", 71, "运输拦截测试", "plunder");
+warfare.processWarfare(interceptionWorld);
+assert.ok(transportedArmy.units[0].soldiers < 1000, "运输舰队被拦截败退时，船上军团必须损失兵力");
+assert.ok(transportedArmy.organization < 90, "运输舰队被拦截败退时，船上军团组织必须受损");
+
 const navalBattleTiles = [
   { id: 20, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
   { id: 21, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 30, y: 0, control: 85, devastation: 0 },

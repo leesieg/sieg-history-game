@@ -890,6 +890,21 @@
     }
   }
 
+  function applyTransportInterception(world, fleetIds) {
+    const fleetSet = new Set(fleetIds);
+    for (const army of Object.values(world.warfare.armies || {})) {
+      if (army.status !== "embarked" || !fleetSet.has(army.transportFleetId)) continue;
+      for (const unit of army.units) {
+        const loss = Math.max(1, Math.round(unit.soldiers * .22));
+        unit.soldiers = Math.max(0, unit.soldiers - loss);
+      }
+      army.units = army.units.filter(unit => unit.soldiers > 0);
+      army.organization = Math.max(0, army.organization - 30);
+      army.morale = Math.max(0, army.morale - 20);
+      if (!army.units.length) delete world.warfare.armies[army.id];
+    }
+  }
+
   function resolveBattle(world, tileId, attackers, defenders) {
     const tile = world.tiles.find(candidate => candidate.id === tileId);
     const attackPower = sidePower(world, attackers, tile);
@@ -945,6 +960,7 @@
     losingIds.forEach(id => {
       if (world.warfare.fleets[id]) world.warfare.fleets[id].status = "routed";
     });
+    applyTransportInterception(world, losingIds);
     const battle = {
       id: `battle-${world.warfare.nextBattleId++}`,
       tileId,
