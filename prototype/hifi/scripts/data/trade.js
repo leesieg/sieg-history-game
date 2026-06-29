@@ -16,5 +16,10 @@
       newWorld: route("新大陆白银航路", "silver", 85, ["里斯本", "塞维利亚", "安特卫普"], "triangleTrade"),
       balticGrain: route("波罗的海谷物路", "north", 32, ["马林堡", "斯德哥尔摩", "罗斯基勒", "伦敦"], "printing"),
     },
+    straits: {
+      bosporus: { label: "博斯普鲁斯海峡", controllerCity: "君士坦丁堡", routes: ["levant", "blackSea"], tollRate: .06, cost: 4 },
+      sound: { label: "松德海峡", controllerCity: "罗斯基勒", routes: ["balticGrain"], tollRate: .05, cost: 3 },
+      gibraltar: { label: "直布罗陀海峡", controllerCity: "塞维利亚", routes: ["cape", "atlantic"], tollRate: .04, cost: 2 },
+    },
   };
 })();

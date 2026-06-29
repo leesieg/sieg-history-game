@@ -14,6 +14,7 @@
       ])),
       selectedRoute: null,
       lastIncome: {},
+      lastStraitTolls: {},
     };
     for (const country of Object.values(world.countries)) {
       country.tariff = 10;
@@ -47,6 +48,13 @@
     return window.HIFI_WARFARE_ENGINE?.privateersOnRoute?.(world, key) || [];
   }
 
+  function straitsForRoute(world, routeKey) {
+    return Object.values(data.straits || {})
+      .filter(strait => strait.routes.includes(routeKey))
+      .map(strait => ({ ...strait, controller: nodeTile(world, strait.controllerCity)?.polity }))
+      .filter(strait => strait.controller && world.countries[strait.controller]);
+  }
+
   function fleetShips(fleet) {
     return (fleet.units || []).reduce((sum, unit) => sum + (unit.ships || 0), 0);
   }
@@ -78,6 +86,7 @@
 
   function routeCost(world, route) {
     let cost = 5;
+    const routeKey = Object.entries(world.trade?.routes || {}).find(([, candidate]) => candidate === route)?.[0];
     for (const city of route.nodes) {
       const tile = nodeTile(world, city);
       if (!tile) continue;
@@ -93,7 +102,7 @@
         if (embargoBetween(world, owners[i], owners[j])) cost += 10;
       }
     }
-    const routeKey = Object.entries(world.trade?.routes || {}).find(([, candidate]) => candidate === route)?.[0];
+    cost += straitsForRoute(world, routeKey).reduce((sum, strait) => sum + (strait.cost || 0), 0);
     const privateerShips = privateersForRoute(world, routeKey)
       .reduce((sum, fleet) => sum + fleetShips(fleet), 0);
     cost += Math.min(24, privateerShips * 2.5);
@@ -121,6 +130,7 @@
 
   function processTrade(world) {
     world.trade.lastIncome = {};
+    world.trade.lastStraitTolls = {};
     for (const [routeKey, route] of Object.entries(world.trade.routes)) {
       route.active = routeUnlocked(world, route);
       route.cost = routeCost(world, route);
@@ -129,6 +139,7 @@
       const nodeShare = route.nodes.length ? route.flow / route.nodes.length : 0;
       const owners = routeOwners(world, route);
       const privateers = privateersForRoute(world, routeKey);
+      const straitTolls = straitsForRoute(world, routeKey);
       for (const city of route.nodes) {
         const polity = nodeTile(world, city)?.polity;
         if (!world.countries[polity]) continue;
@@ -143,6 +154,13 @@
         const stolen = gross * privateerRate;
         world.trade.lastIncome[polity] = (world.trade.lastIncome[polity] || 0) + gross - stolen;
         distributePrivateerLoot(world, privateers, polity, stolen);
+      }
+      for (const strait of straitTolls) {
+        const toll = Math.round(route.flow * strait.tollRate);
+        if (!toll) continue;
+        world.trade.lastIncome[strait.controller] = (world.trade.lastIncome[strait.controller] || 0) + toll;
+        world.trade.lastStraitTolls[strait.controller] ||= {};
+        world.trade.lastStraitTolls[strait.controller][strait.label] = (world.trade.lastStraitTolls[strait.controller][strait.label] || 0) + toll;
       }
     }
     // 白银累积推升物价（价格革命：白银流→物价指数）
