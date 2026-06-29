@@ -62,6 +62,7 @@ assert.doesNotMatch(main, /待接入|将在对应系统迁移时启用/);
 assert.match(drawers, /effectLabels/, "敕令效果文案必须区分军需库存与军事点（不能共用同一份资源标签表）");
 assert.match(drawers, /已建成/, "已建成建筑必须在按钮副标题里提示「已建成」");
 assert.match(drawers, /tile\.buildings\.includes\(key\)/, "建筑按钮的已建成判定必须读取地块真实建成记录 tile.buildings");
+assert.match(drawers, /canConstructBuilding/, "建设抽屉必须直接读取引擎可建性，禁用不适配产业建筑");
 
 assert.match(dialogs, /data-proposal-exec/, "御前会议草案卡必须提供「执行建议」接线");
 assert.match(dialogs, /data-proposal-goto/, "御前会议草案卡必须提供「跳转面板」接线");

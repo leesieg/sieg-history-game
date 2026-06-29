@@ -456,15 +456,24 @@
     const country = world.countries[polity];
     const tile = world.tiles.find(candidate => candidate.id === tileId);
     const building = rules.buildings[buildingKey];
-    if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能在己方陆地建设");
-    if (!building) throw new Error("未知建筑");
-    if (tile.buildings.includes(buildingKey)) throw new Error("地块已有该建筑");
-    if (!buildingAppliesToGood(building, normalizeGoodKey(tile.good))) throw new Error("该建筑不适合当前物产");
-    if (country.money < building.cost || country.actionPoints.administrative < 1) throw new Error("建设资源不足");
+    const check = canConstructBuilding(world, polity, tileId, buildingKey);
+    if (!check.ok) throw new Error(check.reason);
     country.money -= building.cost;
     country.actionPoints.administrative -= 1;
     tile.buildings.push(buildingKey);
     return tile;
+  }
+
+  function canConstructBuilding(world, polity, tileId, buildingKey) {
+    const country = world.countries[polity];
+    const tile = world.tiles.find(candidate => candidate.id === tileId);
+    const building = rules.buildings[buildingKey];
+    if (!tile || tile.isSea || tile.polity !== polity) return { ok: false, reason: "只能在己方陆地建设" };
+    if (!building) return { ok: false, reason: "未知建筑" };
+    if (tile.buildings.includes(buildingKey)) return { ok: false, reason: "地块已有该建筑" };
+    if (!buildingAppliesToGood(building, normalizeGoodKey(tile.good))) return { ok: false, reason: "该建筑不适合当前物产" };
+    if (country.money < building.cost || country.actionPoints.administrative < 1) return { ok: false, reason: "建设资源不足" };
+    return { ok: true, reason: "" };
   }
 
   function integrateTile(world, polity, tileId) {
@@ -549,6 +558,7 @@
     applyTechnologyEffect,
     armyMaintenance,
     buildingMaintenance,
+    canConstructBuilding,
     constructBuilding,
     developTile,
     enactEdict,

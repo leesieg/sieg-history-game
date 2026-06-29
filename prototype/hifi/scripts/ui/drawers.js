@@ -329,17 +329,18 @@
       : "请选择己方陆地";
     const buildings = Object.entries(rules.buildings).map(([key, building]) => {
       const built = Boolean(tile && !tile.isSea && tile.buildings.includes(key));
+      const check = tile ? window.HIFI_ECONOMY_ENGINE.canConstructBuilding(world, country.name, tile.id, key) : { ok: false, reason: "请选择己方陆地" };
       // 仅 market 在 actionCatalog 中登记，能调 actionPreview；其余建筑维持原有按钮文案，不挂预览
-      const preview = key === "market" && tile && !built
+      const preview = key === "market" && tile && !built && check.ok
         ? { world, polity: country.name, type: "build_market", params: { tileId: tile.id } }
         : null;
       return actionButton(
         "data-building",
         key,
         built ? `${building.label}（已建成）` : building.label,
-        built ? "已建成" : `${building.cost} 金钱 + 1 行政 · ${building.effect}`,
+        built ? "已建成" : check.ok ? `${building.cost} 金钱 + 1 行政 · ${building.effect}` : check.reason,
         built,
-        built,
+        built ? "已建成" : check.ok ? false : check.reason,
         preview
       );
     }).join("");
