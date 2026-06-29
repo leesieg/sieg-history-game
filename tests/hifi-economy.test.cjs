@@ -54,6 +54,13 @@ const horseOutput = economy.tileOutput({ ...tiles[0], good: "horses", terrain: "
 const ironOutput = economy.tileOutput({ ...tiles[0], good: "iron", terrain: "hills" }, country);
 assert.ok(horseOutput.goods.horses > 0 && ironOutput.goods.iron > 0, "马和铁必须作为不同物产记录");
 assert.ok(horseOutput.market !== ironOutput.market, "马和铁不能再是同一个抽象军事桶");
+const minedIron = economy.tileOutput({ ...tiles[0], good: "iron", terrain: "hills", buildings: ["mine"] }, country);
+assert.ok(minedIron.goods.iron > ironOutput.goods.iron, "矿场必须提高金属物产产量");
+const stableHorse = economy.tileOutput({ ...tiles[0], good: "horses", terrain: "steppe", buildings: ["stable"] }, country);
+assert.ok(stableHorse.goods.horses > horseOutput.goods.horses, "马场必须提高马匹物产产量");
+const vineyardWine = economy.tileOutput({ ...tiles[0], good: "wine", terrain: "plains", climate: "mediterranean", buildings: ["vineyard"] }, country);
+const plainWine = economy.tileOutput({ ...tiles[0], good: "wine", terrain: "plains", climate: "mediterranean", buildings: [] }, country);
+assert.ok(vineyardWine.goods.wine > plainWine.goods.wine, "葡萄园必须提高葡萄酒产量");
 const occupied = economy.tileOutput({ ...tiles[0], occupier: "英格兰王国", occupation: 100 }, country);
 assert.deepEqual(
   JSON.parse(JSON.stringify(occupied)),
@@ -118,6 +125,10 @@ country.money = 100;
 economy.constructBuilding(world, "法兰西王国", 2, "market");
 assert.ok(tiles[1].buildings.includes("market"));
 assert.equal(country.actionPoints.administrative, 2);
+assert.throws(() => economy.constructBuilding(world, "法兰西王国", 2, "stable"), /不适合/, "马场不能建在铁矿地块");
+economy.constructBuilding(world, "法兰西王国", 2, "mine");
+assert.ok(tiles[1].buildings.includes("mine"), "铁矿地块必须允许建设矿场");
+assert.equal(country.actionPoints.administrative, 1);
 
 // 粮食赤字连续发生时，人口必须缓慢真减员，而不是只扣抽象粮仓。
 const famineTiles = [

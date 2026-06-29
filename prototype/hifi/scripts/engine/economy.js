@@ -197,11 +197,12 @@
     const devastation = Math.max(.15, 1 - (tile.devastation || 0) / 100);
     const occupation = Math.max(0, 1 - (tile.occupation || 0) / 100);
     const base = population * control * devastation * occupation;
-    const goodKey = window.HIFI_GOODS?.aliases?.[tile.good] || tile.good;
+    const goodKey = normalizeGoodKey(tile.good);
     const good = window.HIFI_GOODS?.goods?.[goodKey] || { label: tile.good, cat: "luxury", baseValue: 2, yield: .6 };
     const terrainAffinity = !good.terrain?.length || good.terrain.includes(tile.terrain) ? 1 : .72;
     const climate = good.climate?.[tile.climate] ?? 1;
-    const amount = base * (good.yield || .6) * terrainAffinity * climate;
+    const industry = industryBonus(tile, good, goodKey);
+    const amount = base * (good.yield || .6) * terrainAffinity * climate * industry.amount;
     const value = amount * (good.baseValue || 1) * (country.priceIndex || 1);
     let food = ["food"].includes(good.cat) ? amount * 1.35 : base * .28;
     let money = value * .42;
@@ -220,6 +221,8 @@
       money *= 1.2;
       military *= 1.2;
     }
+    money *= industry.money;
+    military *= industry.military;
     if (country.technology.threeFieldSystem && good.cat === "food") food *= 1.08;
     if (country.technology.accounting) money *= 1.1;
     if (country.technology.standingArmy) military *= 1.2;
@@ -286,6 +289,29 @@
       if (diplomacy?.embargoBetween?.(world, polity, other)) return false;
       return countryProducesGood(world, other, goodKey);
     });
+  }
+
+  function buildingAppliesToGood(building, goodKey) {
+    return !building.goods?.length || building.goods.includes(goodKey);
+  }
+
+  function industryBonus(tile, good, goodKey) {
+    const buildings = tile.buildings || [];
+    let amount = 1;
+    let money = 1;
+    let military = 1;
+    if (buildings.includes("mine") && buildingAppliesToGood(rules.buildings.mine, goodKey)) amount *= 1.35;
+    if (buildings.includes("stable") && buildingAppliesToGood(rules.buildings.stable, goodKey)) amount *= 1.35;
+    if (buildings.includes("lumberyard") && buildingAppliesToGood(rules.buildings.lumberyard, goodKey)) amount *= 1.3;
+    if (buildings.includes("saltworks") && buildingAppliesToGood(rules.buildings.saltworks, goodKey)) amount *= 1.3;
+    if (buildings.includes("vineyard") && buildingAppliesToGood(rules.buildings.vineyard, goodKey)) amount *= 1.3;
+    if (buildings.includes("quarry") && buildingAppliesToGood(rules.buildings.quarry, goodKey)) amount *= 1.3;
+    if (buildings.includes("workshop") && ["manufactured", "raw_textile"].includes(good.cat)) {
+      amount *= 1.2;
+      money *= 1.2;
+      military *= 1.1;
+    }
+    return { amount, money, military };
   }
 
   function processPopulation(world, polity, report) {
@@ -433,6 +459,7 @@
     if (!tile || tile.isSea || tile.polity !== polity) throw new Error("只能在己方陆地建设");
     if (!building) throw new Error("未知建筑");
     if (tile.buildings.includes(buildingKey)) throw new Error("地块已有该建筑");
+    if (!buildingAppliesToGood(building, normalizeGoodKey(tile.good))) throw new Error("该建筑不适合当前物产");
     if (country.money < building.cost || country.actionPoints.administrative < 1) throw new Error("建设资源不足");
     country.money -= building.cost;
     country.actionPoints.administrative -= 1;

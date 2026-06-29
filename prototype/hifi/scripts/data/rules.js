@@ -7,6 +7,12 @@
     fort: { label: "堡垒", cost: 30, effect: "军需产出与防御提升" },
     port: { label: "港口", cost: 28, effect: "沿海金钱与贸易能力提升" },
     workshop: { label: "工坊", cost: 34, effect: "金钱与军需产出提升" },
+    mine: { label: "矿场", cost: 32, effect: "矿物与金属产出提升", goods: ["iron", "copper", "tin", "saltpeter", "gold", "silver"] },
+    stable: { label: "马场", cost: 26, effect: "马匹产出提升", goods: ["horses"] },
+    lumberyard: { label: "林场", cost: 24, effect: "木材产出提升", goods: ["timber", "naval_supplies"] },
+    saltworks: { label: "盐场", cost: 22, effect: "盐产出提升", goods: ["salt"] },
+    vineyard: { label: "葡萄园", cost: 24, effect: "葡萄酒产出提升", goods: ["wine"] },
+    quarry: { label: "采石场", cost: 26, effect: "石材与大理石产出提升", goods: ["stone", "marble"] },
   };
 
   const technologies = window.HIFI_TECHS?.legacyTechnologies?.() || {
