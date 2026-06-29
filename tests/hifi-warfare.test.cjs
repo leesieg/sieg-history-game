@@ -205,6 +205,17 @@ const blockadeFleet = warfare.createFleet(blockadeWorld, {
 warfare.declareWar(blockadeWorld, "威尼斯共和国", "热那亚共和国", 41, "利古里亚封锁战", "plunder");
 warfare.startBlockade(blockadeWorld, blockadeFleet.id, 41);
 assert.equal(warfare.blockadeAtPort(blockadeWorld, 41).id, blockadeFleet.id, "舰队必须记录正在封锁的港口");
+const trappedGenoeseFleet = warfare.createFleet(blockadeWorld, {
+  owner: "热那亚共和国",
+  tileId: 45,
+  name: "热那亚港内舰队",
+  units: [{ shipType: "cog", ships: 3 }],
+});
+assert.throws(
+  () => warfare.planFleetRoute(blockadeWorld, trappedGenoeseFleet.id, 44),
+  /港口被封锁/,
+  "封锁港口外海时，应阻止被封锁方舰队直接离港"
+);
 trade.processTrade(blockadeWorld);
 assert.ok(blockadeWorld.trade.routes.levant.cost > 5, "封锁港口必须抬高相关商路成本");
 assert.ok(blockadeWorld.trade.lastIncome["热那亚共和国"] < genoeseTradeBeforeBlockade, "封锁必须降低被封锁港口收入");

@@ -487,10 +487,18 @@
     return distances.filter(item => item.distance <= nearest * 1.25).map(item => item.id);
   }
 
+  function blockadeHoldingFleet(world, fleet) {
+    return window.HIFI_WORLD_ENGINE.controlledTiles(world, fleet.owner)
+      .filter(tile => !tile.isSea && tile.buildings?.includes("port"))
+      .map(port => blockadeAtPort(world, port.id))
+      .find(blockader => blockader && blockader.owner !== fleet.owner && blockader.tileId === fleet.tileId) || null;
+  }
+
   function planFleetRoute(world, fleetId, targetId) {
     const fleet = world.warfare.fleets[fleetId];
     if (!fleet) throw new Error("舰队不存在");
     if (!world.tiles.find(tile => tile.id === targetId && tile.isSea)) throw new Error("舰队目标必须是海域");
+    if (blockadeHoldingFleet(world, fleet)) throw new Error("港口被封锁，舰队不能离港");
     fleet.targetPortId = null;
     fleet.targetRouteKey = null;
     const queue = [[fleet.tileId, []]];
