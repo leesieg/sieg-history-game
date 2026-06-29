@@ -521,6 +521,46 @@
     return item;
   }
 
+  function raiseImperialArmy(world, emperor, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial" || item.emperor !== emperor) throw new Error("只有皇帝可以征帝国军");
+    if (item.authority < 70) throw new Error("帝国权威不足");
+    if (!window.HIFI_WARFARE_ENGINE?.createArmy || !world.warfare) throw new Error("战争系统未初始化");
+    const country = world.countries[emperor];
+    if (country.actionPoints.military < 1) throw new Error("征帝国军需要 1 军事点");
+    const musterTile = window.HIFI_WORLD_ENGINE.controlledTiles(world, emperor)
+      .find(tile => tile.city && !tile.isSea)
+      || window.HIFI_WORLD_ENGINE.controlledTiles(world, emperor).find(tile => !tile.isSea);
+    if (!musterTile) throw new Error("皇帝没有可集结地块");
+    const contributors = Object.keys(item.members)
+      .filter(member => member !== emperor && world.countries[member]);
+    if (!contributors.length) throw new Error("没有可集结的帝国成员");
+    const soldiers = contributors.reduce((sum, member) => {
+      const population = countryPopulation(world, member);
+      return sum + Math.max(120, Math.round(population * 45));
+    }, 0);
+    country.actionPoints.military -= 1;
+    item.authority = clamp(item.authority - 15);
+    const army = window.HIFI_WARFARE_ENGINE.createArmy(world, {
+      owner: emperor,
+      tileId: musterTile.id,
+      name: "帝国军",
+      units: [{
+        name: "帝国征召步兵",
+        combatType: "infantry",
+        serviceType: "levy",
+        soldiers: Math.max(800, Math.min(5000, soldiers)),
+        morale: 58,
+        discipline: 48,
+        equipment: 52,
+      }],
+    });
+    army.imperial = true;
+    army.contributors = contributors;
+    syncCountryMemberships(world);
+    return { army, contributors, authority: item.authority };
+  }
+
   function declareImperialBan(world, emperor, target, id = "hre") {
     const item = structure(world, id);
     if (!item || item.type !== "imperial" || item.emperor !== emperor) throw new Error("只有皇帝可以帝国除籍");
@@ -604,6 +644,7 @@
     processSupranational,
     processDynasticSuccession,
     requestImperialMediation,
+    raiseImperialArmy,
     structure,
     summary,
     unionFor,

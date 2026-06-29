@@ -100,6 +100,36 @@ assert.ok(
   "帝国除籍应给其他帝国成员生成讨伐宣称"
 );
 
+const levyWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(10, "巴伐利亚公国", "慕尼黑", 14),
+  tile(11, "勃艮第公国", "第戎", 8),
+  tile(12, "弗兰德斯伯国", "布鲁日", 7),
+  tile(13, "米兰领", "米兰", 9),
+], undefined, "巴伐利亚公国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(levyWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(levyWorld);
+w.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(levyWorld);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(levyWorld);
+const levyHre = w.HIFI_SUPRANATIONAL_ENGINE.structure(levyWorld, "hre");
+levyHre.authority = 80;
+levyWorld.countries["巴伐利亚公国"].actionPoints.military = 2;
+const armyCountBefore = Object.keys(levyWorld.warfare.armies).length;
+const imperialLevy = w.HIFI_SUPRANATIONAL_ENGINE.raiseImperialArmy(levyWorld, "巴伐利亚公国");
+assert.equal(levyWorld.countries["巴伐利亚公国"].actionPoints.military, 1, "征帝国军应消耗军事点");
+assert.equal(levyHre.authority, 65, "征帝国军应消耗帝国权威");
+assert.equal(Object.keys(levyWorld.warfare.armies).length, armyCountBefore + 1, "征帝国军应生成军团");
+assert.equal(imperialLevy.army.owner, "巴伐利亚公国", "帝国军应归皇帝控制");
+assert.equal(imperialLevy.army.tileId, 10, "帝国军应在皇帝首府集结");
+assert.equal(imperialLevy.army.name, "帝国军", "帝国军名称应稳定");
+assert.equal(imperialLevy.army.units[0].serviceType, "levy", "帝国军应以征召兵形式生成");
+assert.ok(imperialLevy.contributors.includes("米兰领"), "征帝国军应记录成员贡献");
+levyHre.authority = 50;
+assert.throws(
+  () => w.HIFI_SUPRANATIONAL_ENGINE.raiseImperialArmy(levyWorld, "巴伐利亚公国"),
+  /帝国权威不足/,
+  "帝国权威不足时不能征帝国军"
+);
+
 const defenseWorld = w.HIFI_WORLD_ENGINE.createWorld([
   tile(20, "巴伐利亚公国", "慕尼黑", 14),
   tile(21, "米兰领", "米兰", 9),
