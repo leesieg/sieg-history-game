@@ -1092,6 +1092,11 @@
           terms: { diplomacy: "需宗主批准", war: "应召参战", military: "应召参战", finance: "固定贡赋" },
           startedTurn: world.turn,
         });
+      } else if (term.type === "personal_union") {
+        const junior = term.target || war.goal?.target || war.primaryGoal?.successionTarget;
+        if (!junior) throw new Error("缺少共主继承目标");
+        if (!window.HIFI_SUPRANATIONAL_ENGINE?.createPersonalUnion) throw new Error("共主系统未初始化");
+        window.HIFI_SUPRANATIONAL_ENGINE.createPersonalUnion(world, actor, junior, "继承战争和约");
       }
     }
     for (const tile of world.tiles) {
@@ -1123,6 +1128,7 @@
         const costs = { tributary: 35, vassal: 55, puppet: 75 };
         return sum + (costs[term.subjectType || "tributary"] || 35);
       }
+      if (term.type === "personal_union") return sum + 45;
       throw new Error("未知和约条款");
     }, 0);
   }

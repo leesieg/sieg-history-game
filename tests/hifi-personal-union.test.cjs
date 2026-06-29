@@ -127,11 +127,23 @@ for (const claimant of ["法兰西王国", "英格兰王国"]) {
   w.HIFI_DIPLOMACY_ENGINE.relationView(contestedWorld, "布列塔尼公国", claimant).trust = 70;
 }
 w.HIFI_SUPRANATIONAL_ENGINE.processDynasticSuccession(contestedWorld);
-assert.ok(
-  contestedWorld.diplomacy.wars.some(war => war.goal?.type === "succession" && war.goal.target === "布列塔尼公国"),
-  "多个接近的强王朝宣称者应触发继承战"
-);
+const successionWar = contestedWorld.diplomacy.wars.find(war => war.goal?.type === "succession" && war.goal.target === "布列塔尼公国");
+assert.ok(successionWar, "多个接近的强王朝宣称者应触发继承战");
 assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.unionFor(contestedWorld, "布列塔尼公国"), undefined, "继承战未决前不应直接形成共主");
+const successionVictor = successionWar.attackers[0];
+successionWar.score = 55;
+assert.equal(
+  w.HIFI_WARFARE_ENGINE.canConcludePeace(contestedWorld, successionWar, successionVictor, [{ type: "personal_union" }]),
+  true,
+  "继承战胜方应能以战争分数强制共主邦联"
+);
+w.HIFI_WARFARE_ENGINE.concludePeace(contestedWorld, successionWar.id, successionVictor, [{ type: "personal_union" }]);
+assert.equal(
+  w.HIFI_SUPRANATIONAL_ENGINE.unionFor(contestedWorld, "布列塔尼公国").head,
+  successionVictor,
+  "继承战和约必须形成胜方主导的共主邦联"
+);
+assert.equal(contestedWorld.diplomacy.wars.length, 0, "继承战和约必须结束战争");
 
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawers = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
