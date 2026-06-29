@@ -311,7 +311,8 @@
     if ((country.warfare?.warExhaustion || 0) >= 40) throw new Error("战争疲惫过高，难以继续征召");
     if (combatType === "cavalry" && !canRecruitCombatType(world, polity, "cavalry")) throw new Error("缺少马匹来源，无法动员骑兵");
     if (combatType === "artillery") {
-      if (!canRecruitCombatType(world, polity, "artillery")) throw new Error("尚未掌握火炮技术");
+      if (!country.technology?.artillery) throw new Error("尚未掌握火炮技术");
+      if (!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "saltpeter")) throw new Error("缺少硝石来源，无法铸炮");
       if (country.military < 30) throw new Error("铸炮需要军需 30");
       country.actionPoints.military -= 1;
       country.military -= 30;
@@ -397,7 +398,11 @@
     if (type === "cavalry") {
       return !!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "horses");
     }
-    return type !== "artillery" || !!world.countries[polity].technology?.artillery;
+    if (type === "artillery") {
+      return !!world.countries[polity].technology?.artillery
+        && !!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "saltpeter");
+    }
+    return true;
   }
 
   function hasNavalMaterial(world, polity) {
