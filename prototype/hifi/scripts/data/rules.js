@@ -6,6 +6,8 @@
     market: { label: "市场", cost: 24, effect: "金钱产出 +40%" },
     fort: { label: "堡垒", cost: 30, effect: "军需产出与防御提升" },
     port: { label: "港口", cost: 28, effect: "沿海金钱与贸易能力提升" },
+    shipyard: { label: "船坞", cost: 38, effect: "降低造舰成本，提升海军军需", terrains: ["coast"], requiresBuilding: "port" },
+    navalBase: { label: "军港", cost: 46, effect: "大型舰队整备与海军军需提升", terrains: ["coast"], requiresBuilding: "shipyard" },
     workshop: { label: "工坊", cost: 34, effect: "金钱与军需产出提升" },
     mine: { label: "矿场", cost: 32, effect: "矿物与金属产出提升", goods: ["iron", "copper", "tin", "saltpeter", "gold", "silver"] },
     stable: { label: "马场", cost: 26, effect: "马匹产出提升", goods: ["horses"] },

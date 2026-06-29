@@ -480,6 +480,13 @@
     return { ok: true };
   }
 
+  function shipyardDiscount(port, shipType) {
+    let factor = 1;
+    if (port.buildings?.includes("shipyard")) factor -= .15;
+    if (port.buildings?.includes("navalBase") && ["galleon", "shipOfLine", "frigate"].includes(shipType)) factor -= .1;
+    return Math.max(.7, factor);
+  }
+
   function buildFleet(world, polity, portTileId, shipType = "galley") {
     const country = world.countries[polity];
     const port = world.tiles.find(tile => tile.id === portTileId);
@@ -487,11 +494,14 @@
     const permission = canBuildShipType(world, polity, shipType);
     if (!permission.ok) throw new Error(permission.reason);
     const definition = shipTypes[shipType];
-    if (country.money < definition.cost.money || country.military < definition.cost.military) throw new Error("造舰资源不足");
+    const discount = shipyardDiscount(port, shipType);
+    const moneyCost = Math.round(definition.cost.money * discount);
+    const militaryCost = Math.round(definition.cost.military * discount);
+    if (country.money < moneyCost || country.military < militaryCost) throw new Error("造舰资源不足");
     const sea = nearestSeaTile(world, portTileId);
     if (!sea) throw new Error("港口附近没有可用海域");
-    country.money -= definition.cost.money;
-    country.military -= definition.cost.military;
+    country.money -= moneyCost;
+    country.military -= militaryCost;
     return createFleet(world, {
       owner: polity,
       tileId: sea.id,
@@ -1223,6 +1233,7 @@
     navalWaterType,
     nearestSeaTile,
     planArmyRoute,
+    shipyardDiscount,
     planFleetRoute,
     blockadeAtPort,
     peaceTermsCost,

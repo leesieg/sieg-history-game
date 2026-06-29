@@ -236,6 +236,8 @@
     if (tile.buildings.includes("farm")) food *= 1.35;
     if (tile.buildings.includes("market")) money *= 1.4;
     if (tile.buildings.includes("port")) money *= 1.25;
+    if (tile.buildings.includes("shipyard")) military += 2;
+    if (tile.buildings.includes("navalBase")) military += 4;
     if (tile.buildings.includes("fort")) military *= 1.3;
     if (tile.buildings.includes("workshop")) {
       money *= 1.2;
@@ -515,6 +517,8 @@
     if (!tile || tile.isSea || tile.polity !== polity) return { ok: false, reason: "只能在己方陆地建设" };
     if (!building) return { ok: false, reason: "未知建筑" };
     if (tile.buildings.includes(buildingKey)) return { ok: false, reason: "地块已有该建筑" };
+    if (building.terrains?.length && !building.terrains.includes(tile.terrain)) return { ok: false, reason: "该建筑不适合当前地形" };
+    if (building.requiresBuilding && !tile.buildings.includes(building.requiresBuilding)) return { ok: false, reason: "缺少前置建筑" };
     if (!buildingAppliesToGood(building, normalizeGoodKey(tile.good))) return { ok: false, reason: "该建筑不适合当前物产" };
     if (country.money < building.cost || country.actionPoints.administrative < 1) return { ok: false, reason: "建设资源不足" };
     return { ok: true, reason: "" };

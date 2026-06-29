@@ -104,6 +104,23 @@ assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "frigate
 const fleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galley");
 assert.equal(fleet.tileId, 12, "舰队必须生成在港口附近海域");
 assert.equal(warfare.fleetTotalShips(fleet), 4);
+assert.equal(warfare.shipyardDiscount(navalWorld.tiles[0], "galley"), 1, "普通港口不应获得船坞折扣");
+const shipyardWorld = worldEngine.createWorld([
+  { id: 40, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port", "shipyard", "navalBase"], city: "威尼斯", terrain: "coast", good: "naval_supplies", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 41, isSea: false, polity: "威尼斯共和国", population: 6, buildings: [], city: "", terrain: "forest", good: "timber", x: 0, y: 10, control: 80, devastation: 0 },
+  { id: 42, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
+], {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(shipyardWorld);
+warfare.initializeWarfare(shipyardWorld);
+economy.initializeEconomy(shipyardWorld);
+shipyardWorld.countries["威尼斯共和国"].money = 100;
+shipyardWorld.countries["威尼斯共和国"].military = 50;
+shipyardWorld.countries["威尼斯共和国"].technology.triangleTrade = true;
+const beforeDiscountMoney = shipyardWorld.countries["威尼斯共和国"].money;
+const beforeDiscountMilitary = shipyardWorld.countries["威尼斯共和国"].military;
+warfare.buildFleet(shipyardWorld, "威尼斯共和国", 40, "galleon");
+assert.ok(beforeDiscountMoney - shipyardWorld.countries["威尼斯共和国"].money < warfare.shipTypes.galleon.cost.money, "船坞/军港必须降低大型舰船金钱成本");
+assert.ok(beforeDiscountMilitary - shipyardWorld.countries["威尼斯共和国"].military < warfare.shipTypes.galleon.cost.military, "船坞/军港必须降低大型舰船军需成本");
 const galleonFleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galleon");
 assert.equal(galleonFleet.units[0].ships, 2, "盖伦船队应按大型舰船数量生成");
 navalWorld.countries["威尼斯共和国"].actionPoints.military = 2;
