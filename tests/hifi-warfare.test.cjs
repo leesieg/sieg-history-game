@@ -260,6 +260,15 @@ const blockadeFleet = warfare.createFleet(blockadeWorld, {
 warfare.declareWar(blockadeWorld, "威尼斯共和国", "热那亚共和国", 41, "利古里亚封锁战", "plunder");
 warfare.startBlockade(blockadeWorld, blockadeFleet.id, 41);
 assert.equal(warfare.blockadeAtPort(blockadeWorld, 41).id, blockadeFleet.id, "舰队必须记录正在封锁的港口");
+const siegeArmy = warfare.createArmy(blockadeWorld, {
+  owner: "威尼斯共和国",
+  tileId: 41,
+  name: "海岸围攻军",
+  units: [{ combatType: "infantry", serviceType: "professional", soldiers: 1200 }],
+});
+blockadeWorld.tiles.find(tile => tile.id === 41).buildings = ["port", "fort"];
+warfare.advanceOccupation(blockadeWorld, siegeArmy.id);
+assert.equal(blockadeWorld.tiles.find(tile => tile.id === 41).occupation, 75, "封锁舰队应支援沿海堡垒围攻");
 const trappedGenoeseFleet = warfare.createFleet(blockadeWorld, {
   owner: "热那亚共和国",
   tileId: 45,

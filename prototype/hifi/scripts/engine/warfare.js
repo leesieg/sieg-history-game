@@ -985,6 +985,13 @@
     return battle;
   }
 
+  function occupationProgressFor(world, army, tile) {
+    const base = tile.buildings.includes("fort") ? 50 : 100;
+    const navalSupport = tile.buildings.includes("port")
+      && blockadeAtPort(world, tile.id)?.owner === army.owner;
+    return Math.min(100, base + (navalSupport ? 25 : 0));
+  }
+
   function advanceOccupation(world, armyId) {
     const army = world.warfare.armies[armyId];
     const tile = world.tiles.find(candidate => candidate.id === army.tileId);
@@ -992,7 +999,7 @@
     if (!world.countries[tile.polity] || !areAtWar(world, army.owner, tile.polity)) return tile;
     const alreadyComplete = tile.occupier === army.owner && tile.occupation >= 100;
     tile.occupier = army.owner;
-    tile.occupation = Math.min(100, tile.occupation + (tile.buildings.includes("fort") ? 50 : 100));
+    tile.occupation = Math.min(100, tile.occupation + occupationProgressFor(world, army, tile));
     tile.devastation = Math.min(100, tile.devastation + 3);
     if (!alreadyComplete && tile.occupation >= 100) {
       const defender = world.countries[tile.polity];
