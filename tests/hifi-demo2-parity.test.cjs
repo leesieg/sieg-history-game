@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..", "prototype", "hifi");
 const scripts = path.join(root, "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/techs.js",
   "data/rules.js",
   "data/trade.js",
   "engine/world.js",
@@ -36,20 +37,19 @@ assert.deepEqual(
   Object.keys(context.window.HIFI_TRADE_DATA.pools).sort(),
   ["north", "orient", "silver", "south", "west"]
 );
-assert.deepEqual(
-  Object.keys(context.window.HIFI_RULES.technologies).sort(),
-  [
-    "accounting",
-    "artillery",
-    "bastions",
-    "oceanGoingShips",
-    "printing",
-    "railways",
-    "standingArmy",
-    "steamEngine",
-    "triangleTrade",
-  ].sort()
-);
+assert.equal(Object.keys(context.window.HIFI_RULES.technologies).length, 25, "科技树必须达到 39 号设计的 25 个具体节点");
+for (const key of [
+  "codifiedLaw",
+  "plateCavalry",
+  "threeFieldSystem",
+  "compassCharts",
+  "universities",
+  "standingArmy",
+  "jointStockCompanies",
+  "scientificMethod",
+  "enlightenment",
+  "constitutionalism",
+]) assert.ok(context.window.HIFI_RULES.technologies[key], `科技树缺少关键节点 ${key}`);
 assert.equal(context.window.HIFI_HISTORY_ENGINE.eras.length, 6, "必须包含工业纪元");
 
 const politics = context.window.HIFI_POLITICS_ENGINE;
