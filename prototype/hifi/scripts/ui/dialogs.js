@@ -141,6 +141,9 @@
       world.warfare.selectedFleet = fleetId;
       const sea = world.tiles.find(candidate => candidate.id === fleet.tileId);
       const engine = window.HIFI_WARFARE_ENGINE;
+      const admiral = fleet.admiralId ? world.warfare.generals[fleet.admiralId] : null;
+      const availableAdmirals = Object.values(world.warfare.generals || {})
+        .filter(candidate => candidate.owner === fleet.owner && candidate.type === "admiral" && candidate.id !== fleet.admiralId);
       const composition = fleet.units.map(unit =>
         `<div class="drawer-row">${shipTypeLabels[unit.shipType] || unit.shipType}<span>${unit.ships} 艘 · 经验 ${unit.experience || 0}</span></div>`
       ).join("");
@@ -162,6 +165,12 @@
         <div class="drawer-row">任务<span>${fleet.order === "blockade" ? "封锁港口" : fleet.order === "privateer" ? "私掠商路" : fleet.order === "sail" ? "航行" : "待命"}</span></div>
         <div class="drawer-row">士气 / 组织 / 补给<span>${fleet.morale} / ${fleet.organization} / ${fleet.supply}</span></div>
         <div class="drawer-row">运载力<span>${engine.fleetTransportLoad(world, fleet.id)} / ${engine.fleetTransportCapacity(fleet)}</span></div>
+        <div class="drawer-row">海军将领<span>${admiral ? `${admiral.name} · 指挥 ${admiral.command}` : "未任命"}</span></div>
+        <div class="drawer-subtitle">将领任命</div>
+        <div class="icon-cmd-row">
+          <button class="icon-cmd wide" data-tip="消耗 1 军事点，在有港口的国家招募海军将领" aria-label="招募海军将领" data-recruit-admiral="1">＋ 招募海军将领</button>
+          ${availableAdmirals.map(candidate => `<button class="icon-cmd wide" data-tip="任命海军将领指挥该舰队" aria-label="任命 ${candidate.name}" data-assign-admiral="${candidate.id}">${candidate.name} · 指挥 ${candidate.command}</button>`).join("")}
+        </div>
         <div class="drawer-subtitle">编成</div>${composition}
         <div class="drawer-subtitle">海军命令</div>
         <div class="icon-cmd-row">
@@ -172,6 +181,20 @@
       body.querySelector("[data-fleet-stop]")?.addEventListener("click", () => {
         store.update(current => engine.stopFleetOperation(current, fleetId));
         renderFleet(fleetId);
+      });
+      body.querySelector("[data-recruit-admiral]")?.addEventListener("click", () => {
+        try {
+          store.update(current => engine.recruitAdmiral(current, fleet.owner));
+          renderFleet(fleetId);
+        } catch (error) { window.hifiGame?.showToast?.(error.message); }
+      });
+      body.querySelectorAll("[data-assign-admiral]").forEach(button => {
+        button.addEventListener("click", () => {
+          try {
+            store.update(current => engine.assignAdmiral(current, fleetId, button.dataset.assignAdmiral));
+            renderFleet(fleetId);
+          } catch (error) { window.hifiGame?.showToast?.(error.message); }
+        });
       });
       body.querySelectorAll("[data-fleet-blockade]").forEach(button => {
         button.addEventListener("click", () => {

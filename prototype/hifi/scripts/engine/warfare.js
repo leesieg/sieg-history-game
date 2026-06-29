@@ -151,6 +151,7 @@
       order: config.order || "hold",
       targetPortId: config.targetPortId || null,
       targetRouteKey: config.targetRouteKey || null,
+      admiralId: config.admiralId || null,
       plannedPath: config.plannedPath ? [...config.plannedPath] : [],
       units: config.units.map(unit => ({ experience: 0, ...unit })),
     };
@@ -286,16 +287,47 @@
     return general;
   }
 
+  function recruitAdmiral(world, polity) {
+    const country = world.countries[polity];
+    if (!country) throw new Error("国家不存在");
+    if ((country.actionPoints?.military || 0) < 1) throw new Error("军事点不足");
+    const hasPort = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)
+      .some(tile => !tile.isSea && tile.buildings?.includes("port"));
+    if (!hasPort) throw new Error("需要港口才能招募海军将领");
+    country.actionPoints.military -= 1;
+    const seq = (world.warfare.nextGeneralId = (world.warfare.nextGeneralId || 0) + 1);
+    const id = `admiral:${polity}:${seq}`;
+    const command = Math.min(6, 2
+      + (country.technology?.compassCharts ? 1 : 0)
+      + (country.technology?.oceanGoingShips ? 1 : 0)
+      + (country.technology?.shipOfLine ? 1 : 0));
+    const admiral = { id, owner: polity, name: `${polity}海军将领${seq}`, command, type: "admiral", ruler: false };
+    world.warfare.generals[id] = admiral;
+    return admiral;
+  }
+
   function assignGeneral(world, armyId, generalId) {
     const army = world.warfare.armies[armyId];
     const general = world.warfare.generals[generalId];
     if (!army || !general || general.owner !== army.owner) throw new Error("将领不属于该国");
+    if (general.type === "admiral") throw new Error("海军将领不能指挥陆军");
     if (army.mercenaryLoyalty !== undefined) throw new Error("佣兵团自带首领");
     Object.values(world.warfare.armies).forEach(candidate => {
       if (candidate.generalId === generalId) candidate.generalId = null;
     });
     army.generalId = generalId;
     return general;
+  }
+
+  function assignAdmiral(world, fleetId, admiralId) {
+    const fleet = world.warfare.fleets[fleetId];
+    const admiral = world.warfare.generals[admiralId];
+    if (!fleet || !admiral || admiral.owner !== fleet.owner || admiral.type !== "admiral") throw new Error("海军将领不属于该舰队");
+    Object.values(world.warfare.fleets).forEach(candidate => {
+      if (candidate.admiralId === admiralId) candidate.admiralId = null;
+    });
+    fleet.admiralId = admiralId;
+    return admiral;
   }
 
   function dismissGeneral(world, armyId) {
@@ -805,7 +837,9 @@
           : 1;
         return power + unit.ships * 100 * definition.strength * waterFactor * lineBonus * (1 + (unit.experience || 0) * .04);
       }, 0);
-      return sum + composition * fleet.morale / 100 * fleet.organization / 100 * fleet.supply / 100;
+      const admiral = fleet.admiralId ? world.warfare.generals[fleet.admiralId] : null;
+      const command = 1 + (admiral?.command || 0) * .03;
+      return sum + composition * command * fleet.morale / 100 * fleet.organization / 100 * fleet.supply / 100;
     }, 0);
   }
 
@@ -1129,6 +1163,7 @@
 
   window.HIFI_WARFARE_ENGINE = {
     advanceOccupation,
+    assignAdmiral,
     assignGeneral,
     areAtWar,
     armyTotalSoldiers,
@@ -1171,6 +1206,7 @@
     privateersOnRoute,
     termAllowedByGoal,
     recruitGeneral,
+    recruitAdmiral,
     processWarfare,
     reinforceArmy,
     releaseMercenary,

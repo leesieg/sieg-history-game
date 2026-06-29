@@ -106,6 +106,21 @@ assert.equal(fleet.tileId, 12, "舰队必须生成在港口附近海域");
 assert.equal(warfare.fleetTotalShips(fleet), 4);
 const galleonFleet = warfare.buildFleet(navalWorld, "威尼斯共和国", 10, "galleon");
 assert.equal(galleonFleet.units[0].ships, 2, "盖伦船队应按大型舰船数量生成");
+navalWorld.countries["威尼斯共和国"].actionPoints.military = 2;
+const fleetPowerWithoutAdmiral = warfare.navalPower(navalWorld, [fleet.id], navalTiles[2]);
+const admiral = warfare.recruitAdmiral(navalWorld, "威尼斯共和国");
+assert.equal(admiral.type, "admiral", "海军将领必须标记为 admiral");
+assert.equal(navalWorld.countries["威尼斯共和国"].actionPoints.military, 1, "招募海军将领应消耗军事点");
+warfare.assignAdmiral(navalWorld, fleet.id, admiral.id);
+assert.equal(fleet.admiralId, admiral.id, "舰队应能任命海军将领");
+assert.ok(warfare.navalPower(navalWorld, [fleet.id], navalTiles[2]) > fleetPowerWithoutAdmiral, "海军将领指挥力必须提高舰队制海权");
+const admiralArmy = warfare.createArmy(navalWorld, {
+  owner: "威尼斯共和国",
+  tileId: 10,
+  name: "海军将领误任陆军测试",
+  units: [{ combatType: "infantry", serviceType: "levy", soldiers: 300 }],
+});
+assert.throws(() => warfare.assignGeneral(navalWorld, admiralArmy.id, admiral.id), /海军将领不能指挥陆军/, "海军将领不能指挥陆军");
 assert.deepEqual(warfare.planFleetRoute(navalWorld, fleet.id, 14), [13, 14], "舰队必须沿海域邻接寻路");
 warfare.executeNavalMovementPhase(navalWorld);
 assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
