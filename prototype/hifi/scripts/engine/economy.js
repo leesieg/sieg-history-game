@@ -260,6 +260,34 @@
     return target;
   }
 
+  function normalizeGoodKey(key) {
+    return window.HIFI_GOODS?.aliases?.[key] || key;
+  }
+
+  function countryProducesGood(world, polity, key) {
+    const goodKey = normalizeGoodKey(key);
+    const country = world.countries[polity];
+    if ((country?.goodsAccess?.[goodKey] || 0) > 0) return true;
+    return window.HIFI_WORLD_ENGINE.controlledTiles(world, polity)
+      .some(tile => normalizeGoodKey(tile.good) === goodKey);
+  }
+
+  function hasGoodAccess(world, polity, key) {
+    const country = world.countries[polity];
+    if (!country) throw new Error("未知国家");
+    const goodKey = normalizeGoodKey(key);
+    if (countryProducesGood(world, polity, goodKey)) return true;
+    if (country.tradePolicy === "closed") return false;
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    return Object.keys(world.countries).some(other => {
+      if (other === polity) return false;
+      const partner = world.countries[other];
+      if (partner.tradePolicy === "closed") return false;
+      if (diplomacy?.embargoBetween?.(world, polity, other)) return false;
+      return countryProducesGood(world, other, goodKey);
+    });
+  }
+
   function processPopulation(world, polity, report) {
     const country = world.countries[polity];
     const territory = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
@@ -497,6 +525,7 @@
     constructBuilding,
     developTile,
     enactEdict,
+    hasGoodAccess,
     initializeEconomy,
     integrateTile,
     ensureResearchState,

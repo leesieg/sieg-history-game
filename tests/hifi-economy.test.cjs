@@ -83,6 +83,17 @@ assert.equal(country.money - before.money, report.money - report.maintenance.mon
 assert.ok(country.military > before.military);
 assert.equal(report.tiles, 2);
 
+const accessWorld = worldEngine.createWorld([
+  { id: 20, isSea: false, polity: "买马国", population: 8, control: 80, good: "grain", terrain: "plains", buildings: [], city: "买方", devastation: 0 },
+  { id: 21, isSea: false, polity: "产马国", population: 8, control: 80, good: "horses", terrain: "steppe", buildings: [], city: "马市", devastation: 0 },
+], {}, "买马国");
+accessWorld.diplomacy = { embargoes: [] };
+economy.initializeEconomy(accessWorld);
+economy.settleCountry(accessWorld, "产马国");
+assert.equal(economy.hasGoodAccess(accessWorld, "买马国", "horses"), true, "可贸易来源必须提供马匹访问");
+accessWorld.diplomacy.embargoes.push({ actor: "产马国", target: "买马国" });
+assert.equal(economy.hasGoodAccess(accessWorld, "买马国", "horses"), false, "禁运必须切断贸易马源");
+
 const churchLandWorld = worldEngine.createWorld([
   { id: 40, isSea: false, polity: "教产测试国", population: 20, control: 100, good: "grain", terrain: "plains", climate: "temperate", buildings: ["market"], city: "主教座堂城", devastation: 0, churchLandShare: 0.2 },
 ]);

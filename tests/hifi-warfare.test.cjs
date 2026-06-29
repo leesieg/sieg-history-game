@@ -61,6 +61,20 @@ tiles[1].good = "horses";
 world.countries["法兰西王国"].hasHorseSource = true;
 assert.equal(warfare.canRecruitCombatType(world, "法兰西王国", "cavalry"), true, "拥有马匹来源后可以动员骑兵");
 
+const horseTradeWorld = worldEngine.createWorld([
+  { id: 20, isSea: false, polity: "法兰西王国", population: 8, buildings: [], city: "巴黎", terrain: "plains", good: "grain", x: 0, y: 0, control: 80, devastation: 0 },
+  { id: 21, isSea: false, polity: "英格兰王国", population: 8, buildings: [], city: "约克", terrain: "steppe", good: "horses", x: 20, y: 0, control: 80, devastation: 0 },
+]);
+diplomacy.initializeDiplomacy(horseTradeWorld);
+warfare.initializeWarfare(horseTradeWorld);
+horseTradeWorld.diplomacy.wars = [];
+economy.initializeEconomy(horseTradeWorld);
+economy.settleCountry(horseTradeWorld, "英格兰王国");
+assert.equal(warfare.canRecruitCombatType(horseTradeWorld, "法兰西王国", "cavalry"), true, "贸易马源必须允许动员骑兵");
+horseTradeWorld.countries["英格兰王国"].actionPoints.diplomatic = 2;
+diplomacy.imposeEmbargo(horseTradeWorld, "英格兰王国", "法兰西王国");
+assert.equal(warfare.canRecruitCombatType(horseTradeWorld, "法兰西王国", "cavalry"), false, "被产马国禁运后不能继续动员骑兵");
+
 const navalTiles = [
   { id: 10, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "fish", x: 0, y: 0, control: 90, devastation: 0 },
   { id: 11, isSea: false, polity: "威尼斯共和国", population: 6, buildings: [], city: "", terrain: "forest", good: "timber", x: 0, y: 10, control: 80, devastation: 0 },

@@ -394,8 +394,7 @@
 
   function canRecruitCombatType(world, polity, type) {
     if (type === "cavalry") {
-      return !!world.countries[polity].hasHorseSource
-        || window.HIFI_WORLD_ENGINE.controlledTiles(world, polity).some(tile => tile.good === "horses");
+      return !!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "horses");
     }
     return type !== "artillery" || !!world.countries[polity].technology?.artillery;
   }
