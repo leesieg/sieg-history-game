@@ -473,4 +473,39 @@ assert.ok(mapSourceEcon.includes("data-focus-sel") || mainSource.includes("data-
   console.log("A2 settleCountry 扣维护 OK");
 }
 
+// --- Task A3: 货币市场补军需缺口 ---
+{
+  const importWorld = worldEngine.createWorld([
+    { id: 1, isSea: false, polity: "买法兰西", population: 4, control: 45, good: "grain", terrain: "plains", climate: "temperate", buildings: [], city: "买方", devastation: 0 },
+    { id: 2, isSea: false, polity: "卖铁国", population: 8, control: 100, good: "iron", terrain: "hills", climate: "temperate", buildings: ["mine"], city: "铁市", devastation: 0 },
+  ], {}, "买法兰西");
+  importWorld.diplomacy = { embargoes: [] };
+  importWorld.warfare = { armies: {
+    standing: { id: "standing", owner: "买法兰西", units: [{ combatType: "infantry", serviceType: "standing", soldiers: 5000 }] },
+  } };
+  economy.initializeEconomy(importWorld);
+  const buyer = importWorld.countries["买法兰西"];
+  buyer.money = 100;
+  buyer.military = 0;
+  const beforeMoney = buyer.money;
+  const importReport = economy.settleCountry(importWorld, "买法兰西");
+  assert.ok(importReport.imports?.military?.amount > 0, "有可贸易军需物产时应进口补军需缺口");
+  assert.ok(buyer.money < beforeMoney + importReport.money, "进口军需必须真实消耗金钱");
+
+  const embargoWorld = worldEngine.createWorld([
+    { id: 3, isSea: false, polity: "禁运买方", population: 4, control: 45, good: "grain", terrain: "plains", climate: "temperate", buildings: [], city: "禁运买方", devastation: 0 },
+    { id: 4, isSea: false, polity: "禁运卖方", population: 8, control: 100, good: "iron", terrain: "hills", climate: "temperate", buildings: ["mine"], city: "禁运卖方", devastation: 0 },
+  ], {}, "禁运买方");
+  embargoWorld.diplomacy = { embargoes: [{ actor: "禁运卖方", target: "禁运买方" }] };
+  embargoWorld.warfare = { armies: {
+    standing: { id: "standing", owner: "禁运买方", units: [{ combatType: "infantry", serviceType: "standing", soldiers: 5000 }] },
+  } };
+  economy.initializeEconomy(embargoWorld);
+  embargoWorld.countries["禁运买方"].money = 100;
+  embargoWorld.countries["禁运买方"].military = 0;
+  const embargoReport = economy.settleCountry(embargoWorld, "禁运买方");
+  assert.equal(embargoReport.imports, undefined, "被禁运后不能从对方进口军需补缺口");
+  assert.ok(embargoReport.shortage?.military > 0, "禁运切断进口后应暴露军需短缺");
+}
+
 console.log("hifi economy engine passed");

@@ -383,6 +383,28 @@
     return { food: Math.round(food), military: Math.round(military) };
   }
 
+  function importCostForGood(key) {
+    const good = window.HIFI_GOODS?.goods?.[normalizeGoodKey(key)];
+    return Math.max(1, Math.round((good?.baseValue || 2) * 1.25));
+  }
+
+  function importStrategicShortages(world, polity, report, maintenance) {
+    const country = world.countries[polity];
+    const deficit = Math.max(0, maintenance.military - report.military);
+    if (!deficit) return report;
+    const source = ["iron", "copper", "leather", "saltpeter"].find(key => hasGoodAccess(world, polity, key));
+    if (!source) return report;
+    const unitCost = importCostForGood(source);
+    const amount = Math.min(deficit, Math.floor((country.money || 0) / unitCost));
+    if (!amount) return report;
+    const cost = amount * unitCost;
+    country.money -= cost;
+    report.military += amount;
+    report.imports ||= {};
+    report.imports.military = { good: source, amount, cost };
+    return report;
+  }
+
   function buildingMaintenance(world, polity) {
     const tiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, polity);
     const count = tiles.reduce((sum, tile) => sum + (tile.buildings?.length || 0), 0);
@@ -416,6 +438,7 @@
       money: buildingMaintenance(world, polity),
     };
     report.maintenance = maintenance;
+    importStrategicShortages(world, polity, report, maintenance);
     processPopulation(world, polity, report);
     if (country.faith && report.church) {
       country.faith.churchWealth = Math.round(((country.faith.churchWealth || 0) + report.church) * 10) / 10;
