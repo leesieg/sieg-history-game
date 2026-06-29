@@ -149,6 +149,15 @@ const popBeforeFamine = famineTiles[0].population;
 economy.settleCountry(famineWorld, "饥荒测试国");
 assert.ok(famineTiles[0].population < popBeforeFamine, "连续粮食赤字必须造成 POP 缓慢减员");
 
+const recoveryTiles = [
+  { id: 11, isSea: false, polity: "人口恢复测试国", population: 8, basePopulation: 10, control: 100, good: "grain", terrain: "plains", climate: "temperate", buildings: ["farm"], city: "粮仓城", devastation: 0 },
+];
+const recoveryWorld = worldEngine.createWorld(recoveryTiles, {}, "人口恢复测试国");
+economy.initializeEconomy(recoveryWorld);
+const popBeforeRecovery = recoveryTiles[0].population;
+economy.settleCountry(recoveryWorld, "人口恢复测试国");
+assert.ok(recoveryTiles[0].population > popBeforeRecovery, "粮食盈余下的人口恢复必须由经济系统完成");
+
 country.actionPoints.administrative = 3;
 country.money = 100;
 const controlBeforeIntegrate = tiles[1].control;

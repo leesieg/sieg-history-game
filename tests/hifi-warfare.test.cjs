@@ -432,12 +432,14 @@ assert.equal(fr.warfare.warExhaustion, 28, "和平时战争疲惫必须逐季消
 fr.warfare.warExhaustion = 45;
 fr.actionPoints.military = 2;
 assert.throws(() => warfare.mobilizeArmy(freshWorld, "法兰西王国", 0, "infantry"), /战争疲惫/);
-// 人口自然恢复流
+// 战争系统只衰减破坏，不负责人口自然恢复；人口增长归经济系统。
 fr.warfare.warExhaustion = 0;
 const recoverTile = freshWorld.tiles[0];
 recoverTile.population = recoverTile.basePopulation - 2;
+recoverTile.devastation = 12;
 warfare.processWarfare(freshWorld);
-assert.ok(recoverTile.population > recoverTile.basePopulation - 2, "和平地块人口必须自然恢复");
+assert.equal(recoverTile.population, recoverTile.basePopulation - 2, "战争流程不应直接恢复人口");
+assert.equal(recoverTile.devastation, 10, "战争破坏应在和平时逐季衰减");
 
 // 防御同盟自动参战
 const allyWorld = worldEngine.createWorld([

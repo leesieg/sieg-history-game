@@ -1074,19 +1074,16 @@
     for (const army of Object.values(world.warfare.armies)) {
       if (army.status === "ready") advanceOccupation(world, army.id);
     }
-    recoverLand(world);
+    recoverWarDamage(world);
     processWarExhaustion(world);
   }
 
-  // 人口自然恢复流 + 战争破坏自愈（核心循环：基底随和平回血）
-  function recoverLand(world) {
+  // 战争只负责破坏与破坏衰减；人口增长/饥荒由 economy.processPopulation 单一负责。
+  function recoverWarDamage(world) {
     for (const tile of world.tiles) {
       if (tile.isSea) continue;
       if (tile.basePopulation === undefined) tile.basePopulation = tile.population;
       if (tile.devastation > 0) tile.devastation = Math.max(0, tile.devastation - 2);
-      if (!tile.occupier && tile.devastation < 30 && tile.population < tile.basePopulation) {
-        tile.population = Math.min(tile.basePopulation, Math.round((tile.population + .2) * 10) / 10);
-      }
     }
   }
 
