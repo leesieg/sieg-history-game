@@ -120,4 +120,23 @@ const religiousWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
 assert.equal(religiousWar.cbMatched, true, "十字军宣称应被战争系统识别为宣战理由");
 assert.equal(authorityWorld.countries["法兰西王国"].reputation, reputationBeforeWar, "有十字军宣称宣战不应扣声望");
 
+const defenderWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(30, "法兰西王国", "巴黎", "天主教", 20),
+  tile(31, "布列塔尼公国", "南特", "天主教", 8),
+  tile(32, "格拉纳达酋长国", "格拉纳达", "逊尼派", 12),
+], undefined, "法兰西王国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(defenderWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(defenderWorld);
+const defender = w.HIFI_FAITH_ENGINE.appointDefenderOfFaith(defenderWorld, "法兰西王国", "法兰西王国");
+assert.equal(defender.defender, "法兰西王国", "教廷应能任命天主教信仰捍卫者");
+w.HIFI_WARFARE_ENGINE.initializeWarfare(defenderWorld);
+const defensiveWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
+  defenderWorld,
+  "格拉纳达酋长国",
+  "布列塔尼公国",
+  "信仰防御战争",
+  "conquest"
+);
+assert.ok(defensiveWar.defenders.includes("法兰西王国"), "天主教国家被非天主教国家攻击时，信仰捍卫者应自动参战");
+
 console.log("hifi faith passed");

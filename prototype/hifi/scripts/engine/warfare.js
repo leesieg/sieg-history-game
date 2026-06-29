@@ -684,6 +684,11 @@
       war.defenders.push(ally);
       war.participants[ally] = { side: "defender", warWill: 70, contribution: 0 };
     }
+    const faithDefender = window.HIFI_FAITH_ENGINE?.defenderOfFaithForWar?.(world, attacker, defender);
+    if (faithDefender && !war.defenders.includes(faithDefender) && !underTruce(world, faithDefender, attacker)) {
+      war.defenders.push(faithDefender);
+      war.participants[faithDefender] = { side: "defender", warWill: 72, contribution: 0 };
+    }
     if (!cbMatched) {
       const country = world.countries[attacker];
       country.reputation = Math.max(0, (country.reputation ?? 60) - 8);

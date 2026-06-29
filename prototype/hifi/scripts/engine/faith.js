@@ -113,6 +113,29 @@
     return { target, claims, authority: papacy.authority };
   }
 
+  function appointDefenderOfFaith(world, controller, polity) {
+    const papacy = ensurePapalController(world, controller);
+    const country = ensureCountry(world, polity);
+    if (country.stateConfession !== "catholic") throw new Error("信仰捍卫者必须信奉天主教");
+    country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+    papacy.defender = polity;
+    papacy.authority = clamp((papacy.authority ?? 65) + 3);
+    country.faith.piety = clamp((country.faith.piety ?? 60) + 10);
+    country.faith.papalFavor = clamp((country.faith.papalFavor ?? 50) + 10);
+    country.legitimacy = clamp((country.legitimacy ?? 60) + 5);
+    return { defender: polity, authority: papacy.authority };
+  }
+
+  function defenderOfFaithForWar(world, attacker, defender) {
+    const papacy = world.faith?.papacy;
+    const polity = papacy?.defender;
+    if (!polity || polity === attacker || polity === defender || !world.countries[polity]) return null;
+    const attackerFaith = world.countries[attacker]?.stateConfession;
+    const defenderFaith = world.countries[defender]?.stateConfession;
+    if (defenderFaith !== "catholic" || attackerFaith === "catholic") return null;
+    return polity;
+  }
+
   function unity(world, polity) {
     const country = world.countries[polity];
     const tiles = controlledFaithTiles(world, polity);
@@ -239,9 +262,11 @@
   }
 
   window.HIFI_FAITH_ENGINE = {
+    appointDefenderOfFaith,
     callCrusade,
     confessionKey,
     confessionLabel,
+    defenderOfFaithForWar,
     excommunicate,
     groupOf,
     initializeFaith,
