@@ -8,7 +8,9 @@ const context = { window: {} };
 for (const file of [
   "data/faiths.js",
   "engine/world.js",
+  "engine/diplomacy.js",
   "engine/faith.js",
+  "engine/warfare.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
 const w = context.window;
@@ -76,5 +78,46 @@ for (let i = 0; i < 8; i += 1) w.HIFI_FAITH_ENGINE.spreadFaith(world);
 assert.equal(target.confession, "catholic", "持续强制传教后地块应皈依国教");
 assert.equal(target.religion, "天主教", "皈依后展示信仰应同步更新");
 assert.equal(france.faith.unity, 100, "完全皈依后宗教统一应达到 100");
+
+const authorityWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(20, "法兰西王国", "巴黎", "天主教", 20),
+  tile(21, "布列塔尼公国", "南特", "天主教", 8),
+  tile(22, "格拉纳达酋长国", "格拉纳达", "逊尼派", 12),
+], undefined, "法兰西王国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(authorityWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(authorityWorld);
+
+const brittany = authorityWorld.countries["布列塔尼公国"];
+const beforeLegitimacy = brittany.legitimacy;
+const excommunication = w.HIFI_FAITH_ENGINE.excommunicate(authorityWorld, "法兰西王国", "布列塔尼公国");
+assert.equal(excommunication.target, "布列塔尼公国", "绝罚结果应返回目标国家");
+assert.equal(brittany.faith.excommunicated, true, "绝罚应写入目标国家状态");
+assert.ok(brittany.legitimacy < beforeLegitimacy, "绝罚应削弱目标合法性");
+assert.ok(
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(authorityWorld, "法兰西王国", "布列塔尼公国")
+    .some(claim => claim.type === "excommunication"),
+  "绝罚应给天主教国家生成绝罚宣称"
+);
+
+const crusade = w.HIFI_FAITH_ENGINE.callCrusade(authorityWorld, "法兰西王国", "格拉纳达酋长国");
+assert.equal(crusade.target, "格拉纳达酋长国", "十字军结果应返回目标国家");
+assert.equal(authorityWorld.faith.papacy.crusadeTarget, "格拉纳达酋长国", "十字军目标应写入教廷状态");
+assert.ok(
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(authorityWorld, "法兰西王国", "格拉纳达酋长国")
+    .some(claim => claim.type === "crusade"),
+  "十字军应给天主教国家生成十字军宣称"
+);
+
+w.HIFI_WARFARE_ENGINE.initializeWarfare(authorityWorld);
+const reputationBeforeWar = authorityWorld.countries["法兰西王国"].reputation;
+const religiousWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
+  authorityWorld,
+  "法兰西王国",
+  "格拉纳达酋长国",
+  "十字军",
+  "conquest"
+);
+assert.equal(religiousWar.cbMatched, true, "十字军宣称应被战争系统识别为宣战理由");
+assert.equal(authorityWorld.countries["法兰西王国"].reputation, reputationBeforeWar, "有十字军宣称宣战不应扣声望");
 
 console.log("hifi faith passed");

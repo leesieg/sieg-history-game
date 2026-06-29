@@ -54,6 +54,65 @@
     return world;
   }
 
+  function papalAuthority(world) {
+    if (!world.faith?.papacy) throw new Error("教廷尚未初始化");
+    return world.faith.papacy;
+  }
+
+  function ensurePapalController(world, polity) {
+    const papacy = papalAuthority(world);
+    if (polity !== papacy.head && polity !== papacy.controller) throw new Error("只有教廷或教廷控制者可以执行该行动");
+    return papacy;
+  }
+
+  function ensureCountry(world, polity) {
+    const country = world.countries[polity];
+    if (!country) throw new Error("国家不存在");
+    return country;
+  }
+
+  function grantReligiousClaim(world, polity, target, type) {
+    if (!window.HIFI_DIPLOMACY_ENGINE?.addClaim) throw new Error("外交系统尚未初始化");
+    return window.HIFI_DIPLOMACY_ENGINE.addClaim(world, polity, target, type);
+  }
+
+  function catholicPolities(world) {
+    return Object.entries(world.countries)
+      .filter(([, country]) => country.stateConfession === "catholic")
+      .map(([polity]) => polity);
+  }
+
+  function excommunicate(world, controller, target) {
+    const papacy = ensurePapalController(world, controller);
+    const country = ensureCountry(world, target);
+    if (country.stateConfession !== "catholic") throw new Error("只能绝罚天主教国家");
+    country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+    country.faith.excommunicated = true;
+    country.faith.papalFavor = clamp((country.faith.papalFavor ?? 50) - 35);
+    country.legitimacy = Math.max(0, (country.legitimacy ?? 60) - 15);
+    papacy.authority = clamp((papacy.authority ?? 65) - 5);
+
+    const claims = catholicPolities(world)
+      .filter(polity => polity !== target)
+      .map(polity => grantReligiousClaim(world, polity, target, "excommunication"));
+    return { target, claims, authority: papacy.authority, legitimacy: country.legitimacy };
+  }
+
+  function callCrusade(world, caller, target) {
+    const papacy = ensurePapalController(world, caller);
+    const country = ensureCountry(world, target);
+    const confession = country.stateConfession || majorityConfession(world, target);
+    if (groupOf(confession) === "christian" && !country.faith?.excommunicated) {
+      throw new Error("十字军目标必须是异教国家或已被绝罚的国家");
+    }
+    papacy.crusadeTarget = target;
+    papacy.authority = clamp((papacy.authority ?? 65) - 8);
+    const claims = catholicPolities(world)
+      .filter(polity => polity !== target)
+      .map(polity => grantReligiousClaim(world, polity, target, "crusade"));
+    return { target, claims, authority: papacy.authority };
+  }
+
   function unity(world, polity) {
     const country = world.countries[polity];
     const tiles = controlledFaithTiles(world, polity);
@@ -180,8 +239,10 @@
   }
 
   window.HIFI_FAITH_ENGINE = {
+    callCrusade,
     confessionKey,
     confessionLabel,
+    excommunicate,
     groupOf,
     initializeFaith,
     majorityConfession,
