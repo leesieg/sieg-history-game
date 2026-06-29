@@ -534,7 +534,11 @@
     item.members[target].role = item.members[target].role.includes("除籍")
       ? item.members[target].role
       : `${item.members[target].role}·帝国除籍`;
-    window.HIFI_DIPLOMACY_ENGINE?.addClaim?.(world, emperor, target, "imperial_ban");
+    if (window.HIFI_DIPLOMACY_ENGINE?.addClaim) {
+      for (const member of Object.keys(item.members)) {
+        if (member !== target) window.HIFI_DIPLOMACY_ENGINE.addClaim(world, member, target, "imperial_ban");
+      }
+    }
     if (window.HIFI_DIPLOMACY_ENGINE) {
       window.HIFI_DIPLOMACY_ENGINE.relationView(world, target, emperor).trust = Math.max(0, relationTrust(world, target, emperor) - 12);
     }

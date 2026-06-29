@@ -95,6 +95,10 @@ assert.ok(
   w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, "巴伐利亚公国", "米兰领").some(claim => claim.type === "imperial_ban"),
   "帝国除籍应给皇帝生成讨伐宣称"
 );
+assert.ok(
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, "勃艮第公国", "米兰领").some(claim => claim.type === "imperial_ban"),
+  "帝国除籍应给其他帝国成员生成讨伐宣称"
+);
 
 const defenseWorld = w.HIFI_WORLD_ENGINE.createWorld([
   tile(20, "巴伐利亚公国", "慕尼黑", 14),
