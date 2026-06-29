@@ -17,12 +17,6 @@
       powerName: config.powerName,
       centralPower: type === "monarchy" ? 62 : 55,
       assembly: { unlocked: config.assemblyUnlocked, type: config.assemblyType, support: config.assemblyUnlocked ? 46 : 0, agenda: "tax" },
-      laws: {
-        taxation: "customary",
-        mobilization: "limited",
-        religion: "toleration",
-        authority: type === "republic" || type === "merchant_republic" ? "civic" : "dynastic",
-      },
     };
     return syncGovernmentDerived(government);
   }
@@ -71,19 +65,13 @@
     country.government.institutions ||= {};
     if (axis === "fiscal") {
       country.government.institutions.fiscal = value;
-      const taxation = { demesne: "customary", tax_farming: "estate_exemptions", direct: "uniform", commercial: "customary", nomadic: "customary" }[value];
-      if (taxation) country.government.laws.taxation = taxation;
     } else if (axis === "military") {
       country.government.institutions.military = value;
-      const mobilization = { feudal_levy: "limited", standing_army: "standing", nation_in_arms: "levy", mercenary_state: "limited" }[value];
-      if (mobilization) country.government.laws.mobilization = mobilization;
     } else if (axis === "assembly") {
       const current = country.government.institutions.assembly || {};
       country.government.institutions.assembly = { ...current, type: value };
       country.government.assembly.unlocked = value !== "none";
       country.government.assembly.type = value === "parliamentary" ? "议会" : value === "estates_general" ? "等级会议" : "无议会";
-      if (value === "parliamentary") country.government.laws.authority = "constitutional";
-      else if (value === "none" && country.government.laws.authority === "constitutional") country.government.laws.authority = "dynastic";
     }
     syncCountryDisplayName(country, true);
     reconcileEstates(country);
@@ -134,61 +122,7 @@
     return world;
   }
 
-  const lawOptions = {
-    taxation: ["customary", "estate_exemptions", "uniform"],
-    mobilization: ["limited", "levy", "standing"],
-    religion: ["toleration", "orthodoxy", "reformed"],
-    authority: ["dynastic", "civic", "constitutional", "absolute"],
-  };
-
-  // 法律对「流」与阶层满意的真实效果（核心循环：法律 = 挂在产出流/人口流上的调节阀）。
-  // moneyMultiplier 被 economy.tileOutput 读取；levyCostFactor 被 warfare.mobilizeArmy 读取；
-  // estate 增减在 setLaw 即时结算（喂议会支持，并为后续阶层惩罚铺垫）；requires 为颁布前置。
-  // 阶层 key 因政体而异，只对存在的阶层生效（其余忽略）。
-  const lawEffects = {
-    taxation: {
-      customary: { moneyMultiplier: 1, estate: {} },
-      estate_exemptions: { moneyMultiplier: 0.85, estate: { nobles: 8, church: 8, patricians: 6, clergy: 6, port_nobles: 6 } },
-      uniform: {
-        moneyMultiplier: 1.15,
-        requires: country => country.government.centralPower >= 50,
-        why: "需要王权 ≥ 50 才能推行统一税制",
-        estate: { nobles: -10, patricians: -8, peasants: 4, commons: 4, faithful: 4, sailors: 4, herders: 4 },
-      },
-    },
-    mobilization: {
-      limited: { levyCostFactor: 1, estate: {} },
-      levy: { levyCostFactor: 0.7, estate: { peasants: -6, commons: -6, faithful: -6, sailors: -6, herders: -6 } },
-      standing: {
-        levyCostFactor: 1,
-        requires: country => !!country.technology?.standingArmy || country.government.institutions?.military === "standing_army",
-        why: "需要常备军科技或已建立常备军制度",
-        estate: {},
-      },
-    },
-    religion: {
-      toleration: { estate: { church: -6, clergy: -6, imperial_church: -6 } },
-      orthodoxy: { estate: { church: 8, clergy: 8, imperial_church: 8 } },
-      reformed: {
-        requires: (country, world) => !!world.flags?.reformation,
-        why: "需要宗教改革浪潮出现",
-        estate: {},
-      },
-    },
-    authority: {
-      dynastic: { estate: {} },
-      civic: { estate: { merchants: 8, citizens: 8, companies: 6, guilds: 4 }, powerCap: 70 },
-      constitutional: { estate: {}, legitimacy: 4, powerCap: 60 },
-      absolute: {
-        requires: (country, world) => country.government.centralPower >= 70 && eraReached(world, "absolutism"),
-        why: "需要绝对主义纪元与王权 ≥ 70 才能集中绝对权力",
-        estate: { nobles: -8, patricians: -8 },
-        power: 8,
-      },
-    },
-  };
-
-  // 纪元改规则：部分决议/法律只在对应纪元开放（核心循环：转折层→可用机制）
+  // 纪元改规则：部分决议与制度抉择只在对应纪元开放（核心循环：转折层→可用机制）
   function eraReached(world, key) {
     const eras = window.HIFI_HISTORY_ENGINE?.eras;
     if (!eras) return true; // 历史引擎未加载时不施加纪元限制
@@ -216,8 +150,6 @@
       can: country => country.government.assembly.unlocked && country.government.institutions?.assembly?.type !== "none",
       why: "需要已建立议会制度",
       apply: country => {
-        country.government.laws.taxation = "uniform";
-        country.government.laws.authority = "constitutional";
         country.government.institutions ||= {};
         country.government.institutions.fiscal = "direct";
         country.government.centralPower = Math.max(25, country.government.centralPower - 8);
@@ -230,8 +162,6 @@
       can: (country, world) => country.government.centralPower >= 70 && eraReached(world, "absolutism"),
       why: "需要绝对主义纪元与王权 70",
       apply: country => {
-        country.government.laws.taxation = "uniform";
-        country.government.laws.authority = "absolute";
         country.government.institutions ||= {};
         country.government.institutions.fiscal = "direct";
         country.government.centralPower = Math.min(100, country.government.centralPower + 10);
@@ -244,7 +174,6 @@
       can: (country, world) => !!world.flags?.reformation,
       why: "需要宗教改革浪潮出现",
       apply: (country, world) => {
-        country.government.laws.religion = "reformed";
         country.stateConfession = "lutheran";
         country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false };
         if (!window.HIFI_FAITH_ENGINE?.secularizeChurchLands?.(world, country.name, "接纳宗教改革并世俗化教产")) {
@@ -269,7 +198,6 @@
         && country.government.institutions?.assembly?.type === "estates_general",
       why: "需要君主制与等级会议制度",
       apply: country => {
-        country.government.laws.authority = "constitutional";
         country.government.institutions ||= {};
         country.government.institutions.assembly = { type: "parliamentary", cadence: 4 };
         country.government.centralPower = 45;
@@ -422,7 +350,6 @@
             effect: { legitimacy: -4 },
             apply: (w, c) => {
               setInstitution(c, "assembly", "none");
-              c.government.laws.authority = "absolute";
               c.government.centralPower = Math.max(c.government.centralPower, 85);
               for (const key of ["nobles", "patricians", "port_nobles"]) {
                 if (c.estates?.[key]) c.estates[key].satisfaction = clampSatisfaction(c.estates[key].satisfaction - 8);
@@ -510,40 +437,6 @@
       });
     }
     return null;
-  }
-
-  function setLaw(world, polity, category, value) {
-    const country = world.countries[polity];
-    if (!lawOptions[category]?.includes(value)) throw new Error("未知法律");
-    if (country.government.laws[category] === value) throw new Error("已是当前法律");
-    if (country.actionPoints.administrative < 1) throw new Error("行政点不足");
-    const effect = lawEffects[category]?.[value];
-    if (effect?.requires && !effect.requires(country, world)) throw new Error(effect.why || "尚不满足颁布条件");
-    country.actionPoints.administrative -= 1;
-    country.government.laws[category] = value;
-    if (effect) {
-      for (const [estateKey, delta] of Object.entries(effect.estate || {})) {
-        if (country.estates[estateKey]) {
-          country.estates[estateKey].satisfaction = clampSatisfaction(country.estates[estateKey].satisfaction + delta);
-        }
-      }
-      if (effect.legitimacy) country.legitimacy = Math.min(100, country.legitimacy + effect.legitimacy);
-      if (effect.power) country.government.centralPower = Math.min(100, country.government.centralPower + effect.power);
-      if (effect.powerCap) country.government.centralPower = Math.min(country.government.centralPower, effect.powerCap);
-    }
-    if (category === "taxation") {
-      const fiscal = value === "uniform" ? "direct" : value === "estate_exemptions" ? "tax_farming" : "demesne";
-      country.government.institutions ||= {};
-      country.government.institutions.fiscal = fiscal;
-    }
-    if (category === "mobilization") {
-      const military = value === "standing" ? "standing_army" : "feudal_levy";
-      country.government.institutions ||= {};
-      country.government.institutions.military = military;
-    }
-    syncCountryDisplayName(country, true);
-    recordDecision(world, polity, `law:${category}:${value}`, `颁布${category}法律：${value}`);
-    return value;
   }
 
   function holdAssembly(world, polity, agenda = "tax", concession = "privilege") {
@@ -714,11 +607,8 @@
     decisions,
     enactDecision,
     holdAssembly,
-    lawEffects,
-    lawOptions,
     driftCentralization,
     processInstitutionForks,
-    setLaw,
     setInstitution,
   };
 })();

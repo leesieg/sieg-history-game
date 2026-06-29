@@ -12,7 +12,7 @@ const codex = context.window.HIFI_CODEX;
 assert.ok(codex, "百科模块必须挂到 window.HIFI_CODEX");
 
 // 已绑定 tooltip 的核心概念必须存在
-for (const key of ["政体", "统治者", "合法性", "王权", "改革", "法律", "议会", "阶层", "领土整合"]) {
+for (const key of ["政体", "统治者", "合法性", "王权", "改革", "制度模块", "议会", "阶层", "领土整合"]) {
   const entry = codex.get(key);
   assert.ok(entry && entry.term, `百科缺少概念：${key}`);
   assert.ok(entry.summary, `概念 ${key} 必须有 summary`);

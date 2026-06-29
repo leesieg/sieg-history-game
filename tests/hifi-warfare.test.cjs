@@ -425,23 +425,22 @@ allyWorld.diplomacy.treaties.push({ id: "treaty-x", type: "alliance", parties: [
 const allyWar = warfare.declareWarOn(allyWorld, "法兰西王国", "英格兰王国");
 assert.ok(allyWar.defenders.includes("卡斯蒂利亚王国"), "防御同盟必须让盟友自动参战");
 
-// 动员法律调节征召的人口流成本（需 politics 的 lawEffects）
-vm.runInNewContext(fs.readFileSync(path.join(root, "engine", "politics.js"), "utf8"), context);
+// 军事制度调节征召的人口流成本
 const levyWorld = worldEngine.createWorld([
   { id: 0, isSea: false, polity: "法兰西王国", population: 30, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
 ]);
 warfare.initializeWarfare(levyWorld);
 const levyCountry = levyWorld.countries["法兰西王国"];
-levyCountry.government.laws = { mobilization: "limited" };
+levyCountry.government.institutions = { military: "feudal_levy" };
 levyCountry.actionPoints.military = 5;
-const popBeforeLimited = levyWorld.tiles[0].population;
+const popBeforeFeudalLevy = levyWorld.tiles[0].population;
 warfare.mobilizeArmy(levyWorld, "法兰西王国", 0, "infantry");
-const limitedDrain = popBeforeLimited - levyWorld.tiles[0].population;
-levyCountry.government.laws.mobilization = "levy";
-const popBeforeLevy = levyWorld.tiles[0].population;
+const feudalLevyDrain = popBeforeFeudalLevy - levyWorld.tiles[0].population;
+levyCountry.government.institutions.military = "nation_in_arms";
+const popBeforeNationLevy = levyWorld.tiles[0].population;
 warfare.mobilizeArmy(levyWorld, "法兰西王国", 0, "infantry");
-const levyDrain = popBeforeLevy - levyWorld.tiles[0].population;
-assert.ok(levyDrain < limitedDrain, "征召兵役必须比有限动员更省人口流");
+const nationLevyDrain = popBeforeNationLevy - levyWorld.tiles[0].population;
+assert.ok(nationLevyDrain < feudalLevyDrain, "全民皆兵必须比封建征召更省人口流");
 
 // 军事制度模块必须直接影响动员，不再只是政体展示字段
 const moduleWorld = worldEngine.createWorld([

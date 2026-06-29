@@ -53,7 +53,8 @@ assert.deepEqual(
 assert.equal(context.window.HIFI_HISTORY_ENGINE.eras.length, 6, "必须包含工业纪元");
 
 const politics = context.window.HIFI_POLITICS_ENGINE;
-for (const api of ["enactDecision", "holdAssembly", "setLaw"]) assert.equal(typeof politics[api], "function");
+for (const api of ["enactDecision", "holdAssembly", "setInstitution"]) assert.equal(typeof politics[api], "function");
+assert.equal(politics.setLaw, undefined, "旧法律入口不应继续导出");
 const warfare = context.window.HIFI_WARFARE_ENGINE;
 for (const api of [
   "assignGeneral",
@@ -86,7 +87,7 @@ for (const mode of [
 
 const drawers = fs.readFileSync(path.join(scripts, "ui", "drawers.js"), "utf8");
 for (const hook of [
-  "data-law",
+  "institution-row",
   "data-assembly",
   "data-decision",
   "data-mobilize",

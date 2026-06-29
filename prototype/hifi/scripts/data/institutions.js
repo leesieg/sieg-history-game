@@ -45,24 +45,16 @@
   function legacyFiscal(type, government) {
     if (type === "merchant_republic") return "commercial";
     if (type === "tribal") return "nomadic";
-    const taxation = government?.laws?.taxation;
-    if (taxation === "uniform") return "direct";
-    if (taxation === "estate_exemptions") return "tax_farming";
     return "demesne";
   }
 
   function legacyMilitary(type, government) {
     if (type === "tribal") return "nation_in_arms";
-    const mobilization = government?.laws?.mobilization;
-    if (mobilization === "standing") return "standing_army";
     return "feudal_levy";
   }
 
   function legacyAssembly(government) {
     if (!government?.assembly?.unlocked) return { type: "none", support: 0, agenda: "tax" };
-    if (government?.laws?.authority === "constitutional") {
-      return { type: "parliamentary", support: government.assembly.support || 0, agenda: government.assembly.agenda || "tax" };
-    }
     return { type: "estates_general", support: government.assembly.support || 0, agenda: government.assembly.agenda || "tax" };
   }
 

@@ -41,9 +41,9 @@ france.government.institutions.assembly.type = "none";
 w.HIFI_POLITICS_ENGINE.enactDecision(world, france.name, "estates_general");
 assert.equal(france.government.assembly.unlocked, true);
 assert.ok(france.decisionLedger.length);
-const lawBefore = france.government.laws.taxation;
-w.HIFI_POLITICS_ENGINE.setLaw(world, france.name, "taxation", "uniform");
-assert.notEqual(france.government.laws.taxation, lawBefore);
+w.HIFI_POLITICS_ENGINE.setInstitution(france, "fiscal", "direct");
+assert.equal(france.government.institutions.fiscal, "direct");
+assert.equal(france.government.laws, undefined, "国家对象不应保留旧法律字段");
 
 const populationBefore = tiles[0].population;
 const levy = w.HIFI_WARFARE_ENGINE.mobilizeArmy(world, france.name, 0, "infantry");

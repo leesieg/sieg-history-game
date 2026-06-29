@@ -240,7 +240,7 @@
         id: "task-legitimacy",
         label: "处理统治合法性承压",
         advisor: "internal",
-        reason: "统治合法性承压，需要安抚阶层或推行有利的法律",
+        reason: "统治合法性承压，需要安抚阶层或推行有利的制度抉择",
       });
     }
 

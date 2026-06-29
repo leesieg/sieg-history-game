@@ -38,8 +38,12 @@ assert.equal(france.government.archetype, "feudal_monarchy");
 assert.ok(france.government.estateKeys.includes("nobles"));
 assert.ok(france.estates.nobles);
 assert.equal(france.government.assembly.unlocked, false);
+assert.equal(france.government.laws, undefined, "国家系统不应再生成旧法律字段");
 assert.equal(france.government.reforms, undefined, "国家系统不应再生成旧改革槽");
 assert.equal(politics.advanceReform, undefined, "政治引擎不应再导出旧 advanceReform");
+assert.equal(politics.setLaw, undefined, "政治引擎不应再导出旧 setLaw");
+assert.equal(politics.lawEffects, undefined, "政治引擎不应再导出旧法律效果表");
+assert.equal(politics.lawOptions, undefined, "政治引擎不应再导出旧法律选项表");
 
 politics.setInstitution(france, "fiscal", "commercial");
 assert.ok(france.estates.companies, "商业财政模块必须补入商社阶层");
@@ -85,42 +89,22 @@ const foreignElection = politics.processLeadership(world, "威尼斯共和国");
 assert.equal(world.pendingElection, null, "外国选举必须自动结算，不能阻塞玩家季度");
 assert.equal(foreignElection.type, "auto_election");
 
-// 法律接入流：税收→金钱产出流；切换即时增减阶层满意；前置条件与重复颁布拦截
+// 制度模块接入流：财政→金钱产出流；军事→动员口径；旧法律入口彻底移除
 vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/economy.js"), "utf8"), context);
 const economy = context.window.HIFI_ECONOMY_ENGINE;
 france.technology = {}; // tileOutput 只读 technology 标志，置空即可（无需 HIFI_RULES）
 // france 经上文已切回君主制，含 nobles 阶层，制度模块替代旧改革槽。
-france.government.laws.taxation = "customary";
 france.actionPoints.administrative = 3;
 france.government.centralPower = 62;
 const taxTile = { id: 91, isSea: false, polity: "法兰西王国", population: 12, control: 80, devastation: 0, good: "grain", buildings: ["market"] };
-const moneyCustomary = economy.tileOutput(taxTile, france).money;
-const noblesBefore = france.estates.nobles.satisfaction;
-politics.setLaw(world, "法兰西王国", "taxation", "uniform");
-assert.ok(economy.tileOutput(taxTile, france).money > moneyCustomary, "统一税制必须提高金钱产出流");
-assert.ok(france.estates.nobles.satisfaction < noblesBefore, "统一税制必须压低贵族满意度");
-assert.equal(france.government.institutions.fiscal, "direct", "统一税制必须同步派生为直接征税财政模块");
-assert.throws(() => politics.setLaw(world, "法兰西王国", "taxation", "uniform"), /已是当前法律/);
-// 前置条件：常备军制改为由科技/军事制度解锁，不再读取旧财政改革槽
-france.actionPoints.administrative = 3;
-assert.throws(() => politics.setLaw(world, "法兰西王国", "mobilization", "standing"), /常备军/);
-france.technology.standingArmy = true;
-politics.setLaw(world, "法兰西王国", "mobilization", "standing");
-assert.equal(france.government.institutions.military, "standing_army", "常备军法必须同步军事制度模块");
-// 统一税前置：王权不足时拒绝
-france.government.laws.taxation = "customary";
-france.government.centralPower = 40;
-france.actionPoints.administrative = 3;
-assert.throws(() => politics.setLaw(world, "法兰西王国", "taxation", "uniform"), /王权/);
-assert.ok(context.window.HIFI_POLITICS_ENGINE.lawEffects.taxation.uniform.moneyMultiplier > 1, "法律效果表必须导出");
-
-// 制度模块加成：财政制度提高金钱产出流，旧财政改革槽不再暗中放大产出
-france.government.laws.taxation = "customary";
 france.government.institutions.fiscal = "demesne";
 const moneyDemesne = economy.tileOutput(taxTile, france).money;
 assert.equal(economy.tileOutput(taxTile, france).money, moneyDemesne, "旧财政改革槽不应再改变金钱产出流");
-france.government.institutions.fiscal = "direct";
+politics.setInstitution(france, "fiscal", "direct");
 assert.ok(economy.tileOutput(taxTile, france).money > moneyDemesne, "直接征税财政模块必须提高金钱产出流");
+politics.setInstitution(france, "military", "standing_army");
+assert.equal(france.government.institutions.military, "standing_army", "军事制度模块必须可直接写入");
+assert.equal(france.government.laws, undefined, "制度模块不应同步回旧法律字段");
 // 制度模块提高整合效率（中央化/直接征税/议会），旧行政改革槽不再暗中提速
 world.tiles.push({ id: 92, isSea: false, polity: "法兰西王国", control: 40, buildings: [] });
 world.tiles.push({ id: 93, isSea: false, polity: "法兰西王国", control: 40, buildings: [] });
@@ -184,7 +168,6 @@ world.playerPolity = "法兰西王国";
 world.playerEvents = [];
 world.historyNextId = 1;
 france.government.institutions.fiscal = "demesne";
-france.government.laws.taxation = "customary";
 france.government.centralPower = 60;
 france.money = 20;
 france.legitimacy = 70;
@@ -194,20 +177,19 @@ const fiscalFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(fiscalFork && fiscalFork.institutionFork === "direct_taxation", "财政压力必须触发直接征税制度抉择");
 fiscalFork.choices.find(choice => choice.id === "adopt").apply(world, france);
 assert.equal(france.government.institutions.fiscal, "direct", "制度抉择必须改财政模块");
-assert.equal(france.government.laws.taxation, "uniform", "财政模块改动必须同步兼容旧税法");
+assert.equal(france.government.laws, undefined, "财政模块改动不应同步兼容旧税法");
 
 // 制度抉择：外部战争压力 + 常备军科技触发常备军制度
 world.playerEvents = [];
 world.diplomacy = { wars: [{ attackers: ["法兰西王国"], defenders: ["英格兰王国"] }] };
 france.technology = { standingArmy: true };
 france.government.institutions.military = "feudal_levy";
-france.government.laws.mobilization = "limited";
 france.military = 100;
 const militaryFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(militaryFork && militaryFork.institutionFork === "standing_army", "外部压力必须触发常备军制度抉择");
 militaryFork.choices.find(choice => choice.id === "adopt").apply(world, france);
 assert.equal(france.government.institutions.military, "standing_army", "制度抉择必须改军事模块");
-assert.equal(france.government.laws.mobilization, "standing", "军事模块改动必须同步兼容旧动员法");
+assert.equal(france.government.laws, undefined, "军事模块改动不应同步兼容旧动员法");
 
 // 制度抉择：合法性压力触发等级会议
 world.playerEvents = [];
@@ -256,7 +238,7 @@ france.estates.merchants.power = 5;
 const absolutismFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(absolutismFork && absolutismFork.institutionFork === "absolutism", "内压和强制阶层主导必须触发绝对主义");
 absolutismFork.choices.find(choice => choice.id === "adopt").apply(world, france);
-assert.equal(france.government.laws.authority, "absolute", "绝对主义必须同步旧权威法律");
+assert.equal(france.government.laws, undefined, "绝对主义不应同步旧权威法律");
 assert.ok(france.government.centralPower >= 85, "绝对主义必须提高王权");
 assert.equal(france.government.archetype, "absolute_monarchy", "高王权必须派生绝对君主国");
 

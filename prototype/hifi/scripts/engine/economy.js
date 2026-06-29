@@ -31,9 +31,6 @@
   function fiscalKey(country) {
     const institutions = country.government?.institutions;
     if (institutions?.fiscal) return institutions.fiscal;
-    const taxLaw = country.government?.laws?.taxation;
-    if (taxLaw === "uniform") return "direct";
-    if (taxLaw === "estate_exemptions") return "tax_farming";
     return null;
   }
 
@@ -234,16 +231,12 @@
       money *= 1.08;
       military *= 1.08;
     }
-    // 财政制度调节地块产出流；旧税法只在制度模块未初始化时作为兼容来源。
+    // 财政制度调节地块产出流。
     const fiscal = fiscalEffect(country);
     if (fiscal) {
       if (fiscal.food) food *= fiscal.food;
       if (fiscal.money) money *= fiscal.money;
       if (fiscal.portMoney && tile.buildings.includes("port")) money *= fiscal.portMoney;
-    } else {
-      const taxLaw = country.government?.laws?.taxation;
-      const taxMultiplier = window.HIFI_POLITICS_ENGINE?.lawEffects?.taxation?.[taxLaw]?.moneyMultiplier;
-      if (taxMultiplier) money *= taxMultiplier;
     }
     military *= militaryOutputFactor(country);
     const churchShare = country.faith?.secularized ? 0 : Math.max(0, Math.min(.35, tile.churchLandShare || 0));

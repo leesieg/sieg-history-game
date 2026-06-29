@@ -30,8 +30,6 @@
   function militaryKey(country) {
     const institutions = country.government?.institutions;
     if (institutions?.military) return institutions.military;
-    const mobilization = country.government?.laws?.mobilization;
-    if (mobilization === "standing") return "standing_army";
     return null;
   }
 
@@ -331,10 +329,8 @@
     if (militaryCost && country.military < militaryCost) throw new Error("军需不足");
     country.actionPoints.military -= 1;
     if (militaryCost) country.military -= militaryCost;
-    // 军事制度调节人口流与兵源类型；旧动员法只在制度模块未初始化时兼容。
-    const mobLaw = country.government?.laws?.mobilization;
-    const lawCost = window.HIFI_POLITICS_ENGINE?.lawEffects?.mobilization?.[mobLaw]?.levyCostFactor ?? 1;
-    const levyCostFactor = effect?.levyCostFactor ?? lawCost;
+    // 军事制度调节人口流与兵源类型。
+    const levyCostFactor = effect?.levyCostFactor ?? 1;
     tile.population = Math.max(1, tile.population - soldiers / 1000 * levyCostFactor);
     return createArmy(world, {
       owner: polity,

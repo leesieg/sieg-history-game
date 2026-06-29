@@ -187,7 +187,7 @@
     money: ["国库", "建设、外交、雇佣军和军队维护的通用资源"],
     military: ["军需", "动员、补给和战争消耗的军事资源"],
     legitimacy: ["合法性", "政权稳定、改革阻力和国内服从度"],
-    administrative: ["行政点", "法律、建设和内政改革的行动点"],
+    administrative: ["行政点", "制度抉择、建设和内政改革的行动点"],
     diplomatic: ["外交点", "使节、条约和领导人外交的行动点"],
     militaryPoint: ["军事点", "动员、军团命令和战时决断的行动点"],
   };
@@ -298,12 +298,6 @@
         window.HIFI_DRAWERS.setDrawerTab(button.dataset.drawerTab);
         renderSystemBody(system);
       });
-    });
-    drawerBody.querySelectorAll("[data-law]").forEach(button => {
-      button.addEventListener("click", () => runAction(current => {
-        const [category, value] = button.dataset.law.split(":");
-        return window.HIFI_POLITICS_ENGINE.setLaw(current, current.playerPolity, category, value);
-      }, button));
     });
     drawerBody.querySelectorAll("[data-assembly]").forEach(button => {
       button.addEventListener("click", () => runAction(current => {
