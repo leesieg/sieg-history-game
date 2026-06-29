@@ -495,6 +495,31 @@ assert.ok(plunderWorld.countries["法兰西王国"].money > 0, "劫掠战应能�
 assert.ok(plunderWorld.countries["英格兰王国"].warfare.warExhaustion >= 2, "劫掠赔款应提高目标战争疲惫");
 assert.ok(plunderWorld.countries["法兰西王国"].reputation < plunderRepBefore, "劫掠战应带来额外声誉代价");
 
+const overseasWorld = worldEngine.createWorld([
+  { id: 60, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 61, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 40, y: 0, control: 85, devastation: 0 },
+  { id: 62, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
+  { id: 63, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 30, y: 0, control: 0 },
+], {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(overseasWorld);
+warfare.initializeWarfare(overseasWorld);
+overseasWorld.diplomacy.wars = [];
+assert.throws(
+  () => warfare.declareWar(overseasWorld, "威尼斯共和国", "热那亚共和国", 61, "利古里亚跨海远征", "overseas"),
+  /可运兵舰队/,
+  "跨海远征必须先有运输舰队"
+);
+warfare.createFleet(overseasWorld, {
+  owner: "威尼斯共和国",
+  tileId: 62,
+  name: "亚得里亚运输舰队",
+  units: [{ shipType: "cog", ships: 2 }],
+});
+const overseasWar = warfare.declareWar(overseasWorld, "威尼斯共和国", "热那亚共和国", 61, "利古里亚跨海远征", "overseas");
+assert.equal(overseasWar.goal.type, "overseas", "跨海战争目标必须写入战争状态");
+assert.equal(warfare.termAllowedByGoal(overseasWar, { type: "subject", subjectType: "tributary" }), false, "跨海远征不能直接强迫附属");
+assert.equal(warfare.termAllowedByGoal(overseasWar, { type: "target_territory" }), true, "跨海远征可以索取登陆目标地块");
+
 const truceWorld = worldEngine.createWorld(freshTiles);
 diplomacy.initializeDiplomacy(truceWorld);
 warfare.initializeWarfare(truceWorld);

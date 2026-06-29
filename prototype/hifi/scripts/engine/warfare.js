@@ -19,6 +19,7 @@
   };
   const warGoalTypes = {
     conquest: { label: "征服战", defaultTerms: ["target_territory", "reparations"] },
+    overseas: { label: "跨海远征", defaultTerms: ["target_territory", "reparations"] },
     subjugation: { label: "附庸战", defaultTerms: ["subject", "reparations"] },
     plunder: { label: "劫掠战", defaultTerms: ["reparations"] },
     humiliation: { label: "霸权羞辱战", defaultTerms: ["reparations"] },
@@ -480,6 +481,13 @@
     return { ok: true };
   }
 
+  function hasTransportFleet(world, polity) {
+    return Object.values(world.warfare?.fleets || {}).some(fleet =>
+      fleet.owner === polity
+      && fleetTransportCapacity(fleet) > 0
+    );
+  }
+
   function shipyardDiscount(port, shipType) {
     let factor = 1;
     if (port.buildings?.includes("shipyard")) factor -= .15;
@@ -721,6 +729,15 @@
     if (!permission.ok) throw new Error(permission.reason);
     const normalizedGoal = normalizeWarGoal(goal, targetTileId);
     if (!warGoalTypes[normalizedGoal.type]) throw new Error("未知战争目标");
+    if (normalizedGoal.type === "overseas") {
+      const target = world.tiles.find(tile => tile.id === targetTileId);
+      const canLand = ["coast", "wetland"].includes(target?.terrain) || target?.buildings?.includes("port");
+      if (!target || target.isSea || !canLand) {
+        throw new Error("跨海远征目标必须是可登陆沿海地块");
+      }
+      if (!hasTransportFleet(world, attacker)) throw new Error("跨海远征需要可运兵舰队");
+      if (!nearestSeaTile(world, targetTileId)) throw new Error("跨海远征目标附近没有可登陆海域");
+    }
     const cbMatched = !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
@@ -1221,6 +1238,7 @@
     fleetTotalShips,
     fleetTransportCapacity,
     fleetTransportLoad,
+    hasTransportFleet,
     applyNavalCasualties,
     hireMercenary,
     initializeWarfare,
