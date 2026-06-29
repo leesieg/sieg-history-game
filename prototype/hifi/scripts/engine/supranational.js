@@ -134,6 +134,16 @@
     return { ok: true };
   }
 
+  function imperialDefenderForWar(world, attacker, defender, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial") return null;
+    if (!item.members[defender] || item.members[attacker]) return null;
+    if (item.authority < 35) return null;
+    const emperor = item.emperor;
+    if (!emperor || emperor === attacker || emperor === defender || !world.countries[emperor]) return null;
+    return emperor;
+  }
+
   function unionId(senior) {
     return `union:${senior}`;
   }
@@ -583,6 +593,7 @@
     integrateUnionMember,
     initializeSupranational,
     imperialPeaceActive,
+    imperialDefenderForWar,
     imperialWarPermission,
     isImperialOutlaw,
     isMember,

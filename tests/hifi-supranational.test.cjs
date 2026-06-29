@@ -96,6 +96,34 @@ assert.ok(
   "帝国除籍应给皇帝生成讨伐宣称"
 );
 
+const defenseWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(20, "巴伐利亚公国", "慕尼黑", 14),
+  tile(21, "米兰领", "米兰", 9),
+  tile(22, "法兰西王国", "巴黎", 12),
+], undefined, "巴伐利亚公国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(defenseWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(defenseWorld);
+w.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(defenseWorld);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(defenseWorld);
+defenseWorld.diplomacy.wars = [];
+w.HIFI_SUPRANATIONAL_ENGINE.structure(defenseWorld, "hre").authority = 52;
+const imperialDefenseWar = w.HIFI_WARFARE_ENGINE.declareWarOn(defenseWorld, "法兰西王国", "米兰领", "帝国防御测试");
+assert.ok(imperialDefenseWar.defenders.includes("巴伐利亚公国"), "外敌攻击帝国成员时，皇帝应作为帝国防御方参战");
+
+const weakDefenseWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(30, "巴伐利亚公国", "慕尼黑", 14),
+  tile(31, "米兰领", "米兰", 9),
+  tile(32, "法兰西王国", "巴黎", 12),
+], undefined, "巴伐利亚公国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(weakDefenseWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(weakDefenseWorld);
+w.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(weakDefenseWorld);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(weakDefenseWorld);
+weakDefenseWorld.diplomacy.wars = [];
+w.HIFI_SUPRANATIONAL_ENGINE.structure(weakDefenseWorld, "hre").authority = 20;
+const weakImperialDefenseWar = w.HIFI_WARFARE_ENGINE.declareWarOn(weakDefenseWorld, "法兰西王国", "米兰领", "帝国防御测试");
+assert.equal(weakImperialDefenseWar.defenders.includes("巴伐利亚公国"), false, "帝国权威过低时，皇帝不能自动集体防御成员");
+
 hre.authority = 50;
 world.diplomacy.wars.push({
   id: "imperial-war",
