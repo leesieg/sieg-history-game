@@ -40,7 +40,7 @@
 
   function hasReligiousWarBasis(world, attacker, defender) {
     const claims = window.HIFI_DIPLOMACY_ENGINE?.claimsAgainst?.(world, attacker, defender) || [];
-    if (claims.some(claim => ["crusade", "excommunication"].includes(claim.type))) return true;
+    if (claims.some(claim => ["crusade", "excommunication", "jihad"].includes(claim.type))) return true;
     const attackerGroup = faithGroup(world, attacker);
     const defenderGroup = faithGroup(world, defender);
     return Boolean(attackerGroup && defenderGroup && attackerGroup !== defenderGroup);

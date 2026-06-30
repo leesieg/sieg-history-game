@@ -82,6 +82,12 @@
       .map(([polity]) => polity);
   }
 
+  function islamicPolities(world) {
+    return Object.entries(world.countries)
+      .filter(([, country]) => groupOf(country.stateConfession) === "islam")
+      .map(([polity]) => polity);
+  }
+
   function donateToPapacy(world, polity, amount = 25) {
     const papacy = papalAuthority(world);
     const country = ensureCountry(world, polity);
@@ -132,6 +138,21 @@
       .filter(polity => polity !== target)
       .map(polity => grantReligiousClaim(world, polity, target, "crusade"));
     return { target, claims, authority: papacy.authority };
+  }
+
+  function callJihad(world, caller, target) {
+    const caliphate = world.faith?.caliphate;
+    if (!caliphate) throw new Error("哈里发权威尚未初始化");
+    if (caller !== caliphate.head) throw new Error("只有哈里发权威中心可以号召圣战");
+    const country = ensureCountry(world, target);
+    const confession = country.stateConfession || majorityConfession(world, target);
+    if (groupOf(confession) === "islam") throw new Error("圣战目标必须是非伊斯兰国家");
+    caliphate.jihadTarget = target;
+    caliphate.authority = clamp((caliphate.authority ?? 55) - 8);
+    const claims = islamicPolities(world)
+      .filter(polity => polity !== target)
+      .map(polity => grantReligiousClaim(world, polity, target, "jihad"));
+    return { target, claims, authority: caliphate.authority };
   }
 
   function appointDefenderOfFaith(world, controller, polity) {
@@ -285,6 +306,7 @@
   window.HIFI_FAITH_ENGINE = {
     appointDefenderOfFaith,
     callCrusade,
+    callJihad,
     confessionKey,
     confessionLabel,
     defenderOfFaithForWar,

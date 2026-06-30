@@ -156,4 +156,32 @@ const defensiveWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
 );
 assert.ok(defensiveWar.defenders.includes("法兰西王国"), "天主教国家被非天主教国家攻击时，信仰捍卫者应自动参战");
 
+const jihadWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(40, "马穆鲁克苏丹国", "开罗", "逊尼派", 18),
+  tile(41, "格拉纳达酋长国", "格拉纳达", "逊尼派", 12),
+  tile(42, "法兰西王国", "巴黎", "天主教", 20),
+], undefined, "马穆鲁克苏丹国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(jihadWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(jihadWorld);
+const jihad = w.HIFI_FAITH_ENGINE.callJihad(jihadWorld, "马穆鲁克苏丹国", "法兰西王国");
+assert.equal(jihad.target, "法兰西王国", "圣战结果应返回目标国家");
+assert.equal(jihadWorld.faith.caliphate.jihadTarget, "法兰西王国", "圣战目标应写入哈里发状态");
+assert.ok(
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(jihadWorld, "格拉纳达酋长国", "法兰西王国")
+    .some(claim => claim.type === "jihad"),
+  "圣战应给伊斯兰国家生成圣战宣称"
+);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(jihadWorld);
+const jihadReputationBefore = jihadWorld.countries["格拉纳达酋长国"].reputation;
+const jihadWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
+  jihadWorld,
+  "格拉纳达酋长国",
+  "法兰西王国",
+  "圣战",
+  "religious"
+);
+assert.equal(jihadWar.goal.type, "religious", "圣战应能进入宗教战争目标");
+assert.equal(jihadWar.cbMatched, true, "圣战宣称应被战争系统识别为宣战理由");
+assert.equal(jihadWorld.countries["格拉纳达酋长国"].reputation, jihadReputationBefore, "有圣战宣称宣战不应扣声望");
+
 console.log("hifi faith passed");
