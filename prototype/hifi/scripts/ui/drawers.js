@@ -183,6 +183,9 @@
       const pressure = faith?.pressure(world, country.name) ?? (country.pressures?.faith || 0);
       const selected = world.tiles.find(candidate => candidate.id === world.selectedTile);
       const target = selected && !selected.isSea && selected.polity === country.name && selected.confession !== state;
+      const faithTiles = window.HIFI_WORLD_ENGINE.controlledTiles(world, country.name).filter(candidate => !candidate.isSea);
+      const churchLandTiles = faithTiles.filter(candidate => (candidate.churchLandShare || 0) > 0);
+      const churchLandShare = churchLandTiles.reduce((sum, candidate) => sum + (candidate.churchLandShare || 0), 0);
       const diplomaticTarget = world.diplomacy?.selectedTarget && world.diplomacy.selectedTarget !== country.name
         ? world.diplomacy.selectedTarget
         : Object.keys(world.countries).find(name => name !== country.name);
@@ -221,6 +224,8 @@
         <div class="drawer-row">${codexTerm("国教", "国教")}<span>${faith.confessionLabel(state)}</span></div>
         <div class="drawer-row">${codexTerm("宗教统一", "宗教统一")}<span>${wd().meter(unity, 100, { tone: unity >= 70 ? "green" : "red" })} ${unity}%</span></div>
         <div class="drawer-row">${codexTerm("信仰张力", "信仰张力")}<span>${wd().meter(pressure, 100, { tone: "red" })} ${pressure}</span></div>
+        <div class="drawer-row">教会财富<span>${Math.round(country.faith?.churchWealth || 0)}</span></div>
+        <div class="drawer-row">教产规模<span>${churchLandTiles.length} 地块 · ${(churchLandShare * 100).toFixed(0)}%</span></div>
         <div class="drawer-subtitle">信仰政策</div><div class="ui-segmented">${policies}</div>
         <div class="drawer-subtitle">传教行动</div>${missionary}
         ${authorityRows}`;
