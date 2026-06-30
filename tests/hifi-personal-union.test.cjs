@@ -83,8 +83,22 @@ const second = w.HIFI_SUPRANATIONAL_ENGINE.createPersonalUnion(world, "法兰西
 second.cohesion = 90;
 world.countries["法兰西王国"].actionPoints.administrative = 10;
 world.countries["法兰西王国"].money = 200;
+assert.throws(
+  () => w.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(world, "法兰西王国", "布列塔尼公国"),
+  /官僚体系|直接征税|高王权/,
+  "共主整合必须要求官僚、财政或高王权能力"
+);
+world.countries["法兰西王国"].technology ||= {};
+world.countries["法兰西王国"].technology.bureaucracy = true;
 w.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(world, "法兰西王国", "布列塔尼公国");
+assert.throws(
+  () => w.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(world, "法兰西王国", "布列塔尼公国"),
+  /同一季度/,
+  "共主整合不能在同一季度连续推进"
+);
+world.turn += 1;
 w.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(world, "法兰西王国", "布列塔尼公国");
+world.turn += 1;
 w.HIFI_SUPRANATIONAL_ENGINE.integrateUnionMember(world, "法兰西王国", "布列塔尼公国");
 assert.equal(world.tiles.find(candidate => candidate.city === "南特").polity, "法兰西王国", "整合完成后从邦地块应并入主邦");
 assert.equal(world.countries["布列塔尼公国"].absorbedBy, "法兰西王国", "整合完成后从邦应标记被吸收");
@@ -174,6 +188,8 @@ const main = fs.readFileSync(path.join(root, "main.js"), "utf8");
 assert.ok(html.includes("scripts/engine/supranational.js"), "页面必须加载超国家结构引擎");
 assert.ok(drawers.includes("data-union-action"), "外交抽屉必须提供共主操作");
 assert.ok(main.includes("claimPersonalUnion"), "main.js 必须接通宣告继承操作");
+assert.ok(main.includes("integrateUnionMember"), "main.js 必须接通共主整合操作");
+assert.ok(main.includes("dissolveUnion"), "main.js 必须接通共主解体操作");
 assert.ok(main.includes("initializeSupranational"), "页面启动必须初始化共主继承引擎");
 
 console.log("hifi personal union passed");

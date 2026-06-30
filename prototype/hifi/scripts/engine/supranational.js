@@ -545,15 +545,30 @@
     return item;
   }
 
+  function canIntegrateUnion(country) {
+    const institutions = country.government?.institutions || {};
+    const centralPower = institutions.centralization ?? country.government?.centralPower ?? 0;
+    return Boolean(
+      country.technology?.bureaucracy
+      || institutions.fiscal === "direct"
+      || centralPower >= 70
+    );
+  }
+
   function integrateUnionMember(world, senior, junior) {
     const item = unionFor(world, junior);
     if (!item || item.head !== senior || !item.members[junior]) throw new Error("目标不是本国共主从邦");
     if (item.cohesion < 70) throw new Error("向心力不足，无法推进整合");
     const country = world.countries[senior];
+    if (!canIntegrateUnion(country)) throw new Error("整合共主从邦需要官僚体系、直接征税或高王权");
+    item.integration ||= {};
+    item.lastIntegrationTurn ||= {};
+    if (item.lastIntegrationTurn[junior] === world.turn) throw new Error("同一季度只能推进一次共主整合");
     if (country.actionPoints.administrative < 2 || country.money < 30) throw new Error("整合需要 2 行政点与 30 金钱");
     country.actionPoints.administrative -= 2;
     country.money -= 30;
     item.integration[junior] = Math.min(100, (item.integration[junior] || 0) + 34);
+    item.lastIntegrationTurn[junior] = world.turn;
     item.cohesion = clamp(item.cohesion - 4);
     if (item.integration[junior] >= 100) {
       for (const tile of window.HIFI_WORLD_ENGINE.controlledTiles(world, junior)) {
@@ -561,6 +576,8 @@
         tile.control = Math.max(45, Math.min(tile.control || 70, 80));
       }
       delete item.members[junior];
+      delete item.integration[junior];
+      delete item.lastIntegrationTurn[junior];
       delete world.countries[junior].union;
       world.countries[junior].absorbedBy = senior;
       item.sharedRulerOf = [senior, ...Object.keys(item.members)];
