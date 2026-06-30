@@ -30,6 +30,9 @@ for (const key of ["estates_general", "fiscal_parliament", "fiscal_absolutism", 
 }
 assert.ok(codex.decisions.convert_reformed.effect.includes("路德宗"), "接纳宗教改革说明必须匹配实际国教变化");
 assert.ok(codex.decisions.convert_reformed.effect.includes("世俗化教产"), "接纳宗教改革说明必须提示世俗化红利");
+assert.ok(codex.decisions.fiscal_absolutism.effect.includes("财政科技"), "绝对主义财政说明必须提示财政科技门槛");
+assert.ok(codex.decisions.constitutional_monarchy.effect.includes("威斯特法利亚"), "君主立宪说明必须提示主权门槛");
+assert.ok(codex.decisions.civic_republic.effect.includes("议会科技"), "共和转型说明必须提示议会科技门槛");
 
 // toHtml 渲染包含术语名与说明
 const html = codex.toHtml("统治者");

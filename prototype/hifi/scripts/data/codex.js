@@ -201,11 +201,11 @@
   // 国家决议的效果说明（与 politics.js 的 decisions.apply 对应）。
   const decisions = {
     estates_general: { term: "召开等级会议", effect: "解锁议会（等级会议），初始支持 42。" },
-    fiscal_parliament: { term: "议会财政路线", effect: "税收→统一税制、权力→宪政；王权 −8。" },
-    fiscal_absolutism: { term: "绝对主义财政路线", effect: "税收→统一税制、权力→绝对；王权 +10。" },
+    fiscal_parliament: { term: "议会财政路线", effect: "需议会制度与财政科技；税收→统一税制、权力→宪政；王权 −8。" },
+    fiscal_absolutism: { term: "绝对主义财政路线", effect: "需绝对主义纪元、王权 70 与财政科技；税收→统一税制、权力→绝对；王权 +10。" },
     convert_reformed: { term: "接纳宗教改革", effect: "宗教→路德宗；己方地块转为新教，并世俗化教产。" },
-    constitutional_monarchy: { term: "建立君主立宪", effect: "权力→宪政；王权降至 45。" },
-    civic_republic: { term: "建立公民共和国", effect: "政体变更为共和国，阶层与继承随之重置。" },
+    constitutional_monarchy: { term: "建立君主立宪", effect: "需威斯特法利亚主权条件与议会科技；权力→宪政；王权降至 45。" },
+    civic_republic: { term: "建立公民共和国", effect: "需革命纪元、威斯特法利亚主权条件与议会科技；政体变更为共和国，阶层与继承随之重置。" },
   };
 
   function get(key) {
