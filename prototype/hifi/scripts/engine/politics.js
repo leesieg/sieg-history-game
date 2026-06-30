@@ -130,6 +130,15 @@
     return index < 0 || (world.eraIndex || 0) >= index;
   }
 
+  function institutionUnlocked(country, axis, value) {
+    if (!axis || !value) return true;
+    return Object.entries(window.HIFI_RULES?.technologies || {}).some(([key, technology]) =>
+      country.technology?.[key]
+      && technology.unlockInstitution?.[0] === axis
+      && technology.unlockInstitution?.[1] === value
+    );
+  }
+
   const decisions = {
     estates_general: {
       label: "召开等级会议",
@@ -147,8 +156,10 @@
     },
     fiscal_parliament: {
       label: "议会财政路线",
-      can: country => country.government.assembly.unlocked && country.government.institutions?.assembly?.type !== "none",
-      why: "需要已建立议会制度",
+      can: country => country.government.assembly.unlocked
+        && country.government.institutions?.assembly?.type !== "none"
+        && institutionUnlocked(country, "fiscal", "direct"),
+      why: "需要已建立议会制度，并掌握可支撑直接征税的财政科技",
       apply: country => {
         country.government.institutions ||= {};
         country.government.institutions.fiscal = "direct";
@@ -159,8 +170,10 @@
     },
     fiscal_absolutism: {
       label: "绝对主义财政路线",
-      can: (country, world) => country.government.centralPower >= 70 && eraReached(world, "absolutism"),
-      why: "需要绝对主义纪元与王权 70",
+      can: (country, world) => country.government.centralPower >= 70
+        && eraReached(world, "absolutism")
+        && institutionUnlocked(country, "fiscal", "direct"),
+      why: "需要绝对主义纪元、王权 70，并掌握可支撑直接征税的财政科技",
       apply: country => {
         country.government.institutions ||= {};
         country.government.institutions.fiscal = "direct";
@@ -398,7 +411,7 @@
         ],
       });
     }
-    if (fiscal !== "direct" && central >= 50 && (fiscalPressure >= 35 || country.money < 40)) {
+    if (fiscal !== "direct" && central >= 50 && institutionUnlocked(country, "fiscal", "direct") && (fiscalPressure >= 35 || country.money < 40)) {
       return pushInstitutionFork(world, country, {
         key: "direct_taxation",
         title: "财政制度抉择：直接征税",

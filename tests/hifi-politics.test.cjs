@@ -8,6 +8,8 @@ const context = { window: {} };
 for (const file of [
   "scripts/data/countries.js",
   "scripts/data/institutions.js",
+  "scripts/data/techs.js",
+  "scripts/data/rules.js",
   "scripts/engine/world.js",
   "scripts/engine/politics.js",
 ]) {
@@ -173,6 +175,13 @@ france.money = 20;
 france.legitimacy = 70;
 france.unrest = 0;
 france.pressures = { fiscal: 50 };
+france.technology = { accounting: false };
+assert.equal(
+  politics.processInstitutionForks(world, "法兰西王国"),
+  null,
+  "未掌握复式记账时，财政压力不能绕过科技闸门触发直接征税"
+);
+france.technology.accounting = true;
 const fiscalFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(fiscalFork && fiscalFork.institutionFork === "direct_taxation", "财政压力必须触发直接征税制度抉择");
 fiscalFork.choices.find(choice => choice.id === "adopt").apply(world, france);
@@ -248,7 +257,10 @@ france.government.centralPower = 70;
 world.eraIndex = 0;
 assert.equal(politics.decisions.fiscal_absolutism.can(france, world), false, "未到绝对主义纪元不能行绝对主义财政");
 world.eraIndex = 3;
-assert.equal(politics.decisions.fiscal_absolutism.can(france, world), true, "绝对主义纪元后只要王权足够即可行绝对主义财政");
+france.technology = { accounting: false };
+assert.equal(politics.decisions.fiscal_absolutism.can(france, world), false, "未掌握财政科技时不能行绝对主义财政");
+france.technology.accounting = true;
+assert.equal(politics.decisions.fiscal_absolutism.can(france, world), true, "绝对主义纪元后仍需王权与财政科技才能行绝对主义财政");
 
 world.flags = { reformation: true };
 france.government = politics.createGovernment("monarchy");
