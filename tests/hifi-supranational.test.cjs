@@ -63,11 +63,23 @@ const scores = w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre");
 assert.ok(scores.length >= 4, "选举形势应覆盖存在的帝国成员");
 assert.equal(scores[0].polity, "巴伐利亚公国", "初始皇帝应在选举中占优");
 
+hre.authority = 0;
+hre.electors = ["波西米亚王国"];
+world.turn = 24;
+world.countries["巴伐利亚公国"].leader.historicalEndAtTurn = world.turn;
+world.countries["巴伐利亚公国"].legitimacy = 1;
+world.countries["波西米亚王国"].legitimacy = 100;
+const electionResult = w.HIFI_SUPRANATIONAL_ENGINE.resolveImperialElection(world, hre);
+assert.equal(electionResult.winner, "波西米亚王国", "皇帝到期时应按选举评分换届");
+assert.equal(hre.emperor, "波西米亚王国", "帝国结构必须同步新皇帝");
+assert.equal(world.countries["波西米亚王国"].supranational.hre.emperor, true, "国家成员状态必须标记新皇帝");
+
+hre.authority = 80;
 const authorityBefore = hre.authority;
-world.countries["巴伐利亚公国"].actionPoints.diplomatic = 2;
-w.HIFI_SUPRANATIONAL_ENGINE.callImperialDiet(world, "巴伐利亚公国");
+world.countries["波西米亚王国"].actionPoints.diplomatic = 2;
+w.HIFI_SUPRANATIONAL_ENGINE.callImperialDiet(world, "波西米亚王国");
 assert.equal(hre.authority, authorityBefore - 12, "召开帝国会议应消耗帝国权威");
-assert.equal(world.countries["巴伐利亚公国"].actionPoints.diplomatic, 1, "召开帝国会议应消耗外交点");
+assert.equal(world.countries["波西米亚王国"].actionPoints.diplomatic, 1, "召开帝国会议应消耗外交点");
 
 world.playerPolity = "勃艮第公国";
 world.countries["勃艮第公国"].actionPoints.diplomatic = 2;
@@ -83,16 +95,16 @@ assert.equal(
   false,
   "帝国和平应禁止成员私战"
 );
-world.countries["巴伐利亚公国"].actionPoints.diplomatic = 2;
-w.HIFI_SUPRANATIONAL_ENGINE.declareImperialBan(world, "巴伐利亚公国", "米兰领");
+world.countries["波西米亚王国"].actionPoints.diplomatic = 2;
+w.HIFI_SUPRANATIONAL_ENGINE.declareImperialBan(world, "波西米亚王国", "米兰领");
 assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.isImperialOutlaw(world, "米兰领"), true, "帝国除籍应标记目标成员");
 assert.equal(
-  w.HIFI_WARFARE_ENGINE.canDeclareWar(world, "巴伐利亚公国", "米兰领").ok,
+  w.HIFI_WARFARE_ENGINE.canDeclareWar(world, "波西米亚王国", "米兰领").ok,
   true,
   "除籍目标应允许皇帝讨伐"
 );
 assert.ok(
-  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, "巴伐利亚公国", "米兰领").some(claim => claim.type === "imperial_ban"),
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(world, "波西米亚王国", "米兰领").some(claim => claim.type === "imperial_ban"),
   "帝国除籍应给皇帝生成讨伐宣称"
 );
 assert.ok(

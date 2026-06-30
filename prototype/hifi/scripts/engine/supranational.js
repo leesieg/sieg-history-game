@@ -345,6 +345,29 @@
     }).sort((a, b) => b.score - a.score || a.polity.localeCompare(b.polity, "zh-Hans-CN"));
   }
 
+  function imperialElectionDue(world, item) {
+    const emperor = world.countries[item.emperor];
+    if (!emperor?.leader) return true;
+    const historicalDue = emperor.leader.historicalEndAtTurn !== null
+      && world.turn >= emperor.leader.historicalEndAtTurn;
+    const termDue = emperor.leader.termEndsAtTurn !== null
+      && world.turn >= emperor.leader.termEndsAtTurn;
+    return historicalDue || termDue;
+  }
+
+  function resolveImperialElection(world, item) {
+    if (!item || item.type !== "imperial" || !imperialElectionDue(world, item)) return null;
+    const former = item.emperor;
+    const winner = electionScores(world, item.id)[0]?.polity;
+    if (!winner || !world.countries[winner]) return null;
+    item.emperor = winner;
+    item.heir = null;
+    item.lastElection = { turn: world.turn, former, winner };
+    syncDiplomacyOrganizations(world);
+    syncCountryMemberships(world);
+    return item.lastElection;
+  }
+
   function summary(world, polity, id = "hre") {
     const item = structure(world, id);
     if (!item) return null;
@@ -634,6 +657,7 @@
       const drift = authorityDrift(world, item.id);
       item.authority = clamp(item.authority + drift.delta);
       item.lastDrift = drift;
+      resolveImperialElection(world, item);
       const election = electionScores(world, item.id)[0];
       if (election && election.polity !== item.emperor && election.score >= (electionScores(world, item.id)[1]?.score || 0) + 18) {
         item.heir = election.polity;
@@ -664,6 +688,7 @@
     processSupranational,
     processDynasticSuccession,
     releaseUnionMember,
+    resolveImperialElection,
     requestImperialMediation,
     raiseImperialArmy,
     structure,
