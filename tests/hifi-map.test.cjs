@@ -83,7 +83,12 @@ console.log("hifi map integration passed");
 
   const seaActions = tileActionsFor(sea, world);
   assert.ok(!seaActions.includes("build"), "海域不应有建设");
-  assert.deepEqual(seaActions, ["view"], "海域只读");
+  assert.ok(seaActions.includes("navy"), "海域应提供海军入口");
+  assert.notDeepEqual(seaActions, ["view"], "海军系统接入后海域不应只是只读");
+
+  world.warfare.fleets["test-fleet"] = { id: "test-fleet", owner: "法兰西王国", tileId: sea.id, units: [] };
+  const seaWithFleetActions = tileActionsFor(sea, world);
+  assert.ok(seaWithFleetActions.includes("fleetOps"), "本国舰队所在海域应提供舰队入口");
 
   const atWarActions = tileActionsFor(foreignAtWar, world);
   assert.ok(!atWarActions.includes("build"), "交战地块不应有建设");
@@ -95,6 +100,8 @@ console.log("hifi map integration passed");
     "外国和平地块应有外交/宣战");
 
   assert.ok(mapSource.includes("function tileActionsFor(tile, world)"), "tileActionsFor 签名必须固定");
+  assert.ok(mapSource.includes("data-fleet-open") && mapSource.includes("data-build-fleet"),
+    "海域海军入口必须能聚焦舰队或造舰控件");
   assert.ok(mapSource.includes("window.prototypeMap = {") && mapSource.includes("tileActionsFor"),
     "tileActionsFor 必须导出到 window.prototypeMap");
 

@@ -440,11 +440,15 @@
     return { isSea: false, output, effectiveControl, controlLabel, developmentValue, developmentTier, popDisplay: formatPopulation(tile) };
   }
 
-  // Task C3：地块动作按归属区分。己方地块给治理动作，外国地块按和平/交战给外交或战争动作，
-  // 海域（暂无海军机制）只读。纯函数，不触碰 DOM，方便单测。
+  // Task C3：地块动作按归属区分。己方地块给治理动作，外国地块按和平/交战给外交或战争动作；
+  // 海域接入海军入口，但不提供陆地建设/征兵动作。
   function tileActionsFor(tile, world) {
     const player = world.playerPolity;
-    if (tile.isSea) return ["view"];
+    if (tile.isSea) {
+      const ownFleetHere = Object.values(world.warfare?.fleets || {})
+        .some(fleet => fleet.owner === player && fleet.tileId === tile.id);
+      return ownFleetHere ? ["fleetOps", "navy"] : ["navy"];
+    }
     if (tile.polity === player) {
       const country = world.countries[player];
       const actions = ["build", "mobilize", "integrate", "garrison"];
@@ -470,6 +474,8 @@
     advance: { icon: "➤", label: "推进", attrs: 'data-open-system="军事" data-focus-sel="[data-army-open]"' },
     siege: { icon: "⛓", label: "围攻", attrs: 'data-open-system="军事" data-focus-sel="[data-peace-war]"' },
     viewWarGoal: { icon: "⚑", label: "战争目标", attrs: 'data-open-system="军事" data-focus-sel="[data-peace-war]"' },
+    fleetOps: { icon: "⚓", label: "舰队", attrs: 'data-open-system="军事" data-focus-sel="[data-fleet-open]"' },
+    navy: { icon: "◈", label: "海军", attrs: 'data-open-system="军事" data-focus-sel="[data-build-fleet]"' },
     view: { icon: "◇", label: "查看", attrs: "disabled" },
   };
 

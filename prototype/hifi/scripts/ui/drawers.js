@@ -105,7 +105,7 @@
     const rules = {
       "国家": [[/institution-row|压力漂移/, "政制"], [/data-assembly/, "议会"], [/data-faith-policy|data-missionary/, "信仰"], [/data-decision|data-integrate/, "决议"]],
       "经济": [[/data-building|data-develop/, "建设"], [/data-trade-route|data-trade-policy|data-tariff|data-edict|data-agenda/, "贸易"]],
-      "军事": [[/data-mobilize|data-hire-mercenary|data-army-open/, "军团"], [/data-peace-war/, "战争"]],
+      "军事": [[/data-mobilize|data-hire-mercenary|data-army-open|data-fleet-open|data-build-fleet/, "军团"], [/data-peace-war/, "战争"]],
       "外交": [[/war:declare|mission:|leader:/, "邦交"], [/treaty:/, "条约"], [/subject:/, "从属"], [/data-union-action/, "共主"], [/data-imperial-action/, "帝国"]],
     };
     for (const [pattern, tab] of (rules[system] || [])) if (pattern.test(selector)) return `${system}:${tab}`;
