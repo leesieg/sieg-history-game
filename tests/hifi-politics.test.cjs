@@ -225,6 +225,15 @@ france.estates.nobles.power = 10;
 france.estates.merchants.power = 80;
 france.estates.bureaucrats.power = 60;
 world.diplomacy = { wars: [{ attackers: ["法兰西王国"], defenders: ["英格兰王国"] }] };
+world.flags = { westphalia: false };
+france.technology = { enlightenment: false };
+assert.equal(
+  politics.processInstitutionForks(world, "法兰西王国"),
+  null,
+  "议会主权不能绕过威斯特法利亚与启蒙科技"
+);
+world.flags.westphalia = true;
+france.technology.enlightenment = true;
 const parliamentFork = politics.processInstitutionForks(world, "法兰西王国");
 assert.ok(parliamentFork && parliamentFork.institutionFork === "parliamentary_sovereignty", "资本阶层主导的外压必须触发议会主权");
 parliamentFork.choices.find(choice => choice.id === "adopt").apply(world, france);
@@ -232,6 +241,8 @@ assert.equal(france.government.institutions.assembly.type, "parliamentary", "议
 assert.ok(france.government.centralPower <= 55, "议会主权必须压低王权上限");
 assert.equal(france.government.archetype, "parliamentary_monarchy", "议会主权必须派生议会君主国");
 assert.ok(france.estates.commons, "议会主权必须补入平民代表阶层");
+world.eraIndex = 4;
+assert.equal(politics.decisions.civic_republic.can(france, world), true, "共和转型必须在革命纪元、主权条件和议会科技齐备后开放");
 
 // 制度抉择：内压 + 强制阶层主导触发绝对主义，并派生绝对君主国
 world.playerEvents = [];

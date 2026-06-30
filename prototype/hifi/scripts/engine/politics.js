@@ -139,6 +139,11 @@
     );
   }
 
+  function sovereignTransitionUnlocked(world, country) {
+    return Boolean(world.flags?.westphalia || world.flags?.intraChristianReligiousWarsDisabled)
+      && institutionUnlocked(country, "assembly", "parliamentary");
+  }
+
   const decisions = {
     estates_general: {
       label: "召开等级会议",
@@ -206,10 +211,11 @@
     },
     constitutional_monarchy: {
       label: "建立君主立宪",
-      can: country => country.government.type === "monarchy"
+      can: (country, world) => sovereignTransitionUnlocked(world, country)
+        && country.government.type === "monarchy"
         && country.government.assembly.unlocked
         && country.government.institutions?.assembly?.type === "estates_general",
-      why: "需要君主制与等级会议制度",
+      why: "需要君主制、等级会议制度、威斯特法利亚主权条件与议会科技",
       apply: country => {
         country.government.institutions ||= {};
         country.government.institutions.assembly = { type: "parliamentary", cadence: 4 };
@@ -220,11 +226,12 @@
     },
     civic_republic: {
       label: "建立公民共和国",
-      can: (country, world) => ["monarchy", "merchant_republic"].includes(country.government.type)
+      can: (country, world) => sovereignTransitionUnlocked(world, country)
+        && ["monarchy", "merchant_republic"].includes(country.government.type)
         && country.government.assembly.unlocked
         && country.government.institutions?.assembly?.type === "parliamentary"
         && eraReached(world, "revolution"),
-      why: "需要革命纪元与议会主权制度",
+      why: "需要革命纪元、议会主权制度、威斯特法利亚主权条件与议会科技",
       government: "republic",
     },
   };
@@ -392,7 +399,7 @@
         ],
       });
     }
-    if (assembly === "estates_general" && capital > coercion && (externalPressure >= 20 || fiscalPressure >= 30)) {
+    if (assembly === "estates_general" && sovereignTransitionUnlocked(world, country) && capital > coercion && (externalPressure >= 20 || fiscalPressure >= 30)) {
       return pushInstitutionFork(world, country, {
         key: "parliamentary_sovereignty",
         title: "立法制度抉择：议会主权",
