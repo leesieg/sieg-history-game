@@ -73,6 +73,16 @@ assert.deepEqual(
   "完全占领的地块不能继续为原政权产出"
 );
 
+const legacyBaseline = economy.tileOutput(tiles[0], country);
+country.struggleLegacy = { key: "france_hegemony", outputBonus: 0.1 };
+const legacyBoosted = economy.tileOutput(tiles[0], country);
+assert.ok(legacyBoosted.goods.grain > legacyBaseline.goods.grain, "百年战争霸权终局必须提高核心物产产量");
+assert.ok(legacyBoosted.food > legacyBaseline.food, "百年战争霸权终局必须回灌粮食产出");
+assert.ok(legacyBoosted.market > legacyBaseline.market, "百年战争霸权终局必须回灌市场价值");
+country.struggleLegacy = { key: "england_claim", coreDebuff: true };
+assert.ok(economy.tileOutput(tiles[0], country).goods.grain < legacyBaseline.goods.grain, "核心崩坏终局必须压低核心物产产量");
+delete country.struggleLegacy;
+
 // 财政制度模块必须直接影响产出流，不再只是政体展示字段
 country.government.institutions = { fiscal: "demesne" };
 const demesneMoney = economy.tileOutput(tiles[0], country).money;

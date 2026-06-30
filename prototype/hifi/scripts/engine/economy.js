@@ -209,6 +209,13 @@
     return country.lastTechnologyEffect;
   }
 
+  function struggleLegacyOutputFactor(country) {
+    const legacy = country.struggleLegacy || {};
+    let factor = 1 + (Number(legacy.outputBonus) || 0);
+    if (legacy.coreDebuff) factor -= .1;
+    return Math.max(.5, Math.min(1.5, factor));
+  }
+
   function tileOutput(tile, country) {
     if (tile.isSea) return { food: 0, money: 0, military: 0, market: 0, church: 0, goods: {} };
     if (tile.occupier && tile.occupation >= 100) return { food: 0, money: 0, military: 0 };
@@ -222,7 +229,7 @@
     const terrainAffinity = !good.terrain?.length || good.terrain.includes(tile.terrain) ? 1 : .72;
     const climate = good.climate?.[tile.climate] ?? 1;
     const industry = industryBonus(tile, good, goodKey);
-    const amount = base * (good.yield || .6) * terrainAffinity * climate * industry.amount;
+    const amount = base * (good.yield || .6) * terrainAffinity * climate * industry.amount * struggleLegacyOutputFactor(country);
     const value = amount * (good.baseValue || 1) * (country.priceIndex || 1);
     let food = ["food"].includes(good.cat) ? amount * 1.35 : base * .28;
     let money = value * .42;
