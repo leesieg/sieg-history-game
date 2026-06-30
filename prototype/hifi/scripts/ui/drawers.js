@@ -619,13 +619,25 @@
       const target = world.diplomacy?.selectedTarget;
       const targetMember = target && window.HIFI_SUPRANATIONAL_ENGINE?.isMember(world, target, "hre");
       const targetOutlaw = target && window.HIFI_SUPRANATIONAL_ENGINE?.isImperialOutlaw(world, target, "hre");
+      const targetElector = target && imperial.electors?.includes(target);
+      const papacy = world.faith?.papacy;
+      const canPapalEndorse = papacy && (country.name === papacy.head || country.name === papacy.controller);
       const banButton = imperial.emperor === country.name && target && target !== country.name && targetMember
         ? actionButton("data-imperial-action", `ban:${target}`, `帝国除籍 ${target}`, "1 外交点 · 消耗 18 帝国权威 · 皇帝获得讨伐宣称", false, targetOutlaw ? "目标已被除籍" : imperial.authority < 25 ? "帝国权威不足" : false)
         : "";
+      const bribeButton = imperial.member && target && target !== country.name && targetElector
+        ? actionButton("data-imperial-action", `bribe:${target}`, `贿选 ${target}`, "25 金钱 + 1 外交点 · 提高本国选举评分", false, country.money < 25 || country.actionPoints.diplomatic < 1 ? "需要 25 金钱和 1 外交点" : false)
+        : "";
+      const endorsementButton = target && targetMember
+        ? actionButton("data-imperial-action", `endorse:${target}`, `教廷认可 ${target}`, "消耗教廷权威 · 提高候选人选举评分", false, !canPapalEndorse ? "只有教廷或教廷控制者可以认可候选人" : world.countries[target]?.stateConfession !== "catholic" ? "候选人必须信奉天主教" : (papacy.authority || 0) < 8 ? "教廷权威不足" : false)
+        : "";
+      const levyButton = imperial.emperor === country.name
+        ? actionButton("data-imperial-action", "levy", "征帝国军", "1 军事点 · 消耗 15 帝国权威 · 成员贡献征召兵", false, imperial.authority < 70 ? "帝国权威不足" : country.actionPoints.military < 1 ? "需要 1 军事点" : false)
+        : "";
       const action = imperial.emperor === country.name
-        ? `${actionButton("data-imperial-action", "diet", "召开帝国会议", "1 外交点 · 消耗 12 帝国权威 · 合法性与选侯信任上升", false, imperial.authority < 12 ? "帝国权威不足" : false)}${banButton}`
+        ? `${actionButton("data-imperial-action", "diet", "召开帝国会议", "1 外交点 · 消耗 12 帝国权威 · 合法性与选侯信任上升", false, imperial.authority < 12 ? "帝国权威不足" : false)}${levyButton}${banButton}${bribeButton}${endorsementButton}`
         : imperial.member
-          ? actionButton("data-imperial-action", "mediation", "请求帝国调停", "1 外交点 · 消耗 6 帝国权威 · 合法性与皇帝信任上升", false, imperial.authority < 6 ? "帝国权威不足" : false)
+          ? `${actionButton("data-imperial-action", "mediation", "请求帝国调停", "1 外交点 · 消耗 6 帝国权威 · 合法性与皇帝信任上升", false, imperial.authority < 6 ? "帝国权威不足" : false)}${bribeButton}${endorsementButton}`
           : '<div class="drawer-row">帝国行动<span>非成员不可操作</span></div>';
       return `${bar}
         <div class="drawer-row">${codexTerm("神圣罗马帝国", imperial.name)}<span>${imperial.authorityLabel} ${wd().meter(imperial.authority, 100, { tone: "gold" })} ${imperial.authority}</span></div>

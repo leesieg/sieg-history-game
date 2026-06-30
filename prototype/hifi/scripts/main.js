@@ -406,6 +406,15 @@
         if (imperialAction === "ban") {
           return window.HIFI_SUPRANATIONAL_ENGINE.declareImperialBan(current, current.playerPolity, target);
         }
+        if (imperialAction === "bribe") {
+          return window.HIFI_SUPRANATIONAL_ENGINE.bribeImperialElector(current, current.playerPolity, target, 25);
+        }
+        if (imperialAction === "endorse") {
+          return window.HIFI_SUPRANATIONAL_ENGINE.papalEndorseImperialCandidate(current, current.playerPolity, target);
+        }
+        if (button.dataset.imperialAction === "levy") {
+          return window.HIFI_SUPRANATIONAL_ENGINE.raiseImperialArmy(current, current.playerPolity);
+        }
         if (button.dataset.imperialAction === "diet") {
           return window.HIFI_SUPRANATIONAL_ENGINE.callImperialDiet(current, current.playerPolity);
         }
