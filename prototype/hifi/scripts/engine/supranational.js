@@ -282,6 +282,16 @@
       .reduce((sum, tile) => sum + (tile.population || 0), 0);
   }
 
+  function successionDue(world, polity) {
+    const leader = world.countries[polity]?.leader;
+    if (!leader) return false;
+    const historicalDue = leader.historicalEndAtTurn !== null
+      && world.turn >= leader.historicalEndAtTurn;
+    const termDue = leader.termEndsAtTurn !== null
+      && world.turn >= leader.termEndsAtTurn;
+    return historicalDue || termDue;
+  }
+
   function authorityDrift(world, id = "hre") {
     const item = structure(world, id);
     if (!item) return { delta: 0, parts: [] };
@@ -545,6 +555,23 @@
     return item;
   }
 
+  function partitionUnionOnSuccession(world, item) {
+    if (!item || item.type !== "dynastic" || item.lastPartitionTurn === world.turn) return null;
+    const juniors = Object.keys(item.members || {}).filter(polity => world.countries[polity]);
+    if (juniors.length < 2 || item.cohesion >= 45 || !successionDue(world, item.head)) return null;
+    const junior = juniors
+      .sort((a, b) => countryPopulation(world, b) - countryPopulation(world, a) || a.localeCompare(b, "zh-Hans-CN"))[0];
+    releaseUnionMember(world, item.head, junior, "分割继承");
+    const updated = structure(world, item.id);
+    if (updated) {
+      updated.lastPartitionTurn = world.turn;
+      updated.cohesion = clamp(updated.cohesion - 8);
+      updated.lastPartition = { turn: world.turn, released: junior, reason: "主邦继承时向心力不足" };
+    }
+    world.countries[junior].lastUnionPartition = { turn: world.turn, formerSenior: item.head };
+    return junior;
+  }
+
   function canIntegrateUnion(country) {
     const institutions = country.government?.institutions || {};
     const centralPower = institutions.centralization ?? country.government?.centralPower ?? 0;
@@ -693,6 +720,7 @@
     processDynasticSuccession(world);
     for (const item of Object.values(world.supranational.structures)) {
       if (item.type === "dynastic") {
+        partitionUnionOnSuccession(world, item);
         const drift = cohesionDrift(world, item);
         item.cohesion = clamp(item.cohesion + drift.delta);
         item.lastDrift = drift;
