@@ -461,6 +461,23 @@
     syncCountryMemberships(world);
   }
 
+  function releaseUnionMember(world, senior, junior, reason = "独立") {
+    const item = unionFor(world, junior);
+    if (!item || item.head !== senior || !item.members[junior]) throw new Error("目标不是该共主邦联从邦");
+    delete item.members[junior];
+    item.sharedRulerOf = [senior, ...Object.keys(item.members)];
+    const country = world.countries[junior];
+    if (country) {
+      delete country.union;
+      country.legitimacy = clamp((country.legitimacy || 50) - 4);
+      country.log?.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：${reason}，${junior}脱离${item.name}。`);
+    }
+    if (!Object.keys(item.members).length) delete world.supranational.structures[item.id];
+    syncDiplomacyOrganizations(world);
+    syncCountryMemberships(world);
+    return item;
+  }
+
   function integrateUnionMember(world, senior, junior) {
     const item = unionFor(world, junior);
     if (!item || item.head !== senior || !item.members[junior]) throw new Error("目标不是本国共主从邦");
@@ -600,6 +617,9 @@
           if (!country) continue;
           country.union = { senior: item.head, junior: true, id: item.id };
           if (item.cohesion < 25) country.unrest = clamp((country.unrest || 0) + 2);
+          if (item.cohesion < 15 && window.HIFI_WARFARE_ENGINE?.declareIndependenceWar) {
+            window.HIFI_WARFARE_ENGINE.declareIndependenceWar(world, junior, item.head);
+          }
         }
         if (item.cohesion <= 0) dissolveUnion(world, item.id);
         continue;
@@ -643,6 +663,7 @@
     isMember,
     processSupranational,
     processDynasticSuccession,
+    releaseUnionMember,
     requestImperialMediation,
     raiseImperialArmy,
     structure,

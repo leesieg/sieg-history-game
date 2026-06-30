@@ -145,6 +145,29 @@ assert.equal(
 );
 assert.equal(contestedWorld.diplomacy.wars.length, 0, "继承战和约必须结束战争");
 
+const independenceWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(30, "法兰西王国", "巴黎", 0, "天主教", 16),
+  tile(31, "布列塔尼公国", "南特", 2, "天主教", 6),
+], undefined, "法兰西王国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(independenceWorld);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(independenceWorld);
+w.HIFI_SUPRANATIONAL_ENGINE.initializeSupranational(independenceWorld);
+const unstableUnion = w.HIFI_SUPRANATIONAL_ENGINE.createPersonalUnion(independenceWorld, "法兰西王国", "布列塔尼公国", "低向心力测试");
+unstableUnion.cohesion = 10;
+w.HIFI_SUPRANATIONAL_ENGINE.processSupranational(independenceWorld);
+const independenceWar = independenceWorld.diplomacy.wars.find(war => war.goal?.type === "independence" && war.goal.target === "布列塔尼公国");
+assert.ok(independenceWar, "共主向心力过低应触发从邦独立战争");
+assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.unionFor(independenceWorld, "布列塔尼公国").head, "法兰西王国", "独立战争未决前从邦仍处于共主结构");
+independenceWar.score = 40;
+assert.equal(
+  w.HIFI_WARFARE_ENGINE.canConcludePeace(independenceWorld, independenceWar, "布列塔尼公国", [{ type: "independence" }]),
+  true,
+  "独立战争胜方应能要求脱离共主"
+);
+w.HIFI_WARFARE_ENGINE.concludePeace(independenceWorld, independenceWar.id, "布列塔尼公国", [{ type: "independence" }]);
+assert.equal(w.HIFI_SUPRANATIONAL_ENGINE.unionFor(independenceWorld, "布列塔尼公国"), undefined, "独立战争胜利后从邦应脱离共主");
+assert.equal(independenceWorld.countries["布列塔尼公国"].union, undefined, "独立战争胜利后国家状态应清空共主标记");
+
 const html = fs.readFileSync(path.join(hifiRoot, "index.html"), "utf8");
 const drawers = fs.readFileSync(path.join(root, "ui", "drawers.js"), "utf8");
 const main = fs.readFileSync(path.join(root, "main.js"), "utf8");

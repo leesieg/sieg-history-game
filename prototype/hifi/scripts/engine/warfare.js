@@ -25,6 +25,7 @@
     humiliation: { label: "霸权羞辱战", defaultTerms: ["reparations"] },
     succession: { label: "继承战", defaultTerms: ["personal_union", "reparations"] },
     religious: { label: "宗教战争", defaultTerms: ["target_territory", "reparations"] },
+    independence: { label: "独立战争", defaultTerms: ["independence", "reparations"] },
   };
 
   function normalizeWarGoal(goal, targetTileId) {
@@ -801,6 +802,38 @@
     return war;
   }
 
+  function declareIndependenceWar(world, junior, senior) {
+    if (!world.countries[junior]?.union?.junior || world.countries[junior].union.senior !== senior) {
+      throw new Error("只有共主从邦可以发动独立战争");
+    }
+    if (!world.countries[senior]) throw new Error("主邦不存在");
+    if (areAtWar(world, junior, senior)) return world.diplomacy.wars.find(war =>
+      war.attackers.includes(junior) && war.defenders.includes(senior)
+      || war.attackers.includes(senior) && war.defenders.includes(junior)
+    );
+    const target = window.HIFI_WORLD_ENGINE.controlledTiles(world, junior).find(tile => tile.city)
+      || window.HIFI_WORLD_ENGINE.controlledTiles(world, junior)[0];
+    if (!target) throw new Error("从邦没有可争夺领土");
+    const war = {
+      id: `war-${world.diplomacy.nextId++}`,
+      name: `${junior}独立战争`,
+      attackers: [junior],
+      defenders: [senior],
+      primaryGoal: { tileId: target.id, claimant: junior },
+      goal: { type: "independence", target: junior, senior, tileId: target.id },
+      cbMatched: true,
+      score: 0,
+      startedTurn: world.turn,
+      participants: {
+        [junior]: { side: "attacker", warWill: 90, contribution: 0 },
+        [senior]: { side: "defender", warWill: 80, contribution: 0 },
+      },
+    };
+    world.diplomacy.wars.push(war);
+    world.countries[junior].log?.unshift(`${window.HIFI_WORLD_ENGINE.calendarLabel(world.turn)}：向心力崩溃，${junior}发动独立战争。`);
+    return war;
+  }
+
   function areAtWar(world, a, b) {
     return world.diplomacy.wars.some(war =>
       war.attackers.includes(a) && war.defenders.includes(b)
@@ -1120,6 +1153,12 @@
         if (!junior) throw new Error("缺少共主继承目标");
         if (!window.HIFI_SUPRANATIONAL_ENGINE?.createPersonalUnion) throw new Error("共主系统未初始化");
         window.HIFI_SUPRANATIONAL_ENGINE.createPersonalUnion(world, actor, junior, "继承战争和约");
+      } else if (term.type === "independence") {
+        const junior = term.target || war.goal?.target;
+        const senior = term.senior || war.goal?.senior || peaceOpponent(war, actor);
+        if (actor !== junior) throw new Error("只有独立战争发起方可以要求独立");
+        if (!window.HIFI_SUPRANATIONAL_ENGINE?.releaseUnionMember) throw new Error("共主系统未初始化");
+        window.HIFI_SUPRANATIONAL_ENGINE.releaseUnionMember(world, senior, junior, "独立战争胜利");
       }
     }
     for (const tile of world.tiles) {
@@ -1152,6 +1191,7 @@
         return sum + (costs[term.subjectType || "tributary"] || 35);
       }
       if (term.type === "personal_union") return sum + 45;
+      if (term.type === "independence") return sum + 35;
       throw new Error("未知和约条款");
     }, 0);
   }
@@ -1256,6 +1296,7 @@
     demobilizeLevies,
     declareWar,
     declareWarOn,
+    declareIndependenceWar,
     defensiveTechnologyFactor,
     disembarkArmy,
     embarkArmy,
