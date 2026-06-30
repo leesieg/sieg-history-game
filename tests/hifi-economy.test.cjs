@@ -466,7 +466,7 @@ assert.ok(mapSourceEcon.includes("data-focus-sel") || mainSource.includes("data-
   ]);
   economy.initializeEconomy(maintWorld);
   const polity = maintWorld.playerPolity;
-  maintWorld.warfare = { armies: {} };
+  maintWorld.warfare = { armies: {}, fleets: {} };
   // 造一支 3000 兵的常备军
   maintWorld.warfare.armies["test-army"] = {
     id: "test-army", owner: polity,
@@ -485,6 +485,21 @@ assert.ok(mapSourceEcon.includes("data-focus-sel") || mainSource.includes("data-
   assert.ok(economy.MAINTENANCE.military.standing > economy.MAINTENANCE.military.levy,
     "常备军军需维护系数应高于征召兵");
 
+  maintWorld.warfare.fleets["test-fleet"] = {
+    id: "test-fleet", owner: polity, organization: 100,
+    units: [{ shipType: "galley", ships: 6 }],
+  };
+  const fm = economy.fleetMaintenance(maintWorld, polity);
+  assert.ok(fm.money > 0 && fm.military > 0, "舰队应产生金钱和军需维护");
+  maintWorld.warfare.fleets["line-fleet"] = {
+    id: "line-fleet", owner: polity, organization: 100,
+    units: [{ shipType: "shipOfLine", ships: 6 }],
+  };
+  assert.ok(
+    economy.fleetMaintenance(maintWorld, polity).money > fm.money,
+    "大型战列舰队维护应高于基础桨帆船队"
+  );
+
   // 建筑维护：给首都地块加 2 栋建筑
   const maintTiles = maintWorld.tiles.filter(t => t.polity === polity && !t.isSea);
   maintTiles[0].buildings = ["market", "fort"];
@@ -501,15 +516,22 @@ assert.ok(mapSourceEcon.includes("data-focus-sel") || mainSource.includes("data-
   ]);
   economy.initializeEconomy(settleWorld);
   const polity = settleWorld.playerPolity;
-  settleWorld.warfare = { armies: {} };
+  settleWorld.warfare = { armies: {}, fleets: {} };
   settleWorld.warfare.armies["big"] = {
     id: "big", owner: polity,
     units: [{ combatType: "infantry", serviceType: "standing", soldiers: 20000 }],
   };
+  settleWorld.warfare.fleets["fleet"] = {
+    id: "fleet", owner: polity, organization: 100,
+    units: [{ shipType: "galley", ships: 8 }],
+  };
+  const fleetCost = economy.fleetMaintenance(settleWorld, polity);
   const before = { ...settleWorld.countries[polity] };
   const report = economy.settleCountry(settleWorld, polity);
   assert.ok(report.maintenance, "report 应含 maintenance 段");
-  assert.ok(report.maintenance.food > 0 && report.maintenance.military > 0, "大军应有粮/军需维护");
+  assert.ok(report.maintenance.food > 0 && report.maintenance.military > 0 && report.maintenance.money > 0, "大军和舰队应有粮/军需/金钱维护");
+  assert.ok(report.maintenance.money >= fleetCost.money, "结算维护必须包含舰队金钱维护");
+  assert.ok(report.maintenance.military >= fleetCost.military, "结算维护必须包含舰队军需维护");
   // 净额 = 产出 - 维护，账面变化应反映扣减
   const foodDelta = settleWorld.countries[polity].food - before.food;
   assert.equal(foodDelta, report.food - report.maintenance.food,

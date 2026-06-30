@@ -8,6 +8,14 @@
   const MAINTENANCE = {
     food: 0.4,        // 每 1000 兵每季消耗的粮食
     military: { guard: 0, levy: 0.2, professional: 0.6, standing: 0.8, mercenary: 0.5 }, // 每 1000 兵
+    naval: {
+      galley: { money: .6, military: .18 },
+      cog: { money: .5, military: .14 },
+      carrack: { money: .9, military: .28 },
+      galleon: { money: 1.2, military: .36 },
+      shipOfLine: { money: 1.8, military: .5 },
+      frigate: { money: 1, military: .3 },
+    },
     building: 3,      // 每栋建筑每季消耗的金钱（行政维护）
   };
 
@@ -392,6 +400,20 @@
     return { food: Math.round(food), military: Math.round(military) };
   }
 
+  function fleetMaintenance(world, polity) {
+    const fleets = Object.values(world.warfare?.fleets || {}).filter(fleet => fleet.owner === polity);
+    let money = 0, military = 0;
+    for (const fleet of fleets) {
+      for (const unit of fleet.units || []) {
+        const rate = MAINTENANCE.naval[unit.shipType];
+        if (!rate) throw new Error("未知舰种维护");
+        money += rate.money * unit.ships;
+        military += rate.military * unit.ships;
+      }
+    }
+    return { money: Math.round(money), military: Math.round(military) };
+  }
+
   function importCostForGood(key) {
     const good = window.HIFI_GOODS?.goods?.[normalizeGoodKey(key)];
     return Math.max(1, Math.round((good?.baseValue || 2) * 1.25));
@@ -441,10 +463,11 @@
     const central = .9 + Math.min(100, country.government?.centralPower ?? 60) / 500;
     // 军团/建筑维护费回灌产出流：扩军/铺建筑必须从产出里扣，逼出取舍（核心循环：基底→维护→产出净额）
     const army = armyMaintenance(world, polity);
+    const fleet = fleetMaintenance(world, polity);
     const maintenance = {
       food: army.food,
-      military: army.military,
-      money: buildingMaintenance(world, polity),
+      military: army.military + fleet.military,
+      money: buildingMaintenance(world, polity) + fleet.money,
     };
     report.maintenance = maintenance;
     importStrategicShortages(world, polity, report, maintenance);
@@ -492,6 +515,8 @@
     if (country.military < 0) {
       const armies = Object.values(world.warfare?.armies || {}).filter(a => a.owner === polity);
       armies.forEach(a => { a.organization = Math.max(0, a.organization - 8); });
+      const fleets = Object.values(world.warfare?.fleets || {}).filter(fleet => fleet.owner === polity);
+      fleets.forEach(fleet => { fleet.organization = Math.max(0, fleet.organization - 8); });
       report.shortage = { ...(report.shortage || {}), military: -country.military };
       country.military = 0;
     }
@@ -624,6 +649,7 @@
     fiscalEffect,
     frontierTechnologies,
     effectiveTechnologyCost,
+    fleetMaintenance,
     tradeCapitalRate,
     marketSplit,
     integrationGain,
