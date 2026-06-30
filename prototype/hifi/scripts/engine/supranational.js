@@ -334,7 +334,8 @@
         const member = item.members[elector];
         const trust = relationTrust(world, elector, candidate);
         const sameDynasty = world.countries[elector]?.leader?.dynasty === country.leader?.dynasty ? 8 : 0;
-        return sum + (member.voteWeight || 1) * (trust + sameDynasty);
+        const bribe = Math.min(20, (item.electionBribes?.[candidate]?.[elector] || 0) / 5);
+        return sum + (member.voteWeight || 1) * (trust + sameDynasty + bribe);
       }, 0);
       const score = Math.round(votes / Math.max(1, item.electors.length)
         + (country.legitimacy || 50) * .35
@@ -366,6 +367,27 @@
     syncDiplomacyOrganizations(world);
     syncCountryMemberships(world);
     return item.lastElection;
+  }
+
+  function bribeImperialElector(world, candidate, elector, amount = 25, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial") throw new Error("帝国结构不存在");
+    if (!item.members[candidate]) throw new Error("候选人必须是帝国成员");
+    if (!item.electors.includes(elector) || !item.members[elector]) throw new Error("目标必须是选帝侯");
+    if (candidate === elector) throw new Error("不能贿选自己");
+    const country = world.countries[candidate];
+    const paid = Math.max(10, Math.round(amount));
+    if (country.money < paid || country.actionPoints.diplomatic < 1) throw new Error("贿选需要金钱和 1 外交点");
+    country.money -= paid;
+    country.actionPoints.diplomatic -= 1;
+    item.electionBribes ||= {};
+    item.electionBribes[candidate] ||= {};
+    item.electionBribes[candidate][elector] = (item.electionBribes[candidate][elector] || 0) + paid;
+    if (window.HIFI_DIPLOMACY_ENGINE) {
+      const relation = window.HIFI_DIPLOMACY_ENGINE.relationView(world, elector, candidate);
+      relation.trust = clamp((relation.trust || 50) + Math.min(8, Math.ceil(paid / 10)));
+    }
+    return { candidate, elector, paid, score: electionScores(world, id).find(item => item.polity === candidate)?.score || 0 };
   }
 
   function summary(world, polity, id = "hre") {
@@ -673,6 +695,7 @@
 
   window.HIFI_SUPRANATIONAL_ENGINE = {
     callImperialDiet,
+    bribeImperialElector,
     claimPersonalUnion,
     createPersonalUnion,
     declareImperialBan,
