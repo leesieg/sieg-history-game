@@ -378,6 +378,9 @@
     }
     if (tile.population < 2) throw new Error("地块人口不足以征召");
     const effect = militaryEffect(country);
+    if (militaryKey(country) === "standing_army" && !country.technology?.standingArmy) {
+      throw new Error("尚未掌握常备军操典，无法按常备军制度动员");
+    }
     const baseSoldiers = combatType === "cavalry" ? 500 : 1200;
     const soldiers = Math.round(baseSoldiers * (effect?.soldierFactor || 1));
     const militaryCost = effect?.militaryCost || 0;

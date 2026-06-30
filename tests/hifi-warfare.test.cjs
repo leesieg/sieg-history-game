@@ -612,6 +612,13 @@ warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry");
 const nationDrain = popBeforeNation - moduleWorld.tiles[0].population;
 assert.ok(nationDrain < feudalDrain, "全民皆兵必须降低人口流成本");
 moduleCountry.government.institutions.military = "standing_army";
+moduleCountry.technology.standingArmy = false;
+assert.throws(
+  () => warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry"),
+  /常备军操典/,
+  "常备军制度不能绕过常备军操典科技"
+);
+moduleCountry.technology.standingArmy = true;
 const popBeforeStanding = moduleWorld.tiles[0].population;
 const militaryBeforeStanding = moduleCountry.military;
 const standingArmy = warfare.mobilizeArmy(moduleWorld, "法兰西王国", 0, "infantry");
