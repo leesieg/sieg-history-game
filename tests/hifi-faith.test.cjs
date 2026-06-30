@@ -156,6 +156,22 @@ const defensiveWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
 );
 assert.ok(defensiveWar.defenders.includes("法兰西王国"), "天主教国家被非天主教国家攻击时，信仰捍卫者应自动参战");
 
+const westphaliaWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(35, "法兰西王国", "巴黎", "天主教", 20),
+  tile(36, "萨克森选侯国", "莱比锡", "路德宗", 12),
+], undefined, "法兰西王国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(westphaliaWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(westphaliaWorld);
+westphaliaWorld.countries["萨克森选侯国"].stateConfession = "lutheran";
+westphaliaWorld.flags = { intraChristianReligiousWarsDisabled: true, westphalia: true };
+w.HIFI_DIPLOMACY_ENGINE.addClaim(westphaliaWorld, "法兰西王国", "萨克森选侯国", "excommunication");
+w.HIFI_WARFARE_ENGINE.initializeWarfare(westphaliaWorld);
+assert.throws(
+  () => w.HIFI_WARFARE_ENGINE.declareWarOn(westphaliaWorld, "法兰西王国", "萨克森选侯国", "威斯特法利亚后宗教战争", "religious"),
+  /宗教战争需要/,
+  "威斯特法利亚后基督教组内宗教宣称不应再构成宗教战争法理"
+);
+
 const jihadWorld = w.HIFI_WORLD_ENGINE.createWorld([
   tile(40, "马穆鲁克苏丹国", "开罗", "逊尼派", 18),
   tile(41, "格拉纳达酋长国", "格拉纳达", "逊尼派", 12),

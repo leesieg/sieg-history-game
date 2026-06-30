@@ -39,10 +39,13 @@
   }
 
   function hasReligiousWarBasis(world, attacker, defender) {
-    const claims = window.HIFI_DIPLOMACY_ENGINE?.claimsAgainst?.(world, attacker, defender) || [];
-    if (claims.some(claim => ["crusade", "excommunication", "jihad"].includes(claim.type))) return true;
     const attackerGroup = faithGroup(world, attacker);
     const defenderGroup = faithGroup(world, defender);
+    if (world.flags?.intraChristianReligiousWarsDisabled && attackerGroup === "christian" && defenderGroup === "christian") {
+      return false;
+    }
+    const claims = window.HIFI_DIPLOMACY_ENGINE?.claimsAgainst?.(world, attacker, defender) || [];
+    if (claims.some(claim => ["crusade", "excommunication", "jihad"].includes(claim.type))) return true;
     return Boolean(attackerGroup && defenderGroup && attackerGroup !== defenderGroup);
   }
 
