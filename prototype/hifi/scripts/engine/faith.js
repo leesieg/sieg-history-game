@@ -82,6 +82,27 @@
       .map(([polity]) => polity);
   }
 
+  function donateToPapacy(world, polity, amount = 25) {
+    const papacy = papalAuthority(world);
+    const country = ensureCountry(world, polity);
+    if (country.stateConfession !== "catholic") throw new Error("只有天主教国家可以争夺教廷控制权");
+    const paid = Math.max(10, Math.round(amount));
+    if (country.money < paid || country.actionPoints.diplomatic < 1) throw new Error("教廷捐献需要金钱和 1 外交点");
+    country.money -= paid;
+    country.actionPoints.diplomatic -= 1;
+    country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+    country.faith.papalFavor = clamp((country.faith.papalFavor || 0) + Math.ceil(paid / 3));
+    country.faith.piety = clamp((country.faith.piety || 0) + Math.ceil(paid / 10));
+    papacy.influence ||= {};
+    papacy.influence[polity] = (papacy.influence[polity] || 0) + paid + Math.round((country.faith.piety || 50) / 5);
+    const controller = Object.entries(papacy.influence)
+      .filter(([candidate]) => world.countries[candidate]?.stateConfession === "catholic")
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hans-CN"))[0]?.[0];
+    if (controller) papacy.controller = controller;
+    papacy.authority = clamp((papacy.authority ?? 65) + Math.ceil(paid / 20));
+    return { controller: papacy.controller, influence: papacy.influence[polity], authority: papacy.authority, paid };
+  }
+
   function excommunicate(world, controller, target) {
     const papacy = ensurePapalController(world, controller);
     const country = ensureCountry(world, target);
@@ -267,6 +288,7 @@
     confessionKey,
     confessionLabel,
     defenderOfFaithForWar,
+    donateToPapacy,
     excommunicate,
     groupOf,
     initializeFaith,

@@ -87,19 +87,26 @@ const authorityWorld = w.HIFI_WORLD_ENGINE.createWorld([
 w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(authorityWorld);
 w.HIFI_FAITH_ENGINE.initializeFaith(authorityWorld);
 
-const brittany = authorityWorld.countries["布列塔尼公国"];
-const beforeLegitimacy = brittany.legitimacy;
-const excommunication = w.HIFI_FAITH_ENGINE.excommunicate(authorityWorld, "法兰西王国", "布列塔尼公国");
-assert.equal(excommunication.target, "布列塔尼公国", "绝罚结果应返回目标国家");
-assert.equal(brittany.faith.excommunicated, true, "绝罚应写入目标国家状态");
-assert.ok(brittany.legitimacy < beforeLegitimacy, "绝罚应削弱目标合法性");
+authorityWorld.countries["布列塔尼公国"].money = 80;
+authorityWorld.countries["布列塔尼公国"].actionPoints.diplomatic = 2;
+const papalDonation = w.HIFI_FAITH_ENGINE.donateToPapacy(authorityWorld, "布列塔尼公国", 40);
+assert.equal(papalDonation.controller, "布列塔尼公国", "天主教国家应能通过捐献争夺教廷控制权");
+assert.equal(authorityWorld.countries["布列塔尼公国"].money, 40, "教廷捐献应消耗金钱");
+assert.equal(authorityWorld.countries["布列塔尼公国"].actionPoints.diplomatic, 1, "教廷捐献应消耗外交点");
+assert.equal(authorityWorld.faith.papacy.controller, "布列塔尼公国", "教廷控制者应写入教廷状态");
+
+const beforeLegitimacy = authorityWorld.countries["法兰西王国"].legitimacy;
+const excommunication = w.HIFI_FAITH_ENGINE.excommunicate(authorityWorld, "布列塔尼公国", "法兰西王国");
+assert.equal(excommunication.target, "法兰西王国", "绝罚结果应返回目标国家");
+assert.equal(authorityWorld.countries["法兰西王国"].faith.excommunicated, true, "绝罚应写入目标国家状态");
+assert.ok(authorityWorld.countries["法兰西王国"].legitimacy < beforeLegitimacy, "绝罚应削弱目标合法性");
 assert.ok(
-  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(authorityWorld, "法兰西王国", "布列塔尼公国")
+  w.HIFI_DIPLOMACY_ENGINE.claimsAgainst(authorityWorld, "布列塔尼公国", "法兰西王国")
     .some(claim => claim.type === "excommunication"),
   "绝罚应给天主教国家生成绝罚宣称"
 );
 
-const crusade = w.HIFI_FAITH_ENGINE.callCrusade(authorityWorld, "法兰西王国", "格拉纳达酋长国");
+const crusade = w.HIFI_FAITH_ENGINE.callCrusade(authorityWorld, "布列塔尼公国", "格拉纳达酋长国");
 assert.equal(crusade.target, "格拉纳达酋长国", "十字军结果应返回目标国家");
 assert.equal(authorityWorld.faith.papacy.crusadeTarget, "格拉纳达酋长国", "十字军目标应写入教廷状态");
 assert.ok(
