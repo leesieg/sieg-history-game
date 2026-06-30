@@ -35,6 +35,7 @@
       const army = world.warfare.armies[armyId];
       if (!army) return close();
       world.warfare.selectedArmy = armyId;
+      const engine = window.HIFI_WARFARE_ENGINE;
       const tile = world.tiles.find(candidate => candidate.id === army.tileId);
       const composition = army.units.map(unit =>
         `<div class="drawer-row">${combatTypeLabels[unit.combatType]} · ${serviceTypeLabels[unit.serviceType]}<span>${unit.soldiers} · 经验 ${unit.experience || 0}</span></div>`
@@ -56,6 +57,29 @@
           + (general && !general.ruler ? `<button class="icon-cmd" data-tip="撤下将领" aria-label="撤下将领" data-army-manage="dismiss-general">♟ 撤将</button>` : "")
           + ownGenerals.map(candidate => `<button class="icon-cmd" data-tip="任命 ${candidate.name} 领军 · 指挥 ${candidate.command}" aria-label="任命 ${candidate.name}" data-assign-general="${candidate.id}">⚑ ${candidate.name}</button>`).join("")
           + `<button class="icon-cmd" data-tip="招募将领 · 1 军事点 → 新将领候选" aria-label="招募将领" data-recruit-general="1">＋ 招募</button>`;
+      const embarkFleets = army.status === "ready"
+        ? Object.values(world.warfare.fleets || {}).filter(fleet => {
+            if (fleet.owner !== army.owner || fleet.status !== "ready") return false;
+            if (engine.nearestSeaTile(world, army.tileId)?.id !== fleet.tileId) return false;
+            return engine.fleetTransportLoad(world, fleet.id) + engine.armyTotalSoldiers(army) <= engine.fleetTransportCapacity(fleet);
+          })
+        : [];
+      const transportFleet = army.status === "embarked" ? world.warfare.fleets?.[army.transportFleetId] : null;
+      const landingTargets = transportFleet
+        ? world.tiles.filter(candidate => {
+            if (candidate.isSea || engine.nearestSeaTile(world, candidate.id)?.id !== transportFleet.tileId) return false;
+            return candidate.polity === army.owner || engine.areAtWar(world, army.owner, candidate.polity);
+          }).slice(0, 6)
+        : [];
+      const transportControls = army.status === "embarked"
+        ? `<div class="drawer-subtitle">两栖登陆</div><div class="icon-cmd-row">${
+            landingTargets.length
+              ? landingTargets.map(candidate => `<button class="icon-cmd wide" data-tip="从当前舰队登陆相邻海岸" aria-label="登陆 ${candidate.city || candidate.region}" data-army-disembark="${candidate.id}">⚓ 登陆 ${candidate.city || candidate.region}</button>`).join("")
+              : '<span class="drawer-row">当前海域没有可登陆海岸</span>'
+          }</div>`
+        : embarkFleets.length
+          ? `<div class="drawer-subtitle">海上运输</div><div class="icon-cmd-row">${embarkFleets.map(fleet => `<button class="icon-cmd wide" data-tip="登上相邻海域的本国舰队" aria-label="登船 ${fleet.name}" data-army-embark="${fleet.id}">⚓ 登船 ${fleet.name}</button>`).join("")}</div>`
+          : "";
       document.getElementById("armyDrawerTitle").textContent = army.name;
       body.innerHTML = `<div class="drawer-row">所属<span>${army.owner}</span></div>
         <div class="drawer-row">位置<span>${tile.city || tile.region}</span></div>
@@ -69,6 +93,7 @@
           <button class="icon-cmd" data-tip="原地防守 · 停止移动并恢复补给" aria-label="原地防守" data-army-order="hold">▣ 防守</button>
           <button class="icon-cmd" data-tip="继续行军 · 沿已定路线前进" aria-label="继续行军" data-army-order="march">➤ 行军</button>
         </div>
+        ${transportControls}
         <div class="drawer-subtitle">军团管理</div>
         <div class="icon-cmd-row">
           <button class="icon-cmd" data-tip="拆分军团 · 分出半数为新军团" aria-label="拆分军团" data-army-manage="split">⇄ 拆分</button>
@@ -115,6 +140,22 @@
         button.addEventListener("click", () => {
           store.update(current => window.HIFI_WARFARE_ENGINE.assignGeneral(current, armyId, button.dataset.assignGeneral));
           render(armyId);
+        });
+      });
+      body.querySelectorAll("[data-army-embark]").forEach(button => {
+        button.addEventListener("click", () => {
+          try {
+            store.update(current => window.HIFI_WARFARE_ENGINE.embarkArmy(current, armyId, button.dataset.armyEmbark));
+            render(armyId);
+          } catch (error) { window.hifiGame?.showToast?.(error.message); }
+        });
+      });
+      body.querySelectorAll("[data-army-disembark]").forEach(button => {
+        button.addEventListener("click", () => {
+          try {
+            store.update(current => window.HIFI_WARFARE_ENGINE.disembarkArmy(current, armyId, Number(button.dataset.armyDisembark)));
+            render(armyId);
+          } catch (error) { window.hifiGame?.showToast?.(error.message); }
         });
       });
       body.querySelector("[data-recruit-general]")?.addEventListener("click", () => {
