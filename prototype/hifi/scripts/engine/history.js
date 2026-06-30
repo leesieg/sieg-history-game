@@ -166,6 +166,57 @@
     return Math.max(.5, (sources[domain] || 1) * scientificBonus);
   }
 
+  function diplomacyBlocksTechnology(world, a, b) {
+    const diplomacy = window.HIFI_DIPLOMACY_ENGINE;
+    const atWar = (world.diplomacy?.wars || []).some(war =>
+      war.attackers?.includes(a) && war.defenders?.includes(b)
+      || war.attackers?.includes(b) && war.defenders?.includes(a)
+    );
+    if (atWar) return true;
+    if (diplomacy?.embargoBetween?.(world, a, b)) return true;
+    return (world.diplomacy?.embargoes || []).some(item =>
+      item.actor === a && item.target === b
+      || item.actor === b && item.target === a
+    );
+  }
+
+  function haveMapContact(world, a, b) {
+    const left = window.HIFI_WORLD_ENGINE.controlledTiles(world, a);
+    const right = window.HIFI_WORLD_ENGINE.controlledTiles(world, b);
+    for (const l of left) {
+      if (!Number.isFinite(l.x) || !Number.isFinite(l.y)) continue;
+      for (const r of right) {
+        if (!Number.isFinite(r.x) || !Number.isFinite(r.y)) continue;
+        if (Math.hypot(l.x - r.x, l.y - r.y) <= 28) return true;
+      }
+    }
+    return false;
+  }
+
+  function haveInstitutionalContact(world, a, b) {
+    if ((world.diplomacy?.treaties || []).some(treaty => treaty.parties?.includes(a) && treaty.parties?.includes(b))) return true;
+    if ((world.diplomacy?.subjects || []).some(subject =>
+      subject.overlord === a && subject.subject === b
+      || subject.overlord === b && subject.subject === a
+    )) return true;
+    for (const route of Object.values(world.trade?.routes || {})) {
+      if (!route.active) continue;
+      const owners = new Set((route.nodes || [])
+        .map(city => world.tiles.find(tile => tile.city === city && !tile.isSea)?.polity)
+        .filter(Boolean));
+      if (owners.has(a) && owners.has(b)) return true;
+    }
+    return false;
+  }
+
+  function technologyContactCount(world, polity, key) {
+    return Object.values(world.countries)
+      .filter(other => other.name !== polity && other.technology?.[key])
+      .filter(other => !diplomacyBlocksTechnology(world, polity, other.name))
+      .filter(other => haveMapContact(world, polity, other.name) || haveInstitutionalContact(world, polity, other.name))
+      .length;
+  }
+
   function spreadTechnology(world) {
     const year = window.HIFI_WORLD_ENGINE.calendarForTurn(world.turn).year;
     for (const country of Object.values(world.countries)) {
@@ -177,7 +228,7 @@
       country.ideas = Math.round(country.research?.cultural || country.ideas || 0);
       for (const [key, technology] of Object.entries(window.HIFI_RULES.technologies)) {
         if (year < technology.year) continue;
-        const neighborsKnown = Object.values(world.countries).filter(other => other.technology?.[key]).length;
+        const neighborsKnown = technologyContactCount(world, country.name, key);
         const printing = country.technology.printing ? 2 : 0;
         const ideasBoost = Math.floor((country.pressures?.ideas || 0) / 40); // 思想压力加速科技扩散流
         const laggardBoost = country.technology?.[key] ? 0 : Math.min(3, neighborsKnown);
@@ -764,6 +815,7 @@
     runRegency,
     completeTutorial,
     forecast,
+    technologyContactCount,
     quarterLedger,
     missions,
     spreadTechnology,

@@ -35,6 +35,34 @@ assert.equal(world.eraIndex, 0);
 assert.ok(Array.isArray(world.situations));
 assert.ok(Array.isArray(world.countries["法兰西王国"].chronicle));
 
+// 科技扩散必须来自真实接触，不能全图广播；战争/禁运会阻断传播。
+const techWorld = worldEngine.createWorld([
+  { id: 10, isSea: false, polity: "受传国", population: 8, buildings: [], city: "受传城", terrain: "plains", control: 80, x: 0, y: 0 },
+  { id: 11, isSea: false, polity: "邻接先进国", population: 8, buildings: [], city: "邻接城", terrain: "plains", control: 80, x: 10, y: 0 },
+  { id: 12, isSea: false, polity: "远方先进国", population: 8, buildings: [], city: "远方城", terrain: "plains", control: 80, x: 200, y: 0 },
+], {}, "受传国");
+context.window.HIFI_ECONOMY_ENGINE.initializeEconomy(techWorld);
+history.initializeHistory(techWorld);
+techWorld.turn = (1450 - 1337) * 4 + 1;
+techWorld.diplomacy = { treaties: [], subjects: [], embargoes: [], wars: [] };
+techWorld.countries["邻接先进国"].technology.printing = true;
+techWorld.countries["远方先进国"].technology.printing = true;
+assert.equal(history.technologyContactCount(techWorld, "受传国", "printing"), 1, "科技扩散只应计算有接触的已知国家");
+history.spreadTechnology(techWorld);
+assert.equal(techWorld.countries["受传国"].technologyAwareness.printing, 3, "一个接触先进国应提供接触传播与追赶加速");
+techWorld.countries["受传国"].technologyAwareness.printing = 0;
+techWorld.diplomacy.embargoes.push({ actor: "邻接先进国", target: "受传国" });
+assert.equal(history.technologyContactCount(techWorld, "受传国", "printing"), 0, "禁运必须阻断科技传播接触");
+history.spreadTechnology(techWorld);
+assert.equal(techWorld.countries["受传国"].technologyAwareness.printing, 1, "被禁运后只能获得基础传播");
+techWorld.diplomacy.embargoes = [];
+techWorld.trade = { routes: { silk: { active: true, nodes: ["受传城", "远方城"] } } };
+assert.equal(history.technologyContactCount(techWorld, "受传国", "printing"), 2, "共享商路应建立远方科技接触");
+techWorld.diplomacy.wars = [{ attackers: ["受传国"], defenders: ["远方先进国"] }];
+assert.equal(history.technologyContactCount(techWorld, "受传国", "printing"), 1, "战争必须阻断对应国家的科技传播接触");
+techWorld.diplomacy.wars.push({ attackers: ["受传国"], defenders: ["邻接先进国"] });
+assert.equal(history.technologyContactCount(techWorld, "受传国", "printing"), 0, "所有接触国交战时不能获得接触传播");
+
 world.turn = 12;
 history.processHistory(world);
 assert.ok(world.situations.some(item => item.key === "black_death"));
