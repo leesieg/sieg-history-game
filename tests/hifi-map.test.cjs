@@ -32,6 +32,9 @@ assert.ok(
 assert.ok(componentSource.includes(".map-city-dot, .map-capital-star"), "城市点和首都星必须共享穿透点击规则");
 assert.ok(componentSource.includes("pointer-events: none"), "地图标注不能阻断地块点击");
 assert.ok(mapSource.includes('../../assets/terrain-banners/${tile.terrain}.png'), "地形横幅必须使用正确资源路径");
+for (const polity of ["美因茨大主教区", "特里尔大主教区", "普法尔茨伯国", "勃兰登堡侯国", "帝国自由市同盟"]) {
+  assert.ok(mapSource.includes(`"${polity}"`), `政治地图必须给新增帝国成员配置颜色：${polity}`);
+}
 
 const html = fs.readFileSync(htmlPath, "utf8");
 assert.ok(html.includes("scripts/data/geography.js"));

@@ -8,6 +8,8 @@ const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
   "data/faiths.js",
+  "data/countries.js",
+  "data/geography.js",
   "data/supranational.js",
   "engine/world.js",
   "engine/diplomacy.js",
@@ -17,6 +19,20 @@ for (const file of [
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
 const w = context.window;
+const hreDefinition = w.HIFI_SUPRANATIONAL_DATA.structures.hre;
+assert.equal(hreDefinition.electors.length, 7, "神罗必须使用七选帝侯开局结构");
+assert.deepEqual(
+  Array.from(hreDefinition.electors),
+  ["美因茨大主教区", "特里尔大主教区", "科隆大主教区", "波西米亚王国", "普法尔茨伯国", "萨克森选侯国", "勃兰登堡侯国"],
+  "七选帝侯名单必须匹配 1337 帝国结构"
+);
+assert.ok(Object.keys(hreDefinition.members).length >= 20, "神罗成员必须达到约 20 个可扮诸侯的设计目标");
+for (const polity of Object.keys(hreDefinition.members)) {
+  assert.ok(w.HIFI_COUNTRY_DATA.leaders[polity], `帝国成员缺少国家领导人档案：${polity}`);
+  assert.ok(w.HIFI_GEOGRAPHY.CAPITAL_BY_POLITY[polity], `帝国成员缺少首都映射：${polity}`);
+  assert.ok(w.HIFI_GEOGRAPHY.regionSeeds.some(seed => seed[12] === polity), `帝国成员缺少地图种子地块：${polity}`);
+}
+
 const tile = (id, polity, city, population = 8) => ({
   id,
   x: id * 10,
