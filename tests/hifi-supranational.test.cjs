@@ -74,12 +74,33 @@ assert.ok(
   w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre").find(item => item.polity === "勃艮第公国").score > burgundyScoreBeforeBribe,
   "贿选必须提高候选人的帝国选举评分"
 );
+const burgundyScoreBeforePiety = w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre")
+  .find(item => item.polity === "勃艮第公国").score;
+world.countries["勃艮第公国"].faith.piety = 90;
+assert.ok(
+  w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre").find(item => item.polity === "勃艮第公国").score > burgundyScoreBeforePiety,
+  "候选人的虔诚度必须影响帝国选举评分"
+);
+const burgundyScoreBeforeEndorsement = w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre")
+  .find(item => item.polity === "勃艮第公国").score;
+world.faith.papacy.controller = "法兰西王国";
+world.faith.papacy.authority = 65;
+const endorsement = w.HIFI_SUPRANATIONAL_ENGINE.papalEndorseImperialCandidate(world, "法兰西王国", "勃艮第公国");
+assert.equal(endorsement.candidate, "勃艮第公国", "教廷认可应返回候选人");
+assert.ok(world.faith.papacy.authority < 65, "教廷认可应消耗教廷权威");
+assert.ok(
+  w.HIFI_SUPRANATIONAL_ENGINE.electionScores(world, "hre").find(item => item.polity === "勃艮第公国").score > burgundyScoreBeforeEndorsement,
+  "教廷认可必须提高候选人的帝国选举评分"
+);
 
 hre.authority = 0;
 hre.electors = ["波西米亚王国"];
+hre.electionBribes = {};
+hre.papalEndorsements = {};
 world.turn = 24;
 world.countries["巴伐利亚公国"].leader.historicalEndAtTurn = world.turn;
 world.countries["巴伐利亚公国"].legitimacy = 1;
+world.countries["勃艮第公国"].legitimacy = 1;
 world.countries["波西米亚王国"].legitimacy = 100;
 const electionResult = w.HIFI_SUPRANATIONAL_ENGINE.resolveImperialElection(world, hre);
 assert.equal(electionResult.winner, "波西米亚王国", "皇帝到期时应按选举评分换届");

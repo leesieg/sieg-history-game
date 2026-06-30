@@ -339,6 +339,8 @@
       }, 0);
       const score = Math.round(votes / Math.max(1, item.electors.length)
         + (country.legitimacy || 50) * .35
+        + Math.max(0, ((country.faith?.piety || 50) - 50) / 5)
+        + (item.papalEndorsements?.[candidate] ? 10 : 0)
         + (leader.diplomatic || 3) * 6
         + (leader.military || 3) * 2
         + (candidate === item.emperor ? item.authority * .2 : 0));
@@ -388,6 +390,26 @@
       relation.trust = clamp((relation.trust || 50) + Math.min(8, Math.ceil(paid / 10)));
     }
     return { candidate, elector, paid, score: electionScores(world, id).find(item => item.polity === candidate)?.score || 0 };
+  }
+
+  function papalEndorseImperialCandidate(world, controller, candidate, id = "hre") {
+    const item = structure(world, id);
+    if (!item || item.type !== "imperial") throw new Error("帝国结构不存在");
+    if (!item.members[candidate]) throw new Error("候选人必须是帝国成员");
+    const papacy = world.faith?.papacy;
+    if (!papacy || (controller !== papacy.head && controller !== papacy.controller)) throw new Error("只有教廷或教廷控制者可以认可帝国候选人");
+    const country = world.countries[candidate];
+    if (country.stateConfession !== "catholic") throw new Error("教廷只能认可天主教候选人");
+    if ((papacy.authority || 0) < 8) throw new Error("教廷权威不足");
+    papacy.authority = clamp((papacy.authority || 0) - 8);
+    country.faith ||= { piety: 60, papalFavor: 50, policy: "orthodoxy", secularized: false, churchWealth: 0 };
+    country.faith.papalFavor = clamp((country.faith.papalFavor || 0) + 12);
+    country.legitimacy = clamp((country.legitimacy || 50) + 4);
+    item.papalEndorsements ||= {};
+    item.papalEndorsements[candidate] = { controller, turn: world.turn };
+    const papacyStructure = structure(world, "papacy");
+    if (papacyStructure) papacyStructure.authority = papacy.authority;
+    return { candidate, controller, authority: papacy.authority, score: electionScores(world, id).find(item => item.polity === candidate)?.score || 0 };
   }
 
   function summary(world, polity, id = "hre") {
@@ -708,6 +730,7 @@
     imperialWarPermission,
     isImperialOutlaw,
     isMember,
+    papalEndorseImperialCandidate,
     processSupranational,
     processDynasticSuccession,
     releaseUnionMember,
