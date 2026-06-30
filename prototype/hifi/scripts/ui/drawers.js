@@ -183,6 +183,14 @@
       const pressure = faith?.pressure(world, country.name) ?? (country.pressures?.faith || 0);
       const selected = world.tiles.find(candidate => candidate.id === world.selectedTile);
       const target = selected && !selected.isSea && selected.polity === country.name && selected.confession !== state;
+      const diplomaticTarget = world.diplomacy?.selectedTarget && world.diplomacy.selectedTarget !== country.name
+        ? world.diplomacy.selectedTarget
+        : Object.keys(world.countries).find(name => name !== country.name);
+      const targetCountry = diplomaticTarget ? world.countries[diplomaticTarget] : null;
+      const papacy = world.faith?.papacy;
+      const caliphate = world.faith?.caliphate;
+      const isPapalActor = country.name === papacy?.head || country.name === papacy?.controller;
+      const targetFaithGroup = targetCountry && faith?.groupOf?.(targetCountry.stateConfession || faith.majorityConfession(world, diplomaticTarget));
       const policies = [
         ["tolerance", "宽容政策", "少数信仰不满较低 · 统一速度慢"],
         ["orthodoxy", "正统政策", "教士支持较高 · 温和推进统一"],
@@ -193,12 +201,29 @@
       const missionary = target
         ? actionButton("data-missionary", String(selected.id), `派遣传教士：${selected.city || selected.region}`, `1 外交点 + 10 金钱 · ${faith.confessionLabel(selected.confession)} → ${faith.confessionLabel(state)}`)
         : '<div class="drawer-row">传教目标<span>请选择己方非国教地块</span></div>';
+      const papalActions = state === "catholic"
+        ? [
+            actionButton("data-faith-authority", "donate", "捐献教廷", "25 金钱 + 1 外交点 · 争夺教廷控制权", false, country.money < 25 || country.actionPoints.diplomatic < 1 ? "需要 25 金钱和 1 外交点" : false),
+            actionButton("data-faith-authority", "defender", "请求信仰捍卫者头衔", "由教廷控制者授予本国 · 提高虔诚与合法性", false, isPapalActor ? false : "只有教廷或教廷控制者可以授予"),
+            actionButton("data-faith-authority", "excommunicate", `绝罚 ${diplomaticTarget || "目标国家"}`, "对天主教目标 · 降低合法性并生成讨伐宣称", false, !isPapalActor ? "只有教廷或教廷控制者可以绝罚" : !targetCountry || targetCountry.stateConfession !== "catholic" ? "目标必须是天主教国家" : false),
+            actionButton("data-faith-authority", "crusade", `号召十字军：${diplomaticTarget || "目标国家"}`, "对异教或已绝罚目标 · 天主教国家获得宗教宣称", false, !isPapalActor ? "只有教廷或教廷控制者可以号召十字军" : !targetCountry ? "请选择外交目标" : targetFaithGroup === "christian" && !targetCountry.faith?.excommunicated ? "目标需为异教或已绝罚国家" : false),
+          ].join("")
+        : "";
+      const caliphateActions = targetFaithGroup && faith?.groupOf?.(state) === "islam"
+        ? actionButton("data-faith-authority", "jihad", `号召圣战：${diplomaticTarget || "目标国家"}`, "哈里发权威中心行动 · 伊斯兰国家获得宗教宣称", false, country.name !== caliphate?.head ? "只有哈里发权威中心可以号召圣战" : targetFaithGroup === "islam" ? "目标必须是非伊斯兰国家" : false)
+        : "";
+      const authorityRows = papalActions || caliphateActions
+        ? `<div class="drawer-subtitle">宗教权威</div>
+          <div class="drawer-row">外交目标<span>${diplomaticTarget || "未选择"}</span></div>
+          ${papalActions}${caliphateActions}`
+        : '<div class="drawer-subtitle">宗教权威</div><div class="drawer-row">宗教权威行动<span>当前国教暂无可用权威行动</span></div>';
       return `${bar}
         <div class="drawer-row">${codexTerm("国教", "国教")}<span>${faith.confessionLabel(state)}</span></div>
         <div class="drawer-row">${codexTerm("宗教统一", "宗教统一")}<span>${wd().meter(unity, 100, { tone: unity >= 70 ? "green" : "red" })} ${unity}%</span></div>
         <div class="drawer-row">${codexTerm("信仰张力", "信仰张力")}<span>${wd().meter(pressure, 100, { tone: "red" })} ${pressure}</span></div>
         <div class="drawer-subtitle">信仰政策</div><div class="ui-segmented">${policies}</div>
-        <div class="drawer-subtitle">传教行动</div>${missionary}`;
+        <div class="drawer-subtitle">传教行动</div>${missionary}
+        ${authorityRows}`;
     }
 
     // 决议

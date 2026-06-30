@@ -320,6 +320,17 @@
         window.HIFI_FAITH_ENGINE.sendMissionary(current, current.playerPolity, Number(button.dataset.missionary))
       , button));
     });
+    drawerBody.querySelectorAll("[data-faith-authority]").forEach(button => {
+      button.addEventListener("click", () => runAction(current => {
+        const action = button.dataset.faithAuthority;
+        const target = current.diplomacy.selectedTarget;
+        if (action === "donate") return window.HIFI_FAITH_ENGINE.donateToPapacy(current, current.playerPolity, 25);
+        if (action === "defender") return window.HIFI_FAITH_ENGINE.appointDefenderOfFaith(current, current.playerPolity, current.playerPolity);
+        if (action === "excommunicate") return window.HIFI_FAITH_ENGINE.excommunicate(current, current.playerPolity, target);
+        if (action === "crusade") return window.HIFI_FAITH_ENGINE.callCrusade(current, current.playerPolity, target);
+        return window.HIFI_FAITH_ENGINE.callJihad(current, current.playerPolity, target);
+      }, button));
+    });
     drawerBody.querySelectorAll("[data-trade-policy]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
         (window.HIFI_ECONOMY_ENGINE.setTradePolicy(current, current.playerPolity, button.dataset.tradePolicy),
