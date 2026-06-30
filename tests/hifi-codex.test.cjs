@@ -28,6 +28,8 @@ for (const key of ["estates_general", "fiscal_parliament", "fiscal_absolutism", 
   const entry = codex.decisions[key];
   assert.ok(entry && entry.effect, `决议百科缺少效果说明：${key}`);
 }
+assert.ok(codex.decisions.convert_reformed.effect.includes("路德宗"), "接纳宗教改革说明必须匹配实际国教变化");
+assert.ok(codex.decisions.convert_reformed.effect.includes("世俗化教产"), "接纳宗教改革说明必须提示世俗化红利");
 
 // toHtml 渲染包含术语名与说明
 const html = codex.toHtml("统治者");
