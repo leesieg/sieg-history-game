@@ -501,14 +501,19 @@
     });
     drawerBody.querySelectorAll("[data-struggle-action]").forEach(button => {
       button.addEventListener("click", () => runAction(current =>
-        executeStruggleAction(current, current.playerPolity, button.dataset.struggleAction)
+        executeStruggleAction(
+          current,
+          current.playerPolity,
+          button.dataset.struggleAction,
+          Number(button.dataset.struggleLean ?? -1)
+        )
       , button));
     });
   }
 
   // 局势阶段限定操作：先过 struggle 引擎的阶段 gate（非当前阶段 → 中文报错 → toast），
   // 通过后委托现有 warfare/diplomacy 引擎，不另造战斗规则。
-  function executeStruggleAction(world, polity, actionId) {
+  function executeStruggleAction(world, polity, actionId, lean = -1) {
     const struggle = window.HIFI_STRUGGLE_ENGINE.phaseActionGate(world, polity, actionId);
     if (actionId === "press_claim") {
       const opponent = Object.keys(struggle.parties)
@@ -531,7 +536,7 @@
       return window.HIFI_WARFARE_ENGINE.concludePeace(world, war.id, polity, [{ type: term }]);
     }
     if (actionId === "pick_side") {
-      return window.HIFI_STRUGGLE_ENGINE.pickSide(world, polity, -1);
+      return window.HIFI_STRUGGLE_ENGINE.pickSide(world, polity, lean >= 0 ? 1 : -1);
     }
     throw new Error("该局势操作尚未开放");
   }
@@ -562,7 +567,12 @@
       button.addEventListener("click", () => {
         const before = snapshotResources(store.getState());
         try {
-          store.update(current => executeStruggleAction(current, current.playerPolity, button.dataset.struggleAction));
+          store.update(current => executeStruggleAction(
+            current,
+            current.playerPolity,
+            button.dataset.struggleAction,
+            Number(button.dataset.struggleLean ?? -1)
+          ));
           const diff = diffResources(before, snapshotResources(store.getState()));
           showToast(diff ? `局势决议 —— ${diff}` : "局势决议已执行");
           renderStruggleDock(store.getState());

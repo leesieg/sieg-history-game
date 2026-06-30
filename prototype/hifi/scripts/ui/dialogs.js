@@ -625,9 +625,16 @@
         : '<div class="struggle-stage struggle-stage--todo"><span>本国无专属战役使命</span><small>—</small></div>';
 
       const decisionBtns = summary.decisions.length
-        ? summary.decisions.map(decision =>
-            `<button class="struggle-decision" data-struggle-action="${decision.id}"${decision.enabled ? "" : " disabled"} title="${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}">${decision.label}<small>${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}</small></button>`
-          ).join("")
+        ? summary.decisions.map(decision => {
+            if (decision.id === "pick_side") {
+              const left = summary.camps.france?.anchor || "左侧阵营";
+              const right = summary.camps.england?.anchor || "右侧阵营";
+              const detail = decision.enabled ? `${decision.phaseLabel}可用` : decision.reason;
+              return `<button class="struggle-decision" data-struggle-action="${decision.id}" data-struggle-lean="-1"${decision.enabled ? "" : " disabled"} title="${detail}">支持${left}<small>${detail}</small></button>
+                <button class="struggle-decision" data-struggle-action="${decision.id}" data-struggle-lean="1"${decision.enabled ? "" : " disabled"} title="${detail}">支持${right}<small>${detail}</small></button>`;
+            }
+            return `<button class="struggle-decision" data-struggle-action="${decision.id}"${decision.enabled ? "" : " disabled"} title="${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}">${decision.label}<small>${decision.enabled ? `${decision.phaseLabel}可用` : decision.reason}</small></button>`;
+          }).join("")
         : '<div class="struggle-decision dim">本局势暂无可执行决议</div>';
 
       const neutral = summary.camps.neutral.length
