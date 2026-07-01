@@ -4,7 +4,7 @@
   const combatTypes = new Set(["infantry", "cavalry", "artillery"]);
   const serviceTypes = new Set(["guard", "professional", "standing", "levy", "mercenary"]);
   const shipTypes = {
-    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", materials: ["timber"], transport: 500 },
+    galley: { label: "桨帆船", cost: { money: 28, military: 8 }, strength: 1.1, water: "coastal", oceanCapable: false, materials: ["timber"], transport: 500 },
     cog: { label: "柯克船", cost: { money: 24, military: 6 }, strength: .9, water: "coastal", materials: ["timber"], transport: 900 },
     carrack: { label: "卡拉克", cost: { money: 42, military: 12 }, strength: 1.35, water: "ocean", requires: "oceanGoingShips", materials: ["timber", "naval_supplies"], transport: 1300 },
     galleon: { label: "盖伦船", cost: { money: 58, military: 18 }, strength: 1.65, water: "ocean", requires: "triangleTrade", materials: ["timber", "naval_supplies"], transport: 1000 },
@@ -591,7 +591,9 @@
   function planFleetRoute(world, fleetId, targetId) {
     const fleet = world.warfare.fleets[fleetId];
     if (!fleet) throw new Error("舰队不存在");
-    if (!world.tiles.find(tile => tile.id === targetId && tile.isSea)) throw new Error("舰队目标必须是海域");
+    const target = world.tiles.find(tile => tile.id === targetId && tile.isSea);
+    if (!target) throw new Error("舰队目标必须是海域");
+    if (!fleetCanEnterWater(fleet, target)) throw new Error("该舰队无法进入远洋海域");
     if (blockadeHoldingFleet(world, fleet)) throw new Error("港口被封锁，舰队不能离港");
     fleet.targetPortId = null;
     fleet.targetRouteKey = null;
@@ -601,6 +603,7 @@
       const [current, path] = queue.shift();
       for (const next of seaNeighbors(world, current)) {
         if (visited.has(next)) continue;
+        if (!fleetCanEnterWater(fleet, world.tiles.find(tile => tile.id === next))) continue;
         const nextPath = [...path, next];
         if (next === targetId) {
           fleet.plannedPath = nextPath;
@@ -612,6 +615,12 @@
       }
     }
     throw new Error("海上目标不可达");
+  }
+
+  function fleetCanEnterWater(fleet, tile) {
+    if (!tile?.isSea) return false;
+    if (navalWaterType(tile) !== "ocean") return true;
+    return fleet.units.every(unit => shipTypes[unit.shipType]?.oceanCapable !== false);
   }
 
   function routeNodeOwners(world, route) {

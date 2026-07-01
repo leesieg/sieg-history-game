@@ -148,6 +148,32 @@ assert.equal(fleet.tileId, 13, "舰队每季度移动一格海域");
 warfare.executeNavalMovementPhase(navalWorld);
 assert.equal(fleet.tileId, 14);
 
+const oceanWorld = worldEngine.createWorld([
+  { id: 50, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 51, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", waterType: "coastal", x: 10, y: 0, control: 0 },
+  { id: 52, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", waterType: "ocean", x: 25, y: 0, control: 0 },
+], {}, "威尼斯共和国");
+diplomacy.initializeDiplomacy(oceanWorld);
+warfare.initializeWarfare(oceanWorld);
+const coastalGalley = warfare.createFleet(oceanWorld, {
+  owner: "威尼斯共和国",
+  tileId: 51,
+  name: "远洋禁入测试桨帆船",
+  units: [{ shipType: "galley", ships: 4 }],
+});
+assert.throws(
+  () => warfare.planFleetRoute(oceanWorld, coastalGalley.id, 52),
+  /无法进入远洋/,
+  "桨帆船不能进入大洋海域"
+);
+const oceanGalleon = warfare.createFleet(oceanWorld, {
+  owner: "威尼斯共和国",
+  tileId: 51,
+  name: "远洋通行测试盖伦船",
+  units: [{ shipType: "galleon", ships: 2 }],
+});
+assert.deepEqual(warfare.planFleetRoute(oceanWorld, oceanGalleon.id, 52), [52], "远洋舰种应能进入大洋海域");
+
 const amphibiousTiles = [
   { id: 30, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
   { id: 31, isSea: false, polity: "热那亚共和国", population: 9, buildings: ["port"], city: "热那亚", terrain: "coast", good: "naval_supplies", x: 40, y: 0, control: 85, devastation: 0 },
