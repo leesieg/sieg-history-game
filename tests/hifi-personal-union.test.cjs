@@ -149,6 +149,16 @@ assert.equal(
 const unionRulerName = peacefulWorld.countries["纳瓦拉王国"].leader.name;
 w.HIFI_POLITICS_ENGINE.processLeadership(peacefulWorld, "纳瓦拉王国");
 assert.equal(peacefulWorld.countries["纳瓦拉王国"].leader.name, unionRulerName, "共主从邦不能被本国继承流程覆盖共君");
+peacefulWorld.countries["法兰西王国"].leader.historicalEndAtTurn = peacefulWorld.turn;
+peacefulWorld.countries["法兰西王国"].leader.succession = "hereditary";
+const seniorSuccession = w.HIFI_POLITICS_ENGINE.processLeadership(peacefulWorld, "法兰西王国");
+assert.equal(seniorSuccession.type, "succession", "主邦到期应正常继承");
+assert.equal(
+  peacefulWorld.countries["纳瓦拉王国"].leader.name,
+  peacefulWorld.countries["法兰西王国"].leader.name,
+  "主邦换代后，共主从邦必须立即同步新共君"
+);
+assert.equal(peacefulWorld.countries["纳瓦拉王国"].leader.unionSenior, "法兰西王国", "同步后仍应保留共主标记");
 
 const contestedWorld = w.HIFI_WORLD_ENGINE.createWorld([
   tile(20, "法兰西王国", "巴黎", 0, "天主教", 16),

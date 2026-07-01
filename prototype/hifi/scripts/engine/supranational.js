@@ -555,6 +555,28 @@
     return item;
   }
 
+  function syncUnionRulers(world, senior = null) {
+    for (const item of Object.values(world.supranational?.structures || {})) {
+      if (item.type !== "dynastic") continue;
+      if (senior && item.head !== senior) continue;
+      const seniorCountry = world.countries[item.head];
+      if (!seniorCountry?.leader) continue;
+      for (const junior of Object.keys(item.members || {})) {
+        const juniorCountry = world.countries[junior];
+        if (!juniorCountry) continue;
+        juniorCountry.union = { senior: item.head, junior: true, id: item.id };
+        juniorCountry.leader = {
+          ...seniorCountry.leader,
+          title: juniorCountry.leader?.title || seniorCountry.leader.title,
+          unionRuler: true,
+          unionSenior: item.head,
+        };
+      }
+    }
+    syncCountryMemberships(world);
+    return world;
+  }
+
   function partitionUnionOnSuccession(world, item) {
     if (!item || item.type !== "dynastic" || item.lastPartitionTurn === world.turn) return null;
     const juniors = Object.keys(item.members || {}).filter(polity => world.countries[polity]);
@@ -721,6 +743,7 @@
     for (const item of Object.values(world.supranational.structures)) {
       if (item.type === "dynastic") {
         partitionUnionOnSuccession(world, item);
+        syncUnionRulers(world, item.head);
         const drift = cohesionDrift(world, item);
         item.cohesion = clamp(item.cohesion + drift.delta);
         item.lastDrift = drift;
@@ -784,6 +807,7 @@
     raiseImperialArmy,
     structure,
     summary,
+    syncUnionRulers,
     unionFor,
     unionsFor,
   };

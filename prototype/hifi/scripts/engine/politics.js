@@ -637,16 +637,19 @@
       : null;
     if (historicalDue && historicalSuccessor) {
       country.leader = leaderFromRecord(polity, historicalSuccessor, nextHistoryIndex);
+      window.HIFI_SUPRANATIONAL_ENGINE?.syncUnionRulers?.(world, polity);
       return { type: "succession", polity, leader: country.leader };
     }
 
     if (country.leader.succession === "hereditary") {
       country.leader = generatedCandidate(world, polity, 0, true);
+      window.HIFI_SUPRANATIONAL_ENGINE?.syncUnionRulers?.(world, polity);
       return { type: "succession", polity, leader: country.leader };
     }
 
     if (polity !== world.playerPolity) {
       country.leader = generatedCandidate(world, polity, 0);
+      window.HIFI_SUPRANATIONAL_ENGINE?.syncUnionRulers?.(world, polity);
       return { type: "auto_election", polity, leader: country.leader };
     }
 
@@ -703,8 +706,10 @@
     if (!world.pendingElection) throw new Error("当前没有待处理选举");
     const candidate = world.pendingElection.candidates[index];
     if (!candidate) throw new Error("无效候选人");
-    world.countries[world.pendingElection.polity].leader = candidate;
+    const polity = world.pendingElection.polity;
+    world.countries[polity].leader = candidate;
     world.pendingElection = null;
+    window.HIFI_SUPRANATIONAL_ENGINE?.syncUnionRulers?.(world, polity);
     return candidate;
   }
 
