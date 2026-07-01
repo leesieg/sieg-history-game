@@ -733,6 +733,15 @@
     return declareWar(world, attacker, defender, target.id, name || `${attacker}对${defender}的战争`, goal);
   }
 
+  function subjectWarPermission(world, attacker, defender) {
+    const subject = (world.diplomacy?.subjects || []).find(item => item.subject === attacker);
+    if (!subject) return { ok: true };
+    if (defender === subject.overlord) return { ok: false, reason: "附属国脱离宗主需要独立战争机制" };
+    if (subject.autonomy >= 70) return { ok: true };
+    if (subject.autonomy >= 40) return { ok: false, reason: "附庸宣战需宗主批准" };
+    return { ok: false, reason: "傀儡国不能主动宣战" };
+  }
+
   function canDeclareWar(world, attacker, defender) {
     if (!world.countries[attacker]) return { ok: false, reason: "宣战国家不存在" };
     if (!world.countries[defender]) return { ok: false, reason: "目标国家不存在" };
@@ -740,6 +749,8 @@
     if (attacker === defender) return { ok: false, reason: "不能对本国宣战" };
     if (areAtWar(world, attacker, defender)) return { ok: false, reason: "双方已经交战" };
     if (underTruce(world, attacker, defender)) return { ok: false, reason: "停战协定期内不能宣战" };
+    const subject = subjectWarPermission(world, attacker, defender);
+    if (!subject.ok) return subject;
     const imperial = window.HIFI_SUPRANATIONAL_ENGINE?.imperialWarPermission?.(world, attacker, defender);
     if (imperial && !imperial.ok) return imperial;
     return { ok: true };
@@ -1151,7 +1162,8 @@
           autonomy: definition.autonomy,
           loyalty: definition.loyalty,
           tribute: definition.tribute,
-          terms: { diplomacy: "需宗主批准", war: "应召参战", military: "应召参战", finance: "固定贡赋" },
+          terms: window.HIFI_DIPLOMACY_ENGINE?.subjectTerms?.(definition.autonomy)
+            || { diplomacy: "需宗主批准", war: "需宗主批准", military: "应召参战", finance: "固定贡赋" },
           startedTurn: world.turn,
         });
       } else if (term.type === "personal_union") {

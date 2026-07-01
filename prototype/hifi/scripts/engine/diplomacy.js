@@ -511,6 +511,7 @@
     sortDiplomacyTargets,
     startMission,
     subjectBetween,
+    subjectTerms,
     treatyBetween,
     treatyTypes,
     subjectTypes,
