@@ -50,13 +50,98 @@
     return { label, power: Math.max(8, Math.round(power * scale)), satisfaction, privileges: [...privileges] };
   }
 
+  const estateFamilies = {
+    nobles: "coercion",
+    patricians: "coercion",
+    port_nobles: "coercion",
+    court: "coercion",
+    princes: "coercion",
+    clans: "coercion",
+    warriors: "coercion",
+    church: "faith",
+    clergy: "faith",
+    orders: "faith",
+    faithful: "faith",
+    legate: "faith",
+    shamans: "faith",
+    imperial_church: "faith",
+    merchants: "capital",
+    companies: "capital",
+    guilds: "capital",
+    oligarchs: "capital",
+    cities: "capital",
+    governors: "state",
+    bureaucrats: "state",
+    speaker: "state",
+    peasants: "common",
+    commons: "common",
+    citizens: "common",
+    herders: "common",
+    kin: "common",
+    sailors: "common",
+  };
+
+  function estateFamily(key) {
+    return estateFamilies[key] || key;
+  }
+
+  function estateTotal(estates) {
+    return Object.values(estates || {}).reduce((sum, estate) => sum + (estate.power || 0), 0);
+  }
+
+  function estateKeysFor(country) {
+    const required = new Set(data.governments[country.government.type]?.estates || []);
+    for (const key of country.government.estateKeys || []) required.add(key);
+    return [...required];
+  }
+
+  function deriveEstates(country) {
+    syncGovernmentDerived(country.government);
+    return Object.fromEntries(estateKeysFor(country).map(key => [key, seededEstate(country, key)]));
+  }
+
+  function seededEstate(country, key, scale = 1) {
+    const estate = estateFromKey(key, scale);
+    const seed = country.estateSeed?.[key] || {};
+    return {
+      ...estate,
+      power: seed.power ?? estate.power,
+      satisfaction: seed.satisfaction ?? estate.satisfaction,
+    };
+  }
+
+  function normalizeEstatePower(estates, targetTotal) {
+    const keys = Object.keys(estates);
+    if (!keys.length || targetTotal <= 0) return;
+    const currentTotal = estateTotal(estates);
+    if (currentTotal <= 0) return;
+    let allocated = 0;
+    keys.forEach((key, index) => {
+      const next = index === keys.length - 1
+        ? Math.max(0, Math.round(targetTotal - allocated))
+        : Math.max(0, Math.round(estates[key].power * targetTotal / currentTotal));
+      estates[key].power = next;
+      allocated += next;
+    });
+  }
+
   function reconcileEstates(country) {
     if (!country.estates) return country.estates;
     syncGovernmentDerived(country.government);
-    const required = country.government.estateKeys || [];
+    const required = estateKeysFor(country);
+    const previousTotal = estateTotal(country.estates);
+    const removed = Object.entries(country.estates).filter(([key]) => !required.includes(key));
     for (const key of required) {
-      if (!country.estates[key]) country.estates[key] = estateFromKey(key, .55);
+      if (!country.estates[key]) country.estates[key] = seededEstate(country, key, .55);
     }
+    for (const [removedKey, removedEstate] of removed) {
+      const sameFamily = required.filter(key => key !== removedKey && estateFamily(key) === estateFamily(removedKey));
+      const recipients = sameFamily.length ? sameFamily : required;
+      const share = recipients.length ? (removedEstate.power || 0) / recipients.length : 0;
+      for (const key of recipients) country.estates[key].power += share;
+      delete country.estates[removedKey];
+    }
+    normalizeEstatePower(country.estates, previousTotal || estateTotal(country.estates));
     country.lastEstateReconciliation = required.filter(key => country.estates[key]);
     return country.estates;
   }
@@ -113,7 +198,7 @@
         };
       }
       country.government = createGovernment(governmentType);
-      country.estates = createEstates(governmentType);
+      country.estates = deriveEstates(country);
       syncCountryDisplayName(country, false);
       reconcileEstates(country);
       country.decisionLedger = country.decisionLedger || [];
@@ -498,8 +583,8 @@
 
   function changeGovernment(world, polity, type) {
     const country = world.countries[polity];
+    country.estates ||= {};
     country.government = createGovernment(type);
-    country.estates = createEstates(type);
     const config = data.governments[type];
     syncCountryDisplayName(country, true);
     reconcileEstates(country);
@@ -619,6 +704,7 @@
     changeGovernment,
     completeElection,
     createEstates,
+    deriveEstates,
     createGovernment,
     reconcileEstates,
     initializePolitics,

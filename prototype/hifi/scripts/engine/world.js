@@ -70,6 +70,7 @@
       legitimacy: profile.legitimacy ?? 62,
       government: profile.government || { type: "monarchy", typeLabel: "封建君主制", powerName: "王权", centralPower: 62 },
       estates: profile.estates || {},
+      estateSeed: profile.estateSeed || {},
       technology: {},
       capital: 0,
       log: [`${name}进入 1337 年的时代棋局。`],

@@ -19,6 +19,7 @@ for (const file of [
 const data = context.window.HIFI_COUNTRY_DATA;
 const worldEngine = context.window.HIFI_WORLD_ENGINE;
 const politics = context.window.HIFI_POLITICS_ENGINE;
+const estateTotal = country => Object.values(country.estates || {}).reduce((sum, estate) => sum + (estate.power || 0), 0);
 assert.equal(data.leaders["法兰西王国"].history[0].name, "腓力六世");
 assert.equal(data.leaders["威尼斯共和国"].history[0].title, "总督");
 
@@ -47,12 +48,30 @@ assert.equal(politics.setLaw, undefined, "政治引擎不应再导出旧 setLaw"
 assert.equal(politics.lawEffects, undefined, "政治引擎不应再导出旧法律效果表");
 assert.equal(politics.lawOptions, undefined, "政治引擎不应再导出旧法律选项表");
 
+const seededCountry = {
+  name: "种子测试国",
+  government: politics.createGovernment("monarchy"),
+  estateSeed: { nobles: { power: 58, satisfaction: 12 } },
+};
+assert.equal(politics.deriveEstates(seededCountry).nobles.power, 58, "阶层派生必须读取国家分布种子");
+
+const totalBeforeCommercial = estateTotal(france);
 politics.setInstitution(france, "fiscal", "commercial");
 assert.ok(france.estates.companies, "商业财政模块必须补入商社阶层");
 assert.ok(france.estates.oligarchs, "商业财政模块必须补入寡头家族阶层");
 assert.ok(france.estates.nobles, "制度回流不能删除既有核心阶层");
+assert.equal(estateTotal(france), totalBeforeCommercial, "新增制度阶层不能改变阶层权力总量");
+france.estates.companies.power = 44;
+france.estates.oligarchs.power = 24;
+const merchantPowerBeforeRollback = france.estates.merchants.power;
+const totalBeforeRollback = estateTotal(france);
 politics.setInstitution(france, "fiscal", "demesne");
+assert.equal(france.estates.companies, undefined, "退出商业财政后必须移除商社阶层");
+assert.equal(france.estates.oligarchs, undefined, "退出商业财政后必须移除寡头家族阶层");
+assert.equal(estateTotal(france), totalBeforeRollback, "移除阶层后必须保持权力总量守恒");
+assert.ok(france.estates.merchants.power > merchantPowerBeforeRollback, "资本系移除阶层权力应回流给商人");
 
+const totalBeforeRepublic = estateTotal(france);
 politics.changeGovernment(world, "法兰西王国", "republic");
 assert.equal(france.government.type, "republic");
 assert.equal(france.name, "法兰西王国", "国家身份主键不能因政体变化而改变");
@@ -62,6 +81,8 @@ assert.equal(france.government.archetype, "republic");
 assert.equal(france.leader.title, "执政官");
 assert.equal(france.government.assembly.unlocked, true);
 assert.ok(france.estates.citizens);
+assert.equal(france.estates.church, undefined, "共和转型后非当前阶层必须移除");
+assert.equal(estateTotal(france), totalBeforeRepublic, "政体转型必须保持阶层权力总量守恒");
 
 const venice = world.countries["威尼斯共和国"];
 assert.equal(venice.government.type, "merchant_republic");
