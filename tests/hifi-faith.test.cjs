@@ -132,6 +132,26 @@ assert.equal(
   false,
   "宗教战争不能直接强迫附属"
 );
+
+const frontierWorld = w.HIFI_WORLD_ENGINE.createWorld([
+  tile(30, "拜占庭帝国", "君士坦丁堡", "东正教", 16),
+  tile(31, "奥斯曼贝伊国", "布尔萨", "逊尼派", 14),
+], undefined, "拜占庭帝国");
+w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(frontierWorld);
+w.HIFI_FAITH_ENGINE.initializeFaith(frontierWorld);
+w.HIFI_WARFARE_ENGINE.initializeWarfare(frontierWorld);
+frontierWorld.diplomacy.wars = [];
+const frontierReputation = frontierWorld.countries["拜占庭帝国"].reputation;
+const frontierWar = w.HIFI_WARFARE_ENGINE.declareWarOn(
+  frontierWorld,
+  "拜占庭帝国",
+  "奥斯曼贝伊国",
+  "边境圣战",
+  "religious"
+);
+assert.equal(frontierWar.cbMatched, true, "跨信仰组宗教战争本身应构成战争理由");
+assert.equal(frontierWorld.countries["拜占庭帝国"].reputation, frontierReputation, "合法跨组宗教战争不应按无理由战争扣声誉");
+
 religiousWar.score = 40;
 const pietyBeforePeace = authorityWorld.countries["法兰西王国"].faith.piety;
 w.HIFI_WARFARE_ENGINE.concludePeace(authorityWorld, religiousWar.id, "法兰西王国", [{ type: "target_territory" }]);

@@ -49,6 +49,11 @@
     return Boolean(attackerGroup && defenderGroup && attackerGroup !== defenderGroup);
   }
 
+  function hasCasusBelliForWar(world, attacker, defender, targetTileId, goal) {
+    if (goal?.type === "religious" && hasReligiousWarBasis(world, attacker, defender)) return true;
+    return !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
+  }
+
   function militaryKey(country) {
     const institutions = country.government?.institutions;
     if (institutions?.military) return institutions.military;
@@ -773,7 +778,7 @@
     if (normalizedGoal.type === "religious" && !hasReligiousWarBasis(world, attacker, defender)) {
       throw new Error("宗教战争需要十字军、绝罚或跨信仰组理由");
     }
-    const cbMatched = !!window.HIFI_DIPLOMACY_ENGINE?.hasClaimForWar?.(world, attacker, defender, targetTileId);
+    const cbMatched = hasCasusBelliForWar(world, attacker, defender, targetTileId, normalizedGoal);
     const war = {
       id: `war-${world.diplomacy.nextId++}`,
       name,
