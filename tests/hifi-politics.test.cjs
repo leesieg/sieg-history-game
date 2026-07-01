@@ -40,6 +40,8 @@ assert.equal(france.government.institutions.fiscal, "demesne");
 assert.equal(france.government.archetype, "feudal_monarchy");
 assert.ok(france.government.estateKeys.includes("nobles"));
 assert.ok(france.estates.nobles);
+assert.equal(france.estateSeed.nobles.power, 58, "法国必须读取国家阶层分布种子");
+assert.equal(france.estates.nobles.power, 58, "开局阶层权力必须由国家种子覆盖默认值");
 assert.equal(france.government.assembly.unlocked, false);
 assert.equal(france.government.laws, undefined, "国家系统不应再生成旧法律字段");
 assert.equal(france.government.reforms, undefined, "国家系统不应再生成旧改革槽");
@@ -54,6 +56,14 @@ const seededCountry = {
   estateSeed: { nobles: { power: 58, satisfaction: 12 } },
 };
 assert.equal(politics.deriveEstates(seededCountry).nobles.power, 58, "阶层派生必须读取国家分布种子");
+for (const [polity, profile] of Object.entries(data.countryProfiles)) {
+  const governmentType = data.leaders[polity]?.government || "monarchy";
+  const derivedCountry = { name: polity, government: politics.createGovernment(governmentType), estateSeed: profile.estateSeed };
+  const derivedKeys = Object.keys(politics.deriveEstates(derivedCountry));
+  for (const key of Object.keys(profile.estateSeed || {})) {
+    assert.ok(derivedKeys.includes(key), `${polity} 的阶层种子包含当前制度不会派生的阶层：${key}`);
+  }
+}
 
 const totalBeforeCommercial = estateTotal(france);
 politics.setInstitution(france, "fiscal", "commercial");
@@ -88,6 +98,7 @@ const venice = world.countries["威尼斯共和国"];
 assert.equal(venice.government.type, "merchant_republic");
 assert.equal(venice.government.archetype, "merchant_republic");
 assert.equal(venice.government.institutions.fiscal, "commercial");
+assert.equal(venice.estates.companies.power, 56, "威尼斯必须拥有商业共和国阶层分布种子");
 world.playerPolity = "威尼斯共和国";
 world.turn = 12;
 venice.leader.termEndsAtTurn = 12;
@@ -111,6 +122,13 @@ world.turn = venice.leader.historicalEndAtTurn;
 const foreignElection = politics.processLeadership(world, "威尼斯共和国");
 assert.equal(world.pendingElection, null, "外国选举必须自动结算，不能阻塞玩家季度");
 assert.equal(foreignElection.type, "auto_election");
+
+const overrideWorld = worldEngine.createWorld(tiles, {
+  "法兰西王国": { estateSeed: { nobles: { power: 70, satisfaction: 20 } } },
+});
+politics.initializePolitics(overrideWorld);
+assert.equal(overrideWorld.countries["法兰西王国"].estates.nobles.power, 70, "手动 profile 必须优先于默认国家种子");
+assert.equal(overrideWorld.countries["法兰西王国"].estates.nobles.satisfaction, 20, "手动 profile 的满意度种子必须生效");
 
 // 制度模块接入流：财政→金钱产出流；军事→动员口径；旧法律入口彻底移除
 vm.runInNewContext(fs.readFileSync(path.join(root, "scripts/engine/economy.js"), "utf8"), context);

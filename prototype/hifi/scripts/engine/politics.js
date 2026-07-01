@@ -125,6 +125,10 @@
     });
   }
 
+  function cloneEstateSeed(seed = {}) {
+    return Object.fromEntries(Object.entries(seed).map(([key, value]) => [key, { ...value }]));
+  }
+
   function reconcileEstates(country) {
     if (!country.estates) return country.estates;
     syncGovernmentDerived(country.government);
@@ -183,6 +187,10 @@
     world.pendingElection = null;
     for (const [polity, country] of Object.entries(world.countries)) {
       const config = data.leaders[polity];
+      const profile = data.countryProfiles?.[polity] || {};
+      if (profile.estateSeed && !Object.keys(country.estateSeed || {}).length) {
+        country.estateSeed = cloneEstateSeed(profile.estateSeed);
+      }
       const governmentType = config?.government || country.government?.type || "monarchy";
       if (config) {
         country.leader = leaderFromRecord(polity, config.history[0]);

@@ -102,6 +102,20 @@
     "金帐汗国": { government: "tribal", succession: "clan_elective", history: [leader("月即别汗", "孛儿只斤家族", "大汗", 5, 5, 5, 1341)] },
   };
 
+  const countryProfiles = {
+    "法兰西王国": { estateSeed: { nobles: { power: 58, satisfaction: 8 }, merchants: { power: 24 }, church: { power: 36 }, peasants: { power: 28 }, bureaucrats: { power: 18 } } },
+    "英格兰王国": { estateSeed: { nobles: { power: 42 }, merchants: { power: 38, satisfaction: 6 }, church: { power: 28 }, peasants: { power: 26 }, bureaucrats: { power: 22 } } },
+    "巴伐利亚公国": { estateSeed: { nobles: { power: 48 }, church: { power: 40 }, peasants: { power: 26 }, bureaucrats: { power: 16 } } },
+    "奥地利公国": { estateSeed: { nobles: { power: 46 }, merchants: { power: 26 }, church: { power: 30 }, peasants: { power: 24 }, bureaucrats: { power: 28 } } },
+    "美因茨大主教区": { estateSeed: { clergy: { power: 58, satisfaction: 12 }, orders: { power: 34 }, nobles: { power: 22 }, faithful: { power: 28 }, legate: { power: 24 } } },
+    "威尼斯共和国": { estateSeed: { companies: { power: 56, satisfaction: 12 }, guilds: { power: 34 }, port_nobles: { power: 20 }, sailors: { power: 26 }, oligarchs: { power: 38 } } },
+    "热那亚共和国": { estateSeed: { companies: { power: 52 }, guilds: { power: 32 }, port_nobles: { power: 24 }, sailors: { power: 28 }, oligarchs: { power: 34 } } },
+    "佛罗伦萨共和国": { estateSeed: { patricians: { power: 30 }, citizens: { power: 42 }, guilds: { power: 48, satisfaction: 8 }, commons: { power: 24 }, speaker: { power: 18 } } },
+    "拜占庭帝国": { estateSeed: { court: { power: 42 }, princes: { power: 28 }, imperial_church: { power: 36 }, cities: { power: 24 }, governors: { power: 22 } } },
+    "奥斯曼贝伊国": { estateSeed: { nobles: { power: 44 }, merchants: { power: 24 }, church: { power: 18 }, peasants: { power: 30 }, bureaucrats: { power: 22 } } },
+    "金帐汗国": { estateSeed: { clans: { power: 58, satisfaction: 8 }, warriors: { power: 46 }, shamans: { power: 22 }, herders: { power: 34 }, kin: { power: 28 } } },
+  };
+
   const introductions = {
     "法兰西王国": "瓦卢瓦王朝刚坐稳王位，王国因阿基坦与继承争端同英格兰决裂。富庶而分散的封建力量必须被拧成一股绳。",
     "英格兰王国": "爱德华三世统治着依靠羊毛贸易获利的王国，对法国王位的主张正把英格兰推入百年战争。",
@@ -119,5 +133,5 @@
     "奥斯曼贝伊国": "奥尔汗已夺取布尔萨和尼西亚，边疆战士与新城市资源正把奥斯曼推向海峡。",
   };
 
-  window.HIFI_COUNTRY_DATA = { governments, estates, introductions, leaders };
+  window.HIFI_COUNTRY_DATA = { countryProfiles, governments, estates, introductions, leaders };
 })();
