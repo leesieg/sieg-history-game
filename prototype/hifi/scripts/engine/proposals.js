@@ -56,14 +56,8 @@
 
   // --- mobilize_army ---
   function mobilizeArmyAvailable(world, polity, params) {
-    const tile = tileById(world, params?.tileId);
-    if (!tile || tile.isSea || tile.polity !== polity) return false;
-    const country = world.countries[polity];
-    if ((country.warfare?.warExhaustion || 0) >= 40) return false;
     const combatType = params?.combatType || "infantry";
-    if (!["infantry", "cavalry", "artillery"].includes(combatType)) return false;
-    if (combatType !== "artillery" && tile.population < 2) return false;
-    return true;
+    return window.HIFI_WARFARE_ENGINE.canMobilizeArmy(world, polity, params?.tileId, combatType).ok;
   }
 
   const actionCatalog = {
@@ -176,7 +170,9 @@
         if (!evaluation.accepted) return "对方不会接受贸易协定";
       }
     } else if (type === "mobilize_army") {
-      if (country.actionPoints.military < 1) return "军事点不足";
+      const combatType = params?.combatType || "infantry";
+      const check = window.HIFI_WARFARE_ENGINE.canMobilizeArmy(world, polity, params?.tileId, combatType);
+      if (!check.ok) return check.reason;
     }
     return null;
   }

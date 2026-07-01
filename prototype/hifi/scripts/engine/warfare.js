@@ -360,18 +360,33 @@
     army.generalId = null;
   }
 
-  function mobilizeArmy(world, polity, tileId, combatType = "infantry") {
-    if (!["infantry", "cavalry", "artillery"].includes(combatType)) throw new Error("只能动员步兵、骑兵或炮兵");
+  function canMobilizeArmy(world, polity, tileId, combatType = "infantry") {
+    if (!["infantry", "cavalry", "artillery"].includes(combatType)) return { ok: false, reason: "只能动员步兵、骑兵或炮兵" };
     const tile = world.tiles.find(item => item.id === tileId);
     const country = world.countries[polity];
-    if (!tile || tile.polity !== polity || tile.isSea) throw new Error("只能在己方陆地动员");
-    if (country.actionPoints.military < 1) throw new Error("军事点不足");
-    if ((country.warfare?.warExhaustion || 0) >= 40) throw new Error("战争疲惫过高，难以继续征召");
-    if (combatType === "cavalry" && !canRecruitCombatType(world, polity, "cavalry")) throw new Error("缺少马匹来源，无法动员骑兵");
+    if (!tile || tile.polity !== polity || tile.isSea) return { ok: false, reason: "只能在己方陆地动员" };
+    if (country.actionPoints.military < 1) return { ok: false, reason: "军事点不足" };
+    if ((country.warfare?.warExhaustion || 0) >= 40) return { ok: false, reason: "战争疲惫过高，难以继续征召" };
+    if (combatType === "cavalry" && !canRecruitCombatType(world, polity, "cavalry")) return { ok: false, reason: "缺少马匹来源，无法动员骑兵" };
     if (combatType === "artillery") {
-      if (!country.technology?.artillery) throw new Error("尚未掌握火炮技术");
-      if (!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "saltpeter")) throw new Error("缺少硝石来源，无法铸炮");
-      if (country.military < 30) throw new Error("铸炮需要军需 30");
+      if (!country.technology?.artillery) return { ok: false, reason: "尚未掌握火炮技术" };
+      if (!window.HIFI_ECONOMY_ENGINE?.hasGoodAccess(world, polity, "saltpeter")) return { ok: false, reason: "缺少硝石来源，无法铸炮" };
+      if (country.military < 30) return { ok: false, reason: "铸炮需要军需 30" };
+      return { ok: true };
+    }
+    if (tile.population < 2) return { ok: false, reason: "地块人口不足以征召" };
+    if (militaryKey(country) === "standing_army" && !country.technology?.standingArmy) {
+      return { ok: false, reason: "尚未掌握常备军操典，无法按常备军制度动员" };
+    }
+    return { ok: true };
+  }
+
+  function mobilizeArmy(world, polity, tileId, combatType = "infantry") {
+    const check = canMobilizeArmy(world, polity, tileId, combatType);
+    if (!check.ok) throw new Error(check.reason);
+    const tile = world.tiles.find(item => item.id === tileId);
+    const country = world.countries[polity];
+    if (combatType === "artillery") {
       country.actionPoints.military -= 1;
       country.military -= 30;
       return createArmy(world, {
@@ -381,11 +396,7 @@
         units: [{ combatType: "artillery", serviceType: "professional", soldiers: 300, sourceTileId: tileId }],
       });
     }
-    if (tile.population < 2) throw new Error("地块人口不足以征召");
     const effect = militaryEffect(country);
-    if (militaryKey(country) === "standing_army" && !country.technology?.standingArmy) {
-      throw new Error("尚未掌握常备军操典，无法按常备军制度动员");
-    }
     const baseSoldiers = combatType === "cavalry" ? 500 : 1200;
     const soldiers = Math.round(baseSoldiers * (effect?.soldierFactor || 1));
     const militaryCost = effect?.militaryCost || 0;
@@ -1327,6 +1338,7 @@
     executeMovementPhase,
     executeNavalMovementPhase,
     buildFleet,
+    canMobilizeArmy,
     dismissGeneral,
     fleetTotalShips,
     fleetTransportCapacity,

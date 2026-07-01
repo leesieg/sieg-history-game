@@ -116,6 +116,26 @@ assert.throws(
 // --- 军事行动：mobilize_army 可行场景 ---
 country.actionPoints.military = 3;
 country.warfare.warExhaustion = 0;
+const cavalryProposal = { type: "mobilize_army", params: { tileId: 1, combatType: "cavalry" } };
+const cavalryResult = proposals.validate(world, polity, cavalryProposal);
+assert.equal(cavalryResult.ok, false, "缺少马匹来源时骑兵动员必须 validate 失败");
+assert.match(cavalryResult.reason, /马匹/, "骑兵动员失败原因必须说明马匹来源");
+assert.equal(
+  proposals.actionPreview(world, polity, "mobilize_army", cavalryProposal.params).available.ok,
+  false,
+  "缺少马匹来源时行动预览必须显示不可用"
+);
+country.technology.artillery = true;
+country.military = 100;
+const artilleryProposal = { type: "mobilize_army", params: { tileId: 1, combatType: "artillery" } };
+const artilleryResult = proposals.validate(world, polity, artilleryProposal);
+assert.equal(artilleryResult.ok, false, "缺少硝石来源时炮兵动员必须 validate 失败");
+assert.match(artilleryResult.reason, /硝石/, "炮兵动员失败原因必须说明硝石来源");
+assert.equal(
+  proposals.actionPreview(world, polity, "mobilize_army", artilleryProposal.params).available.ok,
+  false,
+  "缺少硝石来源时行动预览必须显示不可用"
+);
 const mobilizeProposal = { type: "mobilize_army", params: { tileId: 1, combatType: "infantry" } };
 assert.equal(proposals.validate(world, polity, mobilizeProposal).ok, true);
 const armyCountBefore = Object.keys(world.warfare.armies).length;
