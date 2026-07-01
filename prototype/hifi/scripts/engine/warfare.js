@@ -1349,6 +1349,7 @@
     buildFleet,
     canMobilizeArmy,
     dismissGeneral,
+    fleetCanEnterWater,
     fleetTotalShips,
     fleetTransportCapacity,
     fleetTransportLoad,

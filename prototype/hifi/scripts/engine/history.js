@@ -234,7 +234,9 @@
         const laggardBoost = country.technology?.[key] ? 0 : Math.min(3, neighborsKnown);
         country.technologyAwareness[key] = Math.min(100, country.technologyAwareness[key] + 1 + neighborsKnown + laggardBoost + printing + ideasBoost);
       }
-      if ((country.pressures?.exploration || 0) >= 35) country.exploration.points += country.technology?.astrolabe ? 2 : 1;
+      if ((country.pressures?.exploration || 0) >= 35 && hasOceanExplorationFleet(world, country.name)) {
+        country.exploration.points += country.technology?.astrolabe ? 2 : 1;
+      }
       if (country.exploration.points >= 20 && !country.exploration.milestones.includes("atlantic")) {
         country.exploration.milestones.push("atlantic");
         country.exploration.colonial = true;   // 解锁殖民收入流（economy.settleCountry 每季注入）
@@ -243,6 +245,20 @@
         pushChronicle(world, country.name, "milestone", "开辟大西洋航路，殖民收入开始流入");
       }
     }
+  }
+
+  function hasOceanExplorationFleet(world, polity) {
+    const warfare = window.HIFI_WARFARE_ENGINE;
+    if (!warfare?.fleetCanEnterWater) return false;
+    const ocean = (world.tiles || []).find(tile =>
+      tile.isSea && (tile.waterType === "ocean" || tile.terrain === "ocean" || tile.climate === "ocean")
+    );
+    if (!ocean) return false;
+    return Object.values(world.warfare?.fleets || {}).some(fleet =>
+      fleet.owner === polity
+      && fleet.status !== "routed"
+      && warfare.fleetCanEnterWater(fleet, ocean)
+    );
   }
 
   function autoAdoptTechnology(world) {
@@ -815,6 +831,7 @@
     runRegency,
     completeTutorial,
     forecast,
+    hasOceanExplorationFleet,
     technologyContactCount,
     quarterLedger,
     missions,

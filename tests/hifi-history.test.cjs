@@ -180,8 +180,24 @@ explorer.exploration.milestones = [];
 explorer.exploration.colonial = false;
 explorer.pressures.exploration = 40;
 explorer.technology.astrolabe = true;
+vm.runInNewContext(fs.readFileSync(path.join(root, "engine/warfare.js"), "utf8"), context);
+history.spreadTechnology(world);
+assert.equal(explorer.exploration.points, 0, "没有远洋舰队时，探索压力不能凭空生成探索点");
+world.tiles.push({ id: 99, isSea: true, polity: "海域", terrain: "sea", waterType: "ocean", x: -20, y: 45, population: 0, buildings: [] });
+world.warfare = {
+  fleets: {
+    "fleet-atlantic": {
+      id: "fleet-atlantic",
+      owner: "法兰西王国",
+      tileId: 99,
+      status: "ready",
+      units: [{ shipType: "carrack", ships: 2 }],
+    },
+  },
+};
 history.spreadTechnology(world);
 assert.equal(explorer.exploration.points, 2, "星盘航法必须加速探索点累积");
+delete context.window.HIFI_WARFARE_ENGINE;
 
 explorer.technology.astrolabe = false;
 explorer.technology.scientificMethod = false;
