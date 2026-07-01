@@ -117,7 +117,7 @@ console.log("hifi map integration passed");
 {
   const engineRoot = path.join(root, "scripts");
   const engineContext = { window: {} };
-  for (const file of ["data/rules.js", "engine/world.js", "engine/economy.js"]) {
+  for (const file of ["data/techs.js", "data/rules.js", "engine/world.js", "engine/economy.js"]) {
     vm.runInNewContext(fs.readFileSync(path.join(engineRoot, file), "utf8"), engineContext);
   }
   const worldEngine = engineContext.window.HIFI_WORLD_ENGINE;

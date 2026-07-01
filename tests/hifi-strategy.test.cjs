@@ -11,6 +11,7 @@ const vm = require("vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
+  "data/techs.js",
   "data/rules.js",
   "engine/world.js",
   "engine/diplomacy.js",

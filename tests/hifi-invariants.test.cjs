@@ -11,6 +11,7 @@ for (const file of [
   "data/countries.js",
   "data/institutions.js",
   "data/codex.js",
+  "data/techs.js",
   "data/rules.js",
   "data/trade.js",
   "engine/world.js",

@@ -17,17 +17,10 @@
     quarry: { label: "采石场", cost: 26, effect: "石材与大理石产出提升", goods: ["stone", "marble"] },
   };
 
-  const technologies = window.HIFI_TECHS?.legacyTechnologies?.() || {
-    artillery: { label: "火药与火炮", domain: "military", cost: 50, year: 1370, requires: [], awarenessGate: 25, effect: "解锁炮兵" },
-    oceanGoingShips: { label: "远洋帆装", domain: "naval", cost: 55, year: 1420, requires: [], awarenessGate: 25, effect: "舰队可进入远洋" },
-    printing: { label: "印刷术", domain: "cultural", cost: 40, year: 1450, requires: [], awarenessGate: 25, effect: "推动思想与宗教传播" },
-    bastions: { label: "棱堡体系", domain: "military", cost: 60, year: 1500, requires: ["artillery"], awarenessGate: 30, effect: "降低围攻破坏" },
-    accounting: { label: "复式记账", domain: "economic", cost: 30, year: 1400, requires: [], awarenessGate: 25, effect: "季度金钱 +10%" },
-    standingArmy: { label: "常备军体系", domain: "military", cost: 45, year: 1550, requires: ["artillery"], awarenessGate: 35, effect: "军需产出 +20%" },
-    triangleTrade: { label: "跨洋贸易体系", domain: "naval", cost: 70, year: 1600, requires: ["oceanGoingShips"], awarenessGate: 40, effect: "解锁跨洋贸易路线" },
-    steamEngine: { label: "蒸汽动力", domain: "economic", cost: 85, year: 1750, requires: ["accounting"], awarenessGate: 45, effect: "工业产出提升" },
-    railways: { label: "铁路运输", domain: "economic", cost: 100, year: 1820, requires: ["steamEngine"], awarenessGate: 50, effect: "陆上补给与市场连接提升" },
-  };
+  if (!window.HIFI_TECHS?.legacyTechnologies || !window.HIFI_TECHS?.domains) {
+    throw new Error("缺少科技树数据：请先加载 scripts/data/techs.js");
+  }
+  const technologies = window.HIFI_TECHS.legacyTechnologies();
 
   const edicts = {
     taxDrive: { label: "强化征税", cost: { administrative: 1 }, money: 25, legitimacy: -2 },
@@ -41,13 +34,7 @@
     army: { label: "整顿军备", target: "military", threshold: 160, reward: { legitimacy: 2 } },
   };
 
-  const techDomains = window.HIFI_TECHS?.domains || {
-    administrative: { label: "治理" },
-    military: { label: "军事" },
-    economic: { label: "经济" },
-    naval: { label: "航海" },
-    cultural: { label: "文化" },
-  };
+  const techDomains = window.HIFI_TECHS.domains;
 
   window.HIFI_RULES = { agendas, buildings, edicts, technologies, techDomains };
 })();

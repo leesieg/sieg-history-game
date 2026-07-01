@@ -23,6 +23,12 @@ for (const file of [
   vm.runInNewContext(fs.readFileSync(path.join(scripts, file), "utf8"), context);
 }
 
+assert.throws(
+  () => vm.runInNewContext(fs.readFileSync(path.join(scripts, "data", "rules.js"), "utf8"), { window: {} }),
+  /缺少科技树数据/,
+  "rules.js 不能回退到旧扁平科技表，必须先加载 techs.js"
+);
+
 const requiredEngines = [
   "HIFI_POLITICS_ENGINE",
   "HIFI_WARFARE_ENGINE",

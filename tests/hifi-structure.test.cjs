@@ -11,6 +11,7 @@ const requiredFiles = [
   "scripts/main.js",
   "scripts/data/geography.js",
   "scripts/data/countries.js",
+  "scripts/data/techs.js",
   "scripts/data/rules.js",
   "scripts/engine/world.js",
   "scripts/engine/turn.js",

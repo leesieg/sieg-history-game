@@ -9,6 +9,7 @@ const context = { window: {} };
 for (const file of [
   "data/geography.js",
   "data/countries.js",
+  "data/techs.js",
   "data/rules.js",
   "data/trade.js",
   "engine/world.js",

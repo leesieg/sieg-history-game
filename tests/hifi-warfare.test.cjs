@@ -8,6 +8,7 @@ const root = path.join(hifiRoot, "scripts");
 const context = { window: {} };
 for (const file of [
   "data/goods.js",
+  "data/techs.js",
   "data/rules.js",
   "data/trade.js",
   "engine/world.js",
