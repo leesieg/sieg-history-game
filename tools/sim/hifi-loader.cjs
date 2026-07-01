@@ -12,6 +12,7 @@ const ENGINE_FILES = [
   "data/codex.js",
   "data/techs.js",
   "data/rules.js",
+  "data/faiths.js",
   "data/trade.js",
   "engine/world.js",
   "engine/turn.js",
@@ -19,6 +20,7 @@ const ENGINE_FILES = [
   "engine/economy.js",
   "engine/diplomacy.js",
   "engine/warfare.js",
+  "engine/faith.js",
   "engine/trade.js",
   "engine/history.js",
   "engine/struggle.js",
@@ -72,6 +74,7 @@ function initializeWorld(windowApi, player = "法兰西王国") {
   windowApi.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   windowApi.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   windowApi.HIFI_HISTORY_ENGINE.initializeHistory(world);
+  windowApi.HIFI_FAITH_ENGINE.initializeFaith(world);
   windowApi.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
   windowApi.HIFI_TRADE_ENGINE.initializeTrade(world);
   return world;

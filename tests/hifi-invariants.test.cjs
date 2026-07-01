@@ -13,6 +13,7 @@ for (const file of [
   "data/codex.js",
   "data/techs.js",
   "data/rules.js",
+  "data/faiths.js",
   "data/trade.js",
   "engine/world.js",
   "engine/turn.js",
@@ -20,6 +21,7 @@ for (const file of [
   "engine/economy.js",
   "engine/diplomacy.js",
   "engine/warfare.js",
+  "engine/faith.js",
   "engine/trade.js",
   "engine/history.js",
   "engine/struggle.js",
@@ -68,6 +70,7 @@ function initializeWorld(player = "法兰西王国") {
   w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
   w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
   w.HIFI_HISTORY_ENGINE.initializeHistory(world);
+  w.HIFI_FAITH_ENGINE.initializeFaith(world);
   w.HIFI_STRUGGLE_ENGINE.initializeStruggles(world);
   w.HIFI_TRADE_ENGINE.initializeTrade(world);
   return world;

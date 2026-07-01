@@ -10,11 +10,13 @@ for (const file of [
   "data/goods.js",
   "data/techs.js",
   "data/rules.js",
+  "data/faiths.js",
   "data/trade.js",
   "engine/world.js",
   "engine/economy.js",
   "engine/diplomacy.js",
   "engine/warfare.js",
+  "engine/faith.js",
   "engine/trade.js",
 ]) {
   vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
@@ -24,6 +26,7 @@ const worldEngine = context.window.HIFI_WORLD_ENGINE;
 const economy = context.window.HIFI_ECONOMY_ENGINE;
 const diplomacy = context.window.HIFI_DIPLOMACY_ENGINE;
 const warfare = context.window.HIFI_WARFARE_ENGINE;
+const faith = context.window.HIFI_FAITH_ENGINE;
 const trade = context.window.HIFI_TRADE_ENGINE;
 const tiles = [
   { id: 0, isSea: false, polity: "法兰西王国", population: 12, buildings: [], city: "巴黎", terrain: "plains", x: 10, y: 10, control: 80, devastation: 0 },
@@ -266,6 +269,7 @@ const blockadeWorld = worldEngine.createWorld(blockadeTiles, {}, "威尼斯共�
 diplomacy.initializeDiplomacy(blockadeWorld);
 warfare.initializeWarfare(blockadeWorld);
 blockadeWorld.diplomacy.wars = [];
+faith.initializeFaith(blockadeWorld);
 trade.initializeTrade(blockadeWorld);
 trade.processTrade(blockadeWorld);
 const genoeseTradeBeforeBlockade = blockadeWorld.trade.lastIncome["热那亚共和国"];
@@ -305,6 +309,7 @@ assert.ok(blockadeWorld.trade.lastIncome["热那亚共和国"] < genoeseTradeBef
 const privateerWorld = worldEngine.createWorld(blockadeTiles, {}, "威尼斯共和国");
 diplomacy.initializeDiplomacy(privateerWorld);
 warfare.initializeWarfare(privateerWorld);
+faith.initializeFaith(privateerWorld);
 trade.initializeTrade(privateerWorld);
 trade.processTrade(privateerWorld);
 const venetianIncomeBeforePrivateer = privateerWorld.trade.lastIncome["威尼斯共和国"];

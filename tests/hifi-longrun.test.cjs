@@ -6,9 +6,9 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "..", "prototype", "hifi", "scripts");
 const context = { window: {} };
 for (const file of [
-  "data/techs.js", "data/rules.js", "data/trade.js", "data/countries.js",
+  "data/techs.js", "data/rules.js", "data/faiths.js", "data/trade.js", "data/countries.js",
   "engine/world.js", "engine/politics.js", "engine/economy.js",
-  "engine/diplomacy.js", "engine/warfare.js", "engine/trade.js",
+  "engine/diplomacy.js", "engine/warfare.js", "engine/faith.js", "engine/trade.js",
   "engine/history.js", "engine/objectives.js", "engine/proposals.js", "engine/strategy.js", "engine/turn.js",
 ]) vm.runInNewContext(fs.readFileSync(path.join(root, file), "utf8"), context);
 
@@ -27,6 +27,7 @@ w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
 w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
 w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
 w.HIFI_HISTORY_ENGINE.initializeHistory(world);
+w.HIFI_FAITH_ENGINE.initializeFaith(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 
 // 3.1：新增引擎在各时代/战争/和平态都返回合法结构、不抛错
@@ -97,6 +98,7 @@ console.log(`hifi longrun passed: ${world.turn} · ${w.HIFI_HISTORY_ENGINE.eras[
   w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(expandWorld);
   w.HIFI_WARFARE_ENGINE.initializeWarfare(expandWorld);
   w.HIFI_HISTORY_ENGINE.initializeHistory(expandWorld);
+  w.HIFI_FAITH_ENGINE.initializeFaith(expandWorld);
   w.HIFI_TRADE_ENGINE.initializeTrade(expandWorld);
 
   const polity = expandWorld.playerPolity;

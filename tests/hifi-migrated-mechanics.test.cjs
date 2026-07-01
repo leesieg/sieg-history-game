@@ -8,6 +8,7 @@ const context = { window: {} };
 for (const file of [
   "data/techs.js",
   "data/rules.js",
+  "data/faiths.js",
   "data/trade.js",
   "data/countries.js",
   "data/institutions.js",
@@ -16,6 +17,7 @@ for (const file of [
   "engine/economy.js",
   "engine/diplomacy.js",
   "engine/warfare.js",
+  "engine/faith.js",
   "engine/trade.js",
   "engine/history.js",
   "engine/strategy.js",
@@ -34,6 +36,7 @@ w.HIFI_ECONOMY_ENGINE.initializeEconomy(world);
 w.HIFI_DIPLOMACY_ENGINE.initializeDiplomacy(world);
 w.HIFI_WARFARE_ENGINE.initializeWarfare(world);
 w.HIFI_HISTORY_ENGINE.initializeHistory(world);
+w.HIFI_FAITH_ENGINE.initializeFaith(world);
 w.HIFI_TRADE_ENGINE.initializeTrade(world);
 
 const france = world.countries["法兰西王国"];
