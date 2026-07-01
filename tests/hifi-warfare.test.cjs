@@ -99,6 +99,14 @@ assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galleon
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "frigate").ok, false, "护卫舰必须先有风帆战列舰科技");
 navalWorld.countries["威尼斯共和国"].technology.oceanGoingShips = true;
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "carrack").ok, true, "远洋帆装应解锁卡拉克");
+const timberOnlyShipWorld = worldEngine.createWorld([
+  { id: 80, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },
+  { id: 81, isSea: true, polity: "海域", population: 0, buildings: [], city: "", terrain: "sea", x: 10, y: 0, control: 0 },
+], {}, "威尼斯共和国");
+economy.initializeEconomy(timberOnlyShipWorld);
+timberOnlyShipWorld.countries["威尼斯共和国"].technology.oceanGoingShips = true;
+assert.equal(warfare.canBuildShipType(timberOnlyShipWorld, "威尼斯共和国", "galley").ok, true, "基础桨帆船只需要木材");
+assert.equal(warfare.canBuildShipType(timberOnlyShipWorld, "威尼斯共和国", "carrack").ok, false, "卡拉克必须同时拥有木材和海军物资");
 navalWorld.countries["威尼斯共和国"].technology.triangleTrade = true;
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "galleon").ok, true, "跨洋贸易体系应解锁盖伦船");
 assert.equal(warfare.canBuildShipType(navalWorld, "威尼斯共和国", "shipOfLine").ok, false, "风帆战列舰必须先有对应科技");
