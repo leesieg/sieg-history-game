@@ -5,12 +5,15 @@ const vm = require("vm");
 
 const root = path.join(__dirname, "..", "prototype", "hifi");
 const geographyPath = path.join(root, "scripts", "data", "geography.js");
+const goodsPath = path.join(root, "scripts", "data", "goods.js");
 const mapPath = path.join(root, "scripts", "ui", "map.js");
 const htmlPath = path.join(root, "index.html");
 
 const context = { window: {} };
 vm.runInNewContext(fs.readFileSync(geographyPath, "utf8"), context);
+vm.runInNewContext(fs.readFileSync(goodsPath, "utf8"), context);
 assert.ok(context.window.HIFI_GEOGRAPHY, "地理数据应独立加载");
+assert.ok(context.window.HIFI_GOODS, "物产数据应独立加载");
 assert.deepEqual(
   Array.from(context.window.HIFI_GEOGRAPHY.CITY_COORDS["君士坦丁堡"]),
   [27.3, 39.7]
@@ -32,6 +35,20 @@ assert.ok(
   geographySource.includes('"enemy","英格兰王国"'),
   "1337 年加斯科涅地块应归属英格兰王国，而不是虚构独立政权"
 );
+const definedGoods = Object.keys(context.window.HIFI_GOODS.goods).sort();
+const landGoods = [...new Set(
+  context.window.HIFI_GEOGRAPHY.regionSeeds
+    .filter(seed => seed[3] !== "sea")
+    .map(seed => seed[6])
+)].sort();
+assert.deepEqual(landGoods, definedGoods, "陆地地图种子必须覆盖 30 种历史物产");
+for (const seed of context.window.HIFI_GEOGRAPHY.regionSeeds) {
+  if (seed[3] === "sea") continue;
+  assert.ok(context.window.HIFI_GOODS.goods[seed[6]], `地块物产必须存在于 HIFI_GOODS：${seed[0]}=${seed[6]}`);
+}
+for (const good of definedGoods) {
+  assert.ok(mapSource.includes(`${good}: [`), `地图产出模式必须支持物产：${good}`);
+}
 assert.ok(componentSource.includes(".map-city-dot, .map-capital-star"), "城市点和首都星必须共享穿透点击规则");
 assert.ok(componentSource.includes("pointer-events: none"), "地图标注不能阻断地块点击");
 assert.ok(mapSource.includes('../../assets/terrain-banners/${tile.terrain}.png'), "地形横幅必须使用正确资源路径");
