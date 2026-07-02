@@ -162,7 +162,8 @@
 
   function createFleet(world, config) {
     if (!world.countries[config.owner]) throw new Error("舰队所属国家不存在");
-    if (!world.tiles.find(tile => tile.id === config.tileId && tile.isSea)) throw new Error("舰队必须位于海域");
+    const startTile = world.tiles.find(tile => tile.id === config.tileId && tile.isSea);
+    if (!startTile) throw new Error("舰队必须位于海域");
     const fleet = {
       id: config.id || `fleet-${world.warfare.nextFleetId++}`,
       owner: config.owner,
@@ -184,6 +185,7 @@
       if (unit.ships <= 0) throw new Error("舰船数量必须大于 0");
     }
     world.warfare.fleets[fleet.id] = fleet;
+    if (fleetCanEnterWater(fleet, startTile)) markSeaDiscovered(world, fleet.owner, startTile);
     return fleet;
   }
 
@@ -623,6 +625,32 @@
     return fleet.units.every(unit => shipTypes[unit.shipType]?.oceanCapable !== false);
   }
 
+  function isSeaDiscovered(world, polity, tileOrId) {
+    const tile = typeof tileOrId === "object"
+      ? tileOrId
+      : world.tiles.find(candidate => candidate.id === tileOrId);
+    if (!tile?.isSea) return true;
+    if (navalWaterType(tile) !== "ocean") return true;
+    const country = world.countries[polity];
+    return Boolean(country?.exploration?.discoveredSeaTiles?.includes(tile.id))
+      || Boolean(tile.discoveredBy?.includes(polity));
+  }
+
+  function markSeaDiscovered(world, polity, tileOrId) {
+    const tile = typeof tileOrId === "object"
+      ? tileOrId
+      : world.tiles.find(candidate => candidate.id === tileOrId);
+    if (!tile?.isSea || navalWaterType(tile) !== "ocean") return false;
+    const country = world.countries[polity];
+    if (!country) throw new Error("探索国家不存在");
+    country.exploration ||= { points: 0, milestones: [] };
+    country.exploration.discoveredSeaTiles ||= [];
+    tile.discoveredBy ||= [];
+    if (!country.exploration.discoveredSeaTiles.includes(tile.id)) country.exploration.discoveredSeaTiles.push(tile.id);
+    if (!tile.discoveredBy.includes(polity)) tile.discoveredBy.push(polity);
+    return true;
+  }
+
   function routeNodeOwners(world, route) {
     return [...new Set((route?.nodes || [])
       .map(city => world.tiles.find(tile => tile.city === city && !tile.isSea)?.polity)
@@ -903,6 +931,7 @@
       const destination = fleet.plannedPath.shift();
       const from = fleet.tileId;
       fleet.tileId = destination;
+      markSeaDiscovered(world, fleet.owner, destination);
       fleet.organization = Math.max(25, fleet.organization - 3);
       if (!fleet.plannedPath.length) fleet.order = "hold";
       moved.push({ fleetId: fleet.id, from, to: destination });
@@ -1358,6 +1387,8 @@
     hireMercenary,
     initializeWarfare,
     institutionalCommandBonus,
+    isSeaDiscovered,
+    markSeaDiscovered,
     mergeArmies,
     militaryEffect,
     mobilizeArmy,

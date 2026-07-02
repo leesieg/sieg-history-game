@@ -30,6 +30,12 @@ button:focus-visible { outline: 2px solid var(--gold-3); outline-offset: 2px; }
 }
 .map-hex:hover { filter: brightness(1.18); }
 .map-hex.sea { stroke: rgba(9, 35, 42, .3); }
+.map-hex.fog {
+  fill: #1b2a30;
+  stroke: rgba(202, 214, 189, .08);
+  filter: saturate(.45) brightness(.72);
+}
+.map-hex.fog:hover { filter: saturate(.55) brightness(.9); }
 .map-hex.selected {
   stroke: #f5d36f;
   stroke-width: 3;

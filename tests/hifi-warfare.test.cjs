@@ -180,7 +180,11 @@ const oceanGalleon = warfare.createFleet(oceanWorld, {
   name: "远洋通行测试盖伦船",
   units: [{ shipType: "galleon", ships: 2 }],
 });
+assert.equal(warfare.isSeaDiscovered(oceanWorld, "威尼斯共和国", 51), true, "沿海海域默认已知");
+assert.equal(warfare.isSeaDiscovered(oceanWorld, "威尼斯共和国", 52), false, "未进入的大洋海域应保持迷雾");
 assert.deepEqual(warfare.planFleetRoute(oceanWorld, oceanGalleon.id, 52), [52], "远洋舰种应能进入大洋海域");
+warfare.executeNavalMovementPhase(oceanWorld);
+assert.equal(warfare.isSeaDiscovered(oceanWorld, "威尼斯共和国", 52), true, "远洋舰队进入大洋后应永久揭开迷雾");
 
 const amphibiousTiles = [
   { id: 30, isSea: false, polity: "威尼斯共和国", population: 10, buildings: ["port"], city: "威尼斯", terrain: "coast", good: "timber", x: 0, y: 0, control: 90, devastation: 0 },

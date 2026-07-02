@@ -178,6 +178,11 @@
     return seed?.[3] || "plains";
   }
 
+  function waterTypeFor(lon, lat, sea) {
+    if (!sea) return null;
+    return lon < -7.2 || (lon < -5.4 && lat < 43) ? "ocean" : "coastal";
+  }
+
   function hexPoints(cx, cy, radius) {
     const points = [];
     for (let index = 0; index < 6; index += 1) {
@@ -211,6 +216,7 @@
           isSea: sea,
           region: seed[0],
           terrain: terrainFor(geo.lon, geo.lat, seed, sea),
+          waterType: waterTypeFor(geo.lon, geo.lat, sea),
           climate: climateFor(geo.lat, sea),
           good: sea ? "fish" : seed[6],
           culture: sea ? "海域" : seed[7],
@@ -260,6 +266,7 @@
   }
 
   function tileFill(tile) {
+    if (isTileFogged(tile)) return "#1b2a30";
     if (tile.isSea) return TERRAIN.sea[1];
     const world = window.hifiGame?.store?.getState();
     const country = world?.countries?.[tile.polity];
@@ -285,6 +292,14 @@
       return routeValue ? `hsl(174 52% ${Math.max(28, 62 - routeValue / 4)}%)` : "#536b68";
     }
     return polityColor(tile.polity);
+  }
+
+  function isTileFogged(tile) {
+    const world = window.hifiGame?.store?.getState();
+    if (!world || !tile.isSea) return false;
+    return window.HIFI_WARFARE_ENGINE?.isSeaDiscovered
+      ? !window.HIFI_WARFARE_ENGINE.isSeaDiscovered(world, world.playerPolity, tile)
+      : false;
   }
 
   function viewBox() {
@@ -320,7 +335,7 @@
       const polygon = node("polygon", {
         points: hexPoints(tile.x, tile.y, HEX_R),
         fill: tileFill(tile),
-        class: `map-hex ${tile.isSea ? "sea" : ""} ${tile.id === state.selectedId ? "selected" : ""}`,
+        class: `map-hex ${tile.isSea ? "sea" : ""} ${isTileFogged(tile) ? "fog" : ""} ${tile.id === state.selectedId ? "selected" : ""}`,
         "data-map-tile": tile.id
       });
       tileLayer.appendChild(polygon);
